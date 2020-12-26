@@ -127,6 +127,7 @@ const max_edit_width = 512;
 const max_edit_height = 512;
 const default_edit_width = 32;
 const default_edit_height = 32;
+const default_edit_scale = 8;
 class RawData {
     constructor(width, height, color_palette, tiles) {
         this.width = width;
@@ -548,7 +549,7 @@ function Initialize() {
     dom.editheight.max = max_edit_height.toString();
     dom.editwidth.value = default_edit_width.toString();
     dom.editheight.value = default_edit_height.toString();
-    dom.edit_scale.value = `1`;
+    dom.edit_scale.value = default_edit_scale.toString();
     data.edit_width = dom.editwidth.valueAsNumber;
     data.edit_height = dom.editheight.valueAsNumber;
     data.edit_scale = Number(dom.edit_scale.value);

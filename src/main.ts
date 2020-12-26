@@ -15,6 +15,7 @@ const max_edit_width: number = 512;
 const max_edit_height: number = 512;
 const default_edit_width: number = 32;
 const default_edit_height: number = 32;
+const default_edit_scale: number = 8;
 class RawData {
 	width: number;
 	height: number;
@@ -487,7 +488,7 @@ function Initialize() {
 	dom.editheight.max = max_edit_height.toString();
 	dom.editwidth.value = default_edit_width.toString();
 	dom.editheight.value = default_edit_height.toString();
-	dom.edit_scale.value = `1`;
+	dom.edit_scale.value = default_edit_scale.toString();
 	data.edit_width = dom.editwidth.valueAsNumber;
 	data.edit_height = dom.editheight.valueAsNumber;
 	data.edit_scale = Number(dom.edit_scale.value);
