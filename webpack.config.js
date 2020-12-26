@@ -6,7 +6,8 @@ module.exports = {
 		path: path.resolve(__dirname, 'built'),
 		filename: 'bundle.js'
 	},
-	mode: 'production',
+	mode: 'development',
+	devtool: false,
 	entry: './built/main.js',
 	module: {
 		rules: [
