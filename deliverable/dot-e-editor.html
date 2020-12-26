@@ -85,7 +85,7 @@
                 <option value="JSON" selected>JSON</option>
             </select>
             <input type="text" id="edit_data_name" value="new_map">
-            <a id="download_edit_data" href="#" onClick="DownloadEditData()"><button>保存(ダウンロード)</button></a>
+            <a id="download_edit_data" href="#"><button>保存(ダウンロード)</button></a>
         </p>
         <div id="editframe">
             <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
@@ -412,6 +412,7 @@ class Dom {
         this.dom_paint_tool = GetHtmlElement('paint_tool');
         this.dom_grid_color = GetHtmlElement('grid_color');
         this.dom_canvas_bg_color = GetHtmlElement('canvas_bg_color');
+        this.save_picture_button = GetHtmlElement('download_edit_data');
     }
 }
 const dom = new Dom();
@@ -580,6 +581,7 @@ function Initialize() {
     dom.dom_paint_tool.addEventListener('change', (event) => {
         tool = paint_tool;
     });
+    dom.save_picture_button.addEventListener('click', DownloadEditData);
     edit_reader.addEventListener('load', (event) => {
         LoadEditData(event.target.result);
         const basename = ExtractBaseName(GetHtmlElement('edit_filepath').value);

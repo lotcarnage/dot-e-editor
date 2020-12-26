@@ -322,6 +322,7 @@ class Dom {
 	dom_paint_tool: HTMLInputElement;
 	dom_grid_color: HTMLInputElement;
 	dom_canvas_bg_color: HTMLInputElement;
+	save_picture_button: HTMLLinkElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
@@ -337,6 +338,7 @@ class Dom {
 		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
 		this.dom_grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
 		this.dom_canvas_bg_color = GetHtmlElement<HTMLInputElement>('canvas_bg_color');
+		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 	}
 }
 
@@ -520,6 +522,7 @@ function Initialize() {
 	dom.dom_paint_tool.addEventListener('change', (event) => {
 		tool = paint_tool;
 	});
+	dom.save_picture_button.addEventListener('click', DownloadEditData);
 
 	edit_reader.addEventListener('load', (event) => {
 		LoadEditData((<FileReader>event.target).result as string);
