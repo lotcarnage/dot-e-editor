@@ -510,6 +510,9 @@ function Initialize() {
 	dom.view_grid.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
+	dom.dom_grid_color.addEventListener('input', (event) => {
+		data.TouchEditView();
+	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
 		tool = pen_tool;
 	});
