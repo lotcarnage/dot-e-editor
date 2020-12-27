@@ -157,12 +157,14 @@ class Data {
     }
     set edit_width(new_width) {
         this.edit_width_ = new_width;
+        this.is_edit_view_touched_ = true;
     }
     get edit_height() {
         return this.edit_height_;
     }
     set edit_height(new_height) {
         this.edit_height_ = new_height;
+        this.is_edit_view_touched_ = true;
     }
     get selected_color_index() {
         return this.selected_color_index_;

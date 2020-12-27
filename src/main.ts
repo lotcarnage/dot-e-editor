@@ -56,12 +56,14 @@ class Data {
 	}
 	public set edit_width(new_width: number) {
 		this.edit_width_ = new_width;
+		this.is_edit_view_touched_ = true;
 	}
 	public get edit_height(): number {
 		return this.edit_height_;
 	}
 	public set edit_height(new_height: number) {
 		this.edit_height_ = new_height;
+		this.is_edit_view_touched_ = true;
 	}
 	public get selected_color_index(): number {
 		return this.selected_color_index_;
