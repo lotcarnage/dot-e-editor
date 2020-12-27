@@ -463,6 +463,77 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	}
 }
 
+namespace WindowsIndexColorBitmap {
+	const Store16LE = function (bytes: Uint8Array, offset: number, value: number): void {
+		bytes[offset + 0] = value & 0x00ff;
+		bytes[offset + 1] = (value >> 8) & 0x00ff;
+	}
+	const Store32LE = function (bytes: Uint8Array, offset: number, value: number): void {
+		bytes[offset + 0] = value & 0x000000ff;
+		bytes[offset + 1] = (value >> 8) & 0x000000ff;
+		bytes[offset + 2] = (value >> 16) & 0x000000ff;
+		bytes[offset + 3] = (value >> 24) & 0x000000ff;
+	}
+
+	const RgbStringToRgbValues = function (rgb_string: string) {
+		const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+		return [Number(r_string), Number(g_string), Number(b_string)];
+	}
+
+
+	export function Serialize(
+		color_palette: string[], pixels: number[][], width: number, height: number)
+		: Uint8Array {
+		const bmp_file_header_size = 14;
+		const bmp_info_header_size = 40;
+		const palette_size = 4 * 256;
+		const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
+		const bmp_width = Math.ceil(width / 4) * 4;
+		const pixels_size = bmp_width * height;
+		const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
+		const buffer = new ArrayBuffer(binary_size);
+		const bytes = new Uint8Array(buffer);
+		bytes[0] = 0x42;
+		bytes[1] = 0x4d;
+		/* Bitmap File Header */
+		Store32LE(bytes, 2, binary_size);
+		Store16LE(bytes, 6, 0);
+		Store16LE(bytes, 8, 0);
+		Store32LE(bytes, 10, pixels_offset);
+
+		/* Bitmap Info Header */
+		Store32LE(bytes, 14, 40);
+		Store32LE(bytes, 18, width);
+		Store32LE(bytes, 22, height);
+		Store16LE(bytes, 26, 1);
+		Store16LE(bytes, 28, 8);
+		Store32LE(bytes, 30, 0);
+		Store32LE(bytes, 34, pixels_size);
+		Store32LE(bytes, 38, 0);
+		Store32LE(bytes, 42, 0);
+		Store32LE(bytes, 46, 256);
+		Store32LE(bytes, 50, 256);
+
+		/* Color palette */
+		for (let i = 0; i < 256; i++) {
+			const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
+			bytes[54 + 4 * i + 0] = b;
+			bytes[54 + 4 * i + 1] = g;
+			bytes[54 + 4 * i + 2] = r;
+			bytes[54 + 4 * i + 3] = 0;
+		}
+
+		/* pixels */
+		/* ラスタ座標系から数学座標系に入れ替えて出力する */
+		for (let h = 0; h < height; h++) {
+			for (let w = 0; w < width; w++) {
+				let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+				bytes[offset] = pixels[h][w];
+			}
+		}
+		return bytes;
+	}
+}
 
 const UpdateView = function () {
 	if (data.is_edit_view_touched) {
@@ -552,6 +623,13 @@ function Initialize() {
 	window.requestAnimationFrame(UpdateView);
 }
 
+const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
+	const save_data = data.MakeRawSaveData();
+	const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.tiles, save_data.width, save_data.height);
+	const save_data_blob = new Blob([bmp_bytes]);
+	return save_data_blob;
+};
+
 const MakeSaveDataBlobAsJson = function () {
 	const save_data = data.MakeRawSaveData();
 	const save_data_json = JSON.stringify(save_data);
@@ -572,6 +650,8 @@ class SaveData {
 
 const MakeSaveData = function (basename: string, save_format: string): SaveData {
 	switch (save_format) {
+		case "WindowsIndexColorBitmap":
+			return new SaveData(`${basename}.bmp`, MakeSaveDataBlobAsWindowsIndexColorBitmap());
 		case "JSON":
 		default:
 			return new SaveData(`${basename}.json`, MakeSaveDataBlobAsJson());
