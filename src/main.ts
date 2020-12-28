@@ -281,8 +281,26 @@ const TryReadEditDataByJson = function (bytes: string) {
 	return true;
 }
 
-const LoadEditData = function (bytes: string) {
-	if (TryReadEditDataByJson(bytes)) {
+const LoadEditData = function (bytes: string | ArrayBuffer) {
+	const bmp_data = WindowsIndexColorBitmap.Deserialize(bytes as ArrayBuffer);
+	if (bmp_data != null) {
+		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
+		data.edit_width = width;
+		data.edit_height = height;
+		GetHtmlElement<HTMLInputElement>('editwidth').value = data.edit_width.toString();
+		GetHtmlElement<HTMLInputElement>('editheight').value = data.edit_height.toString();
+		for (var h = 0; h < height; h++) {
+			for (var w = 0; w < width; w++) {
+				data.WriteMap(new EditPoint(w, h), pixels[h][w]);
+			}
+		}
+		for (var i = 0; i < 256; i++) {
+			document.getElementById(`color_palette#${i}`).style.backgroundColor = color_palette[i];
+		}
+		return true;
+	}
+	const bs = Array.from(new Uint8Array(bytes as ArrayBuffer), (v) => String.fromCharCode(v)).join("");
+	if (TryReadEditDataByJson(bs)) {
 		return true;
 	}
 	return false;
@@ -464,6 +482,11 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 }
 
 namespace WindowsIndexColorBitmap {
+	const bmp_file_header_size = 14;
+	const bmp_info_header_size = 40;
+	const palette_size = 4 * 256;
+	const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
+
 	const Store16LE = function (bytes: Uint8Array, offset: number, value: number): void {
 		bytes[offset + 0] = value & 0x00ff;
 		bytes[offset + 1] = (value >> 8) & 0x00ff;
@@ -473,6 +496,15 @@ namespace WindowsIndexColorBitmap {
 		bytes[offset + 1] = (value >> 8) & 0x000000ff;
 		bytes[offset + 2] = (value >> 16) & 0x000000ff;
 		bytes[offset + 3] = (value >> 24) & 0x000000ff;
+	}
+	const Load16LE = function (bytes: Uint8Array, offset: number): number {
+		return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
+	}
+	const Load32LE = function (bytes: Uint8Array, offset: number): number {
+		return (bytes[offset + 0] & 0x000000ff)
+			| ((bytes[offset + 1] << 8) & 0x0000ff00)
+			| ((bytes[offset + 2] << 16) & 0x00ff0000)
+			| ((bytes[offset + 3] << 14) & 0xff000000);
 	}
 
 	const RgbStringToRgbValues = function (rgb_string: string) {
@@ -484,10 +516,6 @@ namespace WindowsIndexColorBitmap {
 	export function Serialize(
 		color_palette: string[], pixels: number[][], width: number, height: number)
 		: Uint8Array {
-		const bmp_file_header_size = 14;
-		const bmp_info_header_size = 40;
-		const palette_size = 4 * 256;
-		const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
 		const bmp_width = Math.ceil(width / 4) * 4;
 		const pixels_size = bmp_width * height;
 		const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
@@ -532,6 +560,51 @@ namespace WindowsIndexColorBitmap {
 			}
 		}
 		return bytes;
+	}
+	export function Deserialize(buffer: ArrayBuffer): [string[], number[][], number, number] | null {
+		const bytes = new Uint8Array(buffer);
+		console.log(bytes[0]);
+		console.log(bytes[1]);
+		if (bytes[0] != 0x42) {
+			return null;
+		}
+		if (bytes[1] != 0x4d) {
+			return null;
+		}
+		if (Load32LE(bytes, 10) != pixels_offset) {
+			return null;
+		}
+		if (Load16LE(bytes, 26) != 1) {
+			return null;
+		}
+		if (Load16LE(bytes, 28) != 8) {
+			return null;
+		}
+		const width = Load32LE(bytes, 18);
+		const height = Load32LE(bytes, 22);
+		const bmp_width = Math.ceil(width / 4) * 4;
+		const pixels_size = bmp_width * height;
+		if (Load32LE(bytes, 34) != pixels_size) {
+			return null;
+		}
+
+		const color_palette: string[] = new Array<string>(256);
+		for (let i = 0; i < 256; i++) {
+			const b = bytes[54 + 4 * i + 0];
+			const g = bytes[54 + 4 * i + 1];
+			const r = bytes[54 + 4 * i + 2];
+			color_palette[i] = `rgb(${r},${g},${b})`;
+		}
+		/* pixels */
+		/* 数学座標系からラスタ座標系に入れ替えて読みこむ */
+		const pixels: number[][] = JSON.parse(JSON.stringify((new Array(height)).fill((new Array(width)).fill(0))));
+		for (let h = 0; h < height; h++) {
+			for (let w = 0; w < width; w++) {
+				let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+				pixels[h][w] = bytes[offset];
+			}
+		}
+		return [color_palette, pixels, width, height];
 	}
 }
 
@@ -578,7 +651,7 @@ function Initialize() {
 		data.edit_scale = Number((<HTMLSelectElement>event.target).value);
 	});
 	dom.edit_filepath.addEventListener('change', (event) => {
-		edit_reader.readAsBinaryString((<HTMLInputElement>event.target).files[0]);
+		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
 	dom.view_index.addEventListener('change', (event) => {
 		data.TouchEditView();
@@ -598,7 +671,7 @@ function Initialize() {
 	dom.save_picture_button.addEventListener('click', DownloadEditData);
 
 	edit_reader.addEventListener('load', (event) => {
-		LoadEditData((<FileReader>event.target).result as string);
+		LoadEditData((<FileReader>event.target).result);
 		const basename = ExtractBaseName(GetHtmlElement<HTMLInputElement>('edit_filepath').value);
 		GetHtmlElement<HTMLInputElement>('edit_data_name').value = basename;
 		data.TouchEditView();
