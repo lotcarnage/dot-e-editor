@@ -1,3 +1,9 @@
+namespace Misc {
+	export function Make2dArray<T>(width: number, height: number, initial_value: T): T[][] {
+		return JSON.parse(JSON.stringify((new Array<Array<T>>(height)).fill((new Array<T>(width)).fill(initial_value))));
+	}
+}
+
 class EditPoint {
 	public w: number;
 	public h: number;
@@ -40,7 +46,7 @@ class Data {
 	public constructor() {
 		this.edit_width_ = default_edit_width;
 		this.edit_height_ = default_edit_height;
-		this.pixels_ = JSON.parse(JSON.stringify((new Array(max_edit_height)).fill((new Array(max_edit_width)).fill(0))));
+		this.pixels_ = Misc.Make2dArray<number>(max_edit_width, max_edit_height, 0);
 		this.pixels_written_set_ = new Set<number>();
 		this.selected_color_index_ = 0;
 	}
@@ -100,7 +106,7 @@ class Data {
 		}
 		const color_palette = new Array(256);
 		for (var i = 0; i < 256; i++) {
-			color_palette[i] = document.getElementById(`color_palette#${i}`).style.backgroundColor;
+			color_palette[i] = dom.color_palette[i].style.backgroundColor;
 		}
 		return new RawData(edit_w_count, edit_h_count, color_palette, save_tiles);
 	}
@@ -236,21 +242,9 @@ const MouseMoveCallback = function (event) {
 	tool.MouseMove(event);
 };
 
-
-function AddListener(dom_id: string, event_name: string, callback: (event: any) => void) {
-	document.getElementById(dom_id).addEventListener(event_name, callback);
-}
-
-const ResizeCanvas = function (canvas_id: string, new_width: number, new_height: number): void {
-	const canvas = <HTMLCanvasElement>document.getElementById(canvas_id);
-	canvas.width = new_width;
-	canvas.height = new_height;
-	return;
-};
-
 const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
-	const new_width = (<HTMLDivElement>document.getElementById(referencet_div_id)).clientWidth;
-	(<HTMLDivElement>document.getElementById(modify_div_id)).style.width = `${new_width}px`;
+	const new_width = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientWidth;
+	GetHtmlElement<HTMLDivElement>(modify_div_id).style.width = `${new_width}px`;
 };
 
 const ExtractBaseName = function (filepath: string) {
@@ -266,8 +260,8 @@ const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as RawData;
 	data.edit_width = read_data.width as number;
 	data.edit_height = read_data.height as number;
-	GetHtmlElement<HTMLInputElement>('editwidth').value = data.edit_width.toString();
-	GetHtmlElement<HTMLInputElement>('editheight').value = data.edit_height.toString();
+	dom.editwidth.value = data.edit_width.toString();
+	dom.editheight.value = data.edit_height.toString();
 	const edit_w_count = data.edit_width;
 	const edit_h_count = data.edit_height;
 	for (var h = 0; h < edit_h_count; h++) {
@@ -276,7 +270,7 @@ const TryReadEditDataByJson = function (bytes: string) {
 		}
 	}
 	for (var i = 0; i < 256; i++) {
-		document.getElementById(`color_palette#${i}`).style.backgroundColor = read_data.color_palette[i];
+		dom.color_palette[i].style.backgroundColor = read_data.color_palette[i];
 	}
 	return true;
 }
@@ -287,15 +281,15 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
 		data.edit_width = width;
 		data.edit_height = height;
-		GetHtmlElement<HTMLInputElement>('editwidth').value = data.edit_width.toString();
-		GetHtmlElement<HTMLInputElement>('editheight').value = data.edit_height.toString();
+		dom.editwidth.value = data.edit_width.toString();
+		dom.editheight.value = data.edit_height.toString();
 		for (var h = 0; h < height; h++) {
 			for (var w = 0; w < width; w++) {
 				data.WriteMap(new EditPoint(w, h), pixels[h][w]);
 			}
 		}
 		for (var i = 0; i < 256; i++) {
-			document.getElementById(`color_palette#${i}`).style.backgroundColor = color_palette[i];
+			dom.color_palette[i].style.backgroundColor = color_palette[i];
 		}
 		return true;
 	}
@@ -343,6 +337,8 @@ class Dom {
 	dom_grid_color: HTMLInputElement;
 	dom_canvas_bg_color: HTMLInputElement;
 	save_picture_button: HTMLLinkElement;
+	edit_data_name: HTMLInputElement;
+	color_palette: HTMLTableDataCellElement[];
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
@@ -359,6 +355,8 @@ class Dom {
 		this.dom_grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
 		this.dom_canvas_bg_color = GetHtmlElement<HTMLInputElement>('canvas_bg_color');
 		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
+		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
+		this.color_palette = new Array<HTMLTableDataCellElement>(256);
 	}
 }
 
@@ -444,7 +442,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		const dst_x = point.w;
 		const dst_y = point.h;
 		const mi = data.GetWrittenColorIndex(point);
-		edit_context.fillStyle = document.getElementById(`color_palette#${mi}`).style.backgroundColor;
+		edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
 		edit_context.fillRect(dst_x, dst_y, 1, 1);
 	});
 	const grid_color = dom.dom_grid_color.value;
@@ -468,7 +466,7 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 			const dst_x = w;
 			const dst_y = h;
 			const mi = data.GetWrittenColorIndex(new EditPoint(w, h));
-			edit_context.fillStyle = document.getElementById(`color_palette#${mi}`).style.backgroundColor;
+			edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
 			edit_context.fillRect(dst_x, dst_y, 1, 1);
 		}
 	}
@@ -597,7 +595,7 @@ namespace WindowsIndexColorBitmap {
 		}
 		/* pixels */
 		/* 数学座標系からラスタ座標系に入れ替えて読みこむ */
-		const pixels: number[][] = JSON.parse(JSON.stringify((new Array(height)).fill((new Array(width)).fill(0))));
+		const pixels: number[][] = Misc.Make2dArray<number>(width, height, 0);
 		for (let h = 0; h < height; h++) {
 			for (let w = 0; w < width; w++) {
 				let offset = pixels_offset + bmp_width * (height - h - 1) + w;
@@ -625,7 +623,8 @@ const UpdateView = function () {
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
-	ResizeCanvas('edit', 256, 192);
+	dom.edit_canvas.width = 256;
+	dom.edit_canvas.height = 192;
 	FitDivWidth('editframe', 'editblock');
 	dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
 	dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
@@ -672,24 +671,27 @@ function Initialize() {
 
 	edit_reader.addEventListener('load', (event) => {
 		LoadEditData((<FileReader>event.target).result);
-		const basename = ExtractBaseName(GetHtmlElement<HTMLInputElement>('edit_filepath').value);
-		GetHtmlElement<HTMLInputElement>('edit_data_name').value = basename;
+		const basename = ExtractBaseName(dom.edit_filepath.value);
+		dom.edit_data_name.value = basename;
 		data.TouchEditView();
 	});
 
 	dom.blank_frame.innerHTML = MakeTable('color_palette', 16, 16);
 	for (let i = 0; i < 256; i++) {
-		const cell_id = `color_palette#${i}`;
-		const color_cell = document.getElementById(cell_id);
+		dom.color_palette[i] = GetHtmlElement<HTMLTableDataCellElement>(`color_palette#${i}`);
+	}
+
+	for (let i = 0; i < 256; i++) {
+		const color_cell = dom.color_palette[i];
 		color_cell.style.backgroundColor = `#000000`;
-		AddListener(cell_id, 'click', () => {
+		color_cell.addEventListener('click', () => {
 			data.selected_color_index = i;
 			dom.palette_color.value = RgbStringToHexColor(color_cell.style.backgroundColor);
 		});
 	}
 	dom.palette_color.addEventListener('input', (event) => {
-		const cell_id = `color_palette#${data.selected_color_index}`;
-		document.getElementById(cell_id).style.backgroundColor = (<HTMLInputElement>event.target).value;
+		const color_cell = dom.color_palette[data.selected_color_index];
+		color_cell.style.backgroundColor = (<HTMLInputElement>event.target).value;
 		data.TouchEditView();
 	});
 
@@ -732,12 +734,12 @@ const MakeSaveData = function (basename: string, save_format: string): SaveData 
 };
 
 function DownloadEditData() {
-	const basename = GetHtmlElement<HTMLInputElement>('edit_data_name').value;
+	const basename = dom.edit_data_name.value;
 	const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
 	const savedata = MakeSaveData(basename, save_format)
 	const object_url = window.URL.createObjectURL(savedata.blob);
 	const user_agent = window.navigator.userAgent.toLowerCase();
-	const download_link = document.getElementById('download_edit_data');
+	const download_link = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 	download_link.setAttribute('href', object_url);
 	download_link.setAttribute('download', savedata.filename);
 }
