@@ -2,6 +2,29 @@ namespace Misc {
 	export function Make2dArray<T>(width: number, height: number, initial_value: T): T[][] {
 		return JSON.parse(JSON.stringify((new Array<Array<T>>(height)).fill((new Array<T>(width)).fill(initial_value))));
 	}
+	export function LineTo2d(x0: number, y0: number, x1: number, y1: number, PixelOnLineCallback: (x: number, y: number) => void) {
+		const dx = (x0 < x1) ? x1 - x0 : x0 - x1;
+		const dy = (y0 < y1) ? y1 - y0 : y0 - y1;
+		const sx = (x0 < x1) ? 1 : -1;
+		const sy = (y0 < y1) ? 1 : -1;
+		let e1 = dx - dy;
+
+		for (; ;) {
+			PixelOnLineCallback(x0, y0);
+			if ((x0 == x1) && (y0 == y1)) {
+				break;
+			}
+			const e2 = e1 * 2;
+			if (-dy < e2) {
+				e1 -= dy;
+				x0 += sx;
+			}
+			if (e2 < dx) {
+				e1 += dx;
+				y0 += sy;
+			}
+		}
+	};
 }
 
 class EditPoint {
@@ -134,9 +157,14 @@ class Tool {
 }
 
 class PenTool extends Tool {
+	private last_point: EditPoint;
+	private WritePixel = function (x: number, y: number) {
+		data.WriteMap(new EditPoint(x, y), data.selected_color_index);
+	}
 	public LeftButtonDown(event: MouseEvent) {
 		const point = GetTilePoint(event, data.edit_scale);
 		data.WriteMap(point, data.selected_color_index);
+		this.last_point = point;
 		return;
 	};
 	public RightButtonDown(event: MouseEvent) {
@@ -147,7 +175,8 @@ class PenTool extends Tool {
 	public MouseMove(event: MouseEvent) {
 		if (event.buttons === 1) {
 			const point = GetTilePoint(event, data.edit_scale);
-			data.WriteMap(point, data.selected_color_index);
+			Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
+			this.last_point = point;
 		}
 		return;
 	};
