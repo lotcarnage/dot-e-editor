@@ -93,6 +93,8 @@
         </div>
     </div>
     <div>
+        <button id="undo_button">Undo(Ctrl+z)</button>
+        <button id="redo_button">Redo(Ctrl+y)</button>
         <input type="radio" name="tools" id="pen_tool" value="pen_tool" checked>
         <label for="pen_tool">ペン</label>
         <input type="radio" name="tools" id="paint_tool" value="paint_tool">
@@ -237,6 +239,72 @@ class Data {
         return new RawData(edit_w_count, edit_h_count, color_palette, save_tiles);
     }
 }
+class EditLogger {
+    constructor() {
+        this.undo_stack_ = new Array(0);
+        this.redo_stack_ = new Array(0);
+    }
+    IsUndoLogEmpty() {
+        return (this.undo_stack_.length == 0) ? true : false;
+    }
+    IsRedoLogEmpty() {
+        return (this.redo_stack_.length == 0) ? true : false;
+    }
+    PushUndoLog(log) {
+        this.undo_stack_.push(log);
+    }
+    PushRedoLog(log) {
+        this.redo_stack_.push(log);
+    }
+    PopUndoLog() {
+        return this.undo_stack_.pop();
+    }
+    PopRedoLog() {
+        return this.redo_stack_.pop();
+    }
+    ClearRedoLog() {
+        this.redo_stack_.splice(0);
+    }
+}
+const logger = new EditLogger();
+const ApplyRawData = function (raw_data) {
+    data.edit_width = raw_data.width;
+    data.edit_height = raw_data.height;
+    for (let h = 0; h < raw_data.height; h++) {
+        for (let w = 0; w < raw_data.width; w++) {
+            data.WriteMap(new EditPoint(w, h), raw_data.tiles[h][w]);
+        }
+    }
+    for (let i = 0; i < 256; i++) {
+        dom.color_palette[i].style.backgroundColor = raw_data.color_palette[i];
+    }
+    dom.editwidth.value = raw_data.width.toString();
+    dom.editheight.value = raw_data.height.toString();
+    return;
+};
+const PushUndoLog = function () {
+    const current_data = data.MakeRawSaveData();
+    logger.PushUndoLog(current_data);
+    logger.ClearRedoLog();
+};
+const Undo = function () {
+    if (logger.IsUndoLogEmpty()) {
+        return;
+    }
+    const current_data = data.MakeRawSaveData();
+    logger.PushRedoLog(current_data);
+    const undo_data = logger.PopUndoLog();
+    ApplyRawData(undo_data);
+};
+const Redo = function () {
+    if (logger.IsRedoLogEmpty()) {
+        return;
+    }
+    const current_data = data.MakeRawSaveData();
+    logger.PushUndoLog(current_data);
+    const redo_data = logger.PopRedoLog();
+    ApplyRawData(redo_data);
+};
 const IndexToEditPoint = function (index, width) {
     const w = Math.floor(index % width);
     const h = Math.floor(index / width);
@@ -268,6 +336,7 @@ class PenTool extends Tool {
         };
     }
     LeftButtonDown(event) {
+        PushUndoLog();
         const point = GetTilePoint(event, data.edit_scale);
         data.WriteMap(point, data.selected_color_index);
         this.last_point = point;
@@ -333,6 +402,7 @@ const ExtractRegionPixelSet = function (start_point) {
 };
 class PaintTool extends Tool {
     LeftButtonDown(event) {
+        PushUndoLog();
         const selected_pixel = GetTilePoint(event, data.edit_scale);
         const new_color_index = data.selected_color_index;
         const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
@@ -466,6 +536,8 @@ class Dom {
         this.save_picture_button = GetHtmlElement('download_edit_data');
         this.edit_data_name = GetHtmlElement('edit_data_name');
         this.color_palette = new Array(256);
+        this.undo_button = GetHtmlElement('undo_button');
+        this.redo_button = GetHtmlElement('redo_button');
     }
 }
 const dom = new Dom();
@@ -777,6 +849,24 @@ function Initialize() {
         const color_cell = dom.color_palette[data.selected_color_index];
         color_cell.style.backgroundColor = event.target.value;
         data.TouchEditView();
+    });
+    dom.undo_button.addEventListener('click', (event) => {
+        Undo();
+    });
+    dom.redo_button.addEventListener('click', (event) => {
+        Redo();
+    });
+    window.addEventListener('keydown', (event) => {
+        if (event.ctrlKey) {
+            switch (event.key) {
+                case 'z':
+                    Undo();
+                    break;
+                case 'y':
+                    Redo();
+                    break;
+            }
+        }
     });
     window.requestAnimationFrame(UpdateView);
 }

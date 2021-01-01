@@ -135,6 +135,80 @@ class Data {
 	}
 }
 
+class EditLogger {
+	private undo_stack_: RawData[];
+	private redo_stack_: RawData[];
+	constructor() {
+		this.undo_stack_ = new Array<RawData>(0);
+		this.redo_stack_ = new Array<RawData>(0);
+	}
+	public IsUndoLogEmpty(): boolean {
+		return (this.undo_stack_.length == 0) ? true : false;
+	}
+	public IsRedoLogEmpty(): boolean {
+		return (this.redo_stack_.length == 0) ? true : false;
+	}
+	public PushUndoLog(log: RawData): void {
+		this.undo_stack_.push(log);
+	}
+	public PushRedoLog(log: RawData): void {
+		this.redo_stack_.push(log);
+	}
+	public PopUndoLog(): RawData {
+		return this.undo_stack_.pop();
+	}
+	public PopRedoLog(): RawData {
+		return this.redo_stack_.pop();
+	}
+	public ClearRedoLog(): void {
+		this.redo_stack_.splice(0);
+	}
+}
+
+const logger: EditLogger = new EditLogger();
+
+const ApplyRawData = function (raw_data: RawData): void {
+	data.edit_width = raw_data.width;
+	data.edit_height = raw_data.height;
+	for (let h = 0; h < raw_data.height; h++) {
+		for (let w = 0; w < raw_data.width; w++) {
+			data.WriteMap(new EditPoint(w, h), raw_data.tiles[h][w]);
+		}
+	}
+	for (let i = 0; i < 256; i++) {
+		dom.color_palette[i].style.backgroundColor = raw_data.color_palette[i];
+	}
+	dom.editwidth.value = raw_data.width.toString();
+	dom.editheight.value = raw_data.height.toString();
+	return;
+}
+
+const PushUndoLog = function (): void {
+	const current_data = data.MakeRawSaveData();
+	logger.PushUndoLog(current_data);
+	logger.ClearRedoLog();
+}
+
+const Undo = function (): void {
+	if (logger.IsUndoLogEmpty()) {
+		return;
+	}
+	const current_data = data.MakeRawSaveData();
+	logger.PushRedoLog(current_data);
+	const undo_data = logger.PopUndoLog();
+	ApplyRawData(undo_data);
+}
+
+const Redo = function () {
+	if (logger.IsRedoLogEmpty()) {
+		return;
+	}
+	const current_data = data.MakeRawSaveData();
+	logger.PushUndoLog(current_data);
+	const redo_data = logger.PopRedoLog();
+	ApplyRawData(redo_data);
+}
+
 const IndexToEditPoint = function (index: number, width: number): EditPoint {
 	const w = Math.floor(index % width);
 	const h = Math.floor(index / width);
@@ -162,6 +236,7 @@ class PenTool extends Tool {
 		data.WriteMap(new EditPoint(x, y), data.selected_color_index);
 	}
 	public LeftButtonDown(event: MouseEvent) {
+		PushUndoLog();
 		const point = GetTilePoint(event, data.edit_scale);
 		data.WriteMap(point, data.selected_color_index);
 		this.last_point = point;
@@ -228,6 +303,7 @@ const ExtractRegionPixelSet = function (start_point: EditPoint): Set<number> {
 
 class PaintTool extends Tool {
 	public LeftButtonDown(event: MouseEvent) {
+		PushUndoLog();
 		const selected_pixel = GetTilePoint(event, data.edit_scale);
 		const new_color_index = data.selected_color_index;
 		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
@@ -368,6 +444,8 @@ class Dom {
 	save_picture_button: HTMLLinkElement;
 	edit_data_name: HTMLInputElement;
 	color_palette: HTMLTableDataCellElement[];
+	undo_button: HTMLButtonElement;
+	redo_button: HTMLButtonElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
@@ -386,6 +464,8 @@ class Dom {
 		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
+		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
+		this.redo_button = GetHtmlElement<HTMLButtonElement>('redo_button');
 	}
 }
 
@@ -723,6 +803,21 @@ function Initialize() {
 		color_cell.style.backgroundColor = (<HTMLInputElement>event.target).value;
 		data.TouchEditView();
 	});
+
+	dom.undo_button.addEventListener('click', (event) => {
+		Undo();
+	});
+	dom.redo_button.addEventListener('click', (event) => {
+		Redo();
+	});
+	window.addEventListener('keydown', (event: KeyboardEvent) => {
+		if (event.ctrlKey) {
+			switch (event.key) {
+				case 'z': Undo(); break;
+				case 'y': Redo(); break;
+			}
+		}
+	})
 
 	window.requestAnimationFrame(UpdateView);
 }
