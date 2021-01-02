@@ -19,6 +19,15 @@
             text-align: right;
         }
 
+        div#viewframe {
+            width: 32px;
+            height: 32px;
+            overflow: scroll;
+            resize: both;
+            text-align: center;
+            float: left;
+        }
+
         div#editframe {
             width: 32px;
             height: 384px;
@@ -60,7 +69,25 @@
         <input type="color" id="canvas_bg_color" value="#ff00ff">
         <label for="canvas_bg_color">キャンバス背景色</label>
     </div>
-
+    <div id="viewframe">
+        <p>
+            表示倍率
+            <select id="view_scale">
+                <option value="1">x1</option>
+                <option value="2">x2</option>
+                <option value="3">x3</option>
+                <option value="4" selected>x4</option>
+                <option value="6">x6</option>
+                <option value="8">x8</option>
+                <option value="12">x12</option>
+                <option value="16">x16</option>
+                <option value="24">x24</option>
+            </select>
+        </p>
+        <p>
+            <canvas id="view" width="256" height="192"></canvas>
+        </p>
+    </div>
     <div id="editblock">
         <p>
             横ピクセル数<input id="editwidth" type="number" min="1">
@@ -520,12 +547,14 @@ const RgbStringToHexColor = function (rgb_string) {
 class Dom {
     Initialize() {
         this.edit_canvas = GetHtmlElement('edit');
+        this.view_canvas = GetHtmlElement('view');
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_frame = GetHtmlElement('editframe');
         this.palette_color = GetHtmlElement('palette_color');
         this.editwidth = GetHtmlElement('editwidth');
         this.editheight = GetHtmlElement('editheight');
         this.edit_scale = GetHtmlElement('edit_scale');
+        this.view_scale = GetHtmlElement('view_scale');
         this.edit_filepath = GetHtmlElement('edit_filepath');
         this.view_index = GetHtmlElement('view_index');
         this.view_grid = GetHtmlElement('view_grid');
@@ -627,6 +656,22 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
         PartiallyDrawMapchipIndex(edit_context, written_pixel_set, view_scale, grid_color);
     }
     written_pixel_set.clear();
+};
+const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
+    const view_context = dom.view_canvas.getContext('2d');
+    dom.view_canvas.width = edit_w_count * view_scale;
+    dom.view_canvas.height = edit_h_count * view_scale;
+    view_context.imageSmoothingEnabled = false;
+    view_context.scale(view_scale, view_scale);
+    for (var h = 0; h < edit_h_count; h++) {
+        for (var w = 0; w < edit_w_count; w++) {
+            const dst_x = w;
+            const dst_y = h;
+            const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
+            view_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
+            view_context.fillRect(dst_x, dst_y, 1, 1);
+        }
+    }
 };
 const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
     const edit_context = dom.edit_canvas.getContext("2d");
@@ -778,6 +823,7 @@ const UpdateView = function () {
     else {
         UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
     }
+    UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
     dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
     window.requestAnimationFrame(UpdateView);
 };

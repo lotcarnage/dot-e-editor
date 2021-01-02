@@ -428,12 +428,14 @@ const RgbStringToHexColor = function (rgb_string: string) {
 
 class Dom {
 	edit_canvas: HTMLCanvasElement;
+	view_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
 	edit_frame: HTMLDivElement;
 	palette_color: HTMLInputElement;
 	editwidth: HTMLInputElement;
 	editheight: HTMLInputElement;
 	edit_scale: HTMLSelectElement;
+	view_scale: HTMLSelectElement;
 	edit_filepath: HTMLInputElement;
 	view_index: HTMLInputElement;
 	view_grid: HTMLInputElement;
@@ -448,12 +450,14 @@ class Dom {
 	redo_button: HTMLButtonElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
+		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
 		this.palette_color = GetHtmlElement<HTMLInputElement>('palette_color');
 		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
 		this.editheight = GetHtmlElement<HTMLInputElement>('editheight');
 		this.edit_scale = GetHtmlElement<HTMLSelectElement>('edit_scale');
+		this.view_scale = GetHtmlElement<HTMLSelectElement>('view_scale');
 		this.edit_filepath = GetHtmlElement<HTMLInputElement>('edit_filepath');
 		this.view_index = GetHtmlElement<HTMLInputElement>('view_index');
 		this.view_grid = GetHtmlElement<HTMLInputElement>('view_grid');
@@ -563,7 +567,22 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 	}
 	written_pixel_set.clear();
 }
-
+const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
+	const view_context = dom.view_canvas.getContext('2d');
+	dom.view_canvas.width = edit_w_count * view_scale;
+	dom.view_canvas.height = edit_h_count * view_scale;
+	view_context.imageSmoothingEnabled = false;
+	view_context.scale(view_scale, view_scale);
+	for (var h = 0; h < edit_h_count; h++) {
+		for (var w = 0; w < edit_w_count; w++) {
+			const dst_x = w;
+			const dst_y = h;
+			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
+			view_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
+			view_context.fillRect(dst_x, dst_y, 1, 1);
+		}
+	}
+}
 const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	const edit_context = dom.edit_canvas.getContext("2d");
 	dom.edit_canvas.width = edit_w_count * view_scale;
@@ -722,6 +741,7 @@ const UpdateView = function () {
 	} else {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
 	}
+	UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 
 	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 
