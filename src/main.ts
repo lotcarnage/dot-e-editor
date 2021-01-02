@@ -27,7 +27,7 @@ namespace Misc {
 	};
 }
 
-class EditPoint {
+class PixelPoint {
 	public w: number;
 	public h: number;
 	public constructor(w: number, h: number) {
@@ -109,11 +109,11 @@ class Data {
 	public ClearEditViewTouchedFlag(): void {
 		this.is_edit_view_touched_ = false;
 	}
-	public WriteMap(point: EditPoint, color_index: number) {
+	public WriteMap(point: PixelPoint, color_index: number) {
 		this.pixels_[point.h][point.w] = color_index;
 		this.pixels_written_set_.add(point.ToIndex(data.edit_width_));
 	}
-	public GetWrittenColorIndex(point: EditPoint): number {
+	public GetWrittenColorIndex(point: PixelPoint): number {
 		return this.pixels_[point.h][point.w];
 
 	}
@@ -172,7 +172,7 @@ const ApplyRawData = function (raw_data: RawData): void {
 	data.edit_height = raw_data.height;
 	for (let h = 0; h < raw_data.height; h++) {
 		for (let w = 0; w < raw_data.width; w++) {
-			data.WriteMap(new EditPoint(w, h), raw_data.tiles[h][w]);
+			data.WriteMap(new PixelPoint(w, h), raw_data.tiles[h][w]);
 		}
 	}
 	for (let i = 0; i < 256; i++) {
@@ -209,17 +209,17 @@ const Redo = function () {
 	ApplyRawData(redo_data);
 }
 
-const IndexToEditPoint = function (index: number, width: number): EditPoint {
+const IndexToPixelPoint = function (index: number, width: number): PixelPoint {
 	const w = Math.floor(index % width);
 	const h = Math.floor(index / width);
-	return new EditPoint(w, h);
+	return new PixelPoint(w, h);
 }
 
-const GetTilePoint = function (event: MouseEvent, block_size: number): EditPoint {
+const GetTilePoint = function (event: MouseEvent, block_size: number): PixelPoint {
 	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
 	const w: number = Math.floor((event.clientX - rect.left) / block_size);
 	const h: number = Math.floor((event.clientY - rect.top) / block_size);
-	return new EditPoint(w, h);
+	return new PixelPoint(w, h);
 };
 
 class Tool {
@@ -231,9 +231,9 @@ class Tool {
 }
 
 class PenTool extends Tool {
-	private last_point: EditPoint;
+	private last_point: PixelPoint;
 	private WritePixel = function (x: number, y: number) {
-		data.WriteMap(new EditPoint(x, y), data.selected_color_index);
+		data.WriteMap(new PixelPoint(x, y), data.selected_color_index);
 	}
 	public LeftButtonDown(event: MouseEvent) {
 		PushUndoLog();
@@ -258,17 +258,17 @@ class PenTool extends Tool {
 }
 
 
-const ExtractRegionPixelSet = function (start_point: EditPoint): Set<number> {
+const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
 	const min_w: 0 = 0;
 	const min_h: 0 = 0;
 	const max_w: number = data.edit_width;
 	const max_h: number = data.edit_height;
 	const region_pixels = new Set<number>();
-	const next_pixel_queue: EditPoint[] = new Array<EditPoint>();
+	const next_pixel_queue: PixelPoint[] = new Array<PixelPoint>();
 	const target_color_index: number = data.GetWrittenColorIndex(start_point);
 	region_pixels.add(start_point.ToIndex(max_w));
 	next_pixel_queue.push(start_point);
-	const AddPixelToRegion = function (new_point: EditPoint) {
+	const AddPixelToRegion = function (new_point: PixelPoint) {
 		if (data.GetWrittenColorIndex(new_point) != target_color_index) {
 			return;
 		}
@@ -285,16 +285,16 @@ const ExtractRegionPixelSet = function (start_point: EditPoint): Set<number> {
 		}
 		let pixel = next_pixel_queue.shift();
 		if (min_h < pixel.h) {
-			AddPixelToRegion(new EditPoint(pixel.w + 0, pixel.h - 1));
+			AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h - 1));
 		}
 		if (min_w < pixel.w) {
-			AddPixelToRegion(new EditPoint(pixel.w - 1, pixel.h + 0));
+			AddPixelToRegion(new PixelPoint(pixel.w - 1, pixel.h + 0));
 		}
 		if (pixel.w < max_w - 1) {
-			AddPixelToRegion(new EditPoint(pixel.w + 1, pixel.h + 0));
+			AddPixelToRegion(new PixelPoint(pixel.w + 1, pixel.h + 0));
 		}
 		if (pixel.h < max_h - 1) {
-			AddPixelToRegion(new EditPoint(pixel.w + 0, pixel.h + 1));
+			AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h + 1));
 		}
 	}
 	return region_pixels;
@@ -309,7 +309,7 @@ class PaintTool extends Tool {
 		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
 		const max_w = data.edit_width;
 		region_pixel_set.forEach((pixel_index) => {
-			data.WriteMap(IndexToEditPoint(pixel_index, max_w), new_color_index);
+			data.WriteMap(IndexToPixelPoint(pixel_index, max_w), new_color_index);
 		});
 	};
 	public RightButtonDown(event: MouseEvent) {
@@ -371,7 +371,7 @@ const TryReadEditDataByJson = function (bytes: string) {
 	const edit_h_count = data.edit_height;
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			data.WriteMap(new EditPoint(w, h), read_data.tiles[h][w]);
+			data.WriteMap(new PixelPoint(w, h), read_data.tiles[h][w]);
 		}
 	}
 	for (var i = 0; i < 256; i++) {
@@ -390,7 +390,7 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 		dom.editheight.value = data.edit_height.toString();
 		for (var h = 0; h < height; h++) {
 			for (var w = 0; w < width; w++) {
-				data.WriteMap(new EditPoint(w, h), pixels[h][w]);
+				data.WriteMap(new PixelPoint(w, h), pixels[h][w]);
 			}
 		}
 		for (var i = 0; i < 256; i++) {
@@ -439,8 +439,8 @@ class Dom {
 	view_grid: HTMLInputElement;
 	dom_pen_tool: HTMLInputElement;
 	dom_paint_tool: HTMLInputElement;
-	dom_grid_color: HTMLInputElement;
-	dom_canvas_bg_color: HTMLInputElement;
+	grid_color: HTMLInputElement;
+	canvas_bg_color: HTMLInputElement;
 	save_picture_button: HTMLLinkElement;
 	edit_data_name: HTMLInputElement;
 	color_palette: HTMLTableDataCellElement[];
@@ -459,8 +459,8 @@ class Dom {
 		this.view_grid = GetHtmlElement<HTMLInputElement>('view_grid');
 		this.dom_pen_tool = GetHtmlElement<HTMLInputElement>('pen_tool');
 		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
-		this.dom_grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
-		this.dom_canvas_bg_color = GetHtmlElement<HTMLInputElement>('canvas_bg_color');
+		this.grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
+		this.canvas_bg_color = GetHtmlElement<HTMLInputElement>('canvas_bg_color');
 		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
@@ -517,7 +517,7 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 	const y_offset = font_size / 2;
 	const width = data.edit_width;
 	target_maptile_set.forEach((pixel_index) => {
-		const point = IndexToEditPoint(pixel_index, width);
+		const point = IndexToPixelPoint(pixel_index, width);
 		const dst_x = point.w * view_scale;
 		const dst_y = point.h * view_scale;
 		const ci = data.GetWrittenColorIndex(point);
@@ -531,7 +531,7 @@ const DrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, edit_
 	const target_maptile_set = new Set<number>();
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			target_maptile_set.add((new EditPoint(w, h)).ToIndex(edit_w_count));
+			target_maptile_set.add((new PixelPoint(w, h)).ToIndex(edit_w_count));
 		}
 	}
 	PartiallyDrawMapchipIndex(edit_context, target_maptile_set, view_scale, color);
@@ -545,7 +545,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 	const update_w_grid_set = new Set<number>();
 	const update_h_grid_set = new Set<number>();
 	written_pixel_set.forEach((pixel_index) => {
-		const point = IndexToEditPoint(pixel_index, edit_w_count);
+		const point = IndexToPixelPoint(pixel_index, edit_w_count);
 		update_w_grid_set.add(point.w);
 		update_h_grid_set.add(point.h);
 		const dst_x = point.w;
@@ -554,7 +554,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
 		edit_context.fillRect(dst_x, dst_y, 1, 1);
 	});
-	const grid_color = dom.dom_grid_color.value;
+	const grid_color = dom.grid_color.value;
 	if (dom.view_grid.checked) {
 		PartiallyDrawGrid(edit_context, update_w_grid_set, update_h_grid_set, edit_w_count, edit_h_count, view_scale, 1, grid_color);
 	}
@@ -574,12 +574,12 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 		for (var w = 0; w < edit_w_count; w++) {
 			const dst_x = w;
 			const dst_y = h;
-			const mi = data.GetWrittenColorIndex(new EditPoint(w, h));
+			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
 			edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
 			edit_context.fillRect(dst_x, dst_y, 1, 1);
 		}
 	}
-	const grid_color = dom.dom_grid_color.value;
+	const grid_color = dom.grid_color.value;
 	if (dom.view_index.checked) {
 		DrawMapchipIndex(edit_context, edit_w_count, edit_h_count, view_scale, grid_color);
 	}
@@ -723,7 +723,7 @@ const UpdateView = function () {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
 	}
 
-	dom.edit_frame.style.backgroundColor = dom.dom_canvas_bg_color.value;
+	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 
 	window.requestAnimationFrame(UpdateView);
 }
@@ -788,7 +788,7 @@ function Initialize() {
 	dom.view_grid.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
-	dom.dom_grid_color.addEventListener('input', (event) => {
+	dom.grid_color.addEventListener('input', (event) => {
 		data.TouchEditView();
 	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
