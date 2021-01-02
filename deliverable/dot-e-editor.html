@@ -391,10 +391,10 @@ const ExtractRegionPixelSet = function (start_point) {
         if (min_w < pixel.w) {
             AddPixelToRegion(new EditPoint(pixel.w - 1, pixel.h + 0));
         }
-        if (pixel.w < max_w) {
+        if (pixel.w < max_w - 1) {
             AddPixelToRegion(new EditPoint(pixel.w + 1, pixel.h + 0));
         }
-        if (pixel.h < max_h) {
+        if (pixel.h < max_h - 1) {
             AddPixelToRegion(new EditPoint(pixel.w + 0, pixel.h + 1));
         }
     }
