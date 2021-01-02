@@ -728,6 +728,27 @@ const UpdateView = function () {
 	window.requestAnimationFrame(UpdateView);
 }
 
+const MakeWebSafeColorList = function (): string[] {
+	const gray_colors = Array<string>(0); /* 利便性のためにグレースケールだけ別で並べる */
+	const other_colors = Array<string>(0);
+	const blank_colors = Array<string>(256 - (6 * 6 * 6)).fill('#000000');
+	const c = ['00', '33', '66', '99', 'cc', 'ff'];
+	let i = 0;
+	for (let b = 0; b < 6; b++) {
+		for (let g = 0; g < 6; g++) {
+			for (let r = 0; r < 6; r++) {
+				const color = `#${c[r]}${c[g]}${c[b]}`;
+				if (r == g && r == b) {
+					gray_colors.push(color);
+				} else {
+					other_colors.push(color);
+				}
+			}
+		}
+	}
+	return gray_colors.concat(other_colors).concat(blank_colors);
+}
+
 
 function Initialize() {
 	dom.Initialize();
@@ -790,9 +811,10 @@ function Initialize() {
 		dom.color_palette[i] = GetHtmlElement<HTMLTableDataCellElement>(`color_palette#${i}`);
 	}
 
+	const hex_color_string_array = MakeWebSafeColorList();
 	for (let i = 0; i < 256; i++) {
 		const color_cell = dom.color_palette[i];
-		color_cell.style.backgroundColor = `#000000`;
+		color_cell.style.backgroundColor = hex_color_string_array[i];
 		color_cell.addEventListener('click', () => {
 			data.selected_color_index = i;
 			dom.palette_color.value = RgbStringToHexColor(color_cell.style.backgroundColor);
