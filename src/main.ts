@@ -351,6 +351,10 @@ const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) 
 	const new_width = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientWidth;
 	GetHtmlElement<HTMLDivElement>(modify_div_id).style.width = `${new_width}px`;
 };
+const FitDivHeight = function (modify_div_id: string, referencet_div_id: string) {
+	const new_height = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientHeight;
+	GetHtmlElement<HTMLDivElement>(modify_div_id).style.height = `${new_height}px`;
+};
 
 const ExtractBaseName = function (filepath: string) {
 	const path_delimiter = /\\/g;
@@ -776,6 +780,8 @@ function Initialize() {
 	dom.edit_canvas.width = 256;
 	dom.edit_canvas.height = 192;
 	FitDivWidth('editframe', 'editblock');
+	FitDivWidth('viewframe', 'viewblock');
+	FitDivHeight('viewframe', 'viewblock');
 	dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
 	dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
 	dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);

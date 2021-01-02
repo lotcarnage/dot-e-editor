@@ -20,12 +20,16 @@
         }
 
         div#viewframe {
-            width: 32px;
-            height: 32px;
+            width: 96px;
+            height: 96px;
             overflow: scroll;
             resize: both;
             text-align: center;
+        }
+
+        div#viewblock {
             float: left;
+            background-color: darkgoldenrod;
         }
 
         div#editframe {
@@ -69,7 +73,7 @@
         <input type="color" id="canvas_bg_color" value="#ff00ff">
         <label for="canvas_bg_color">キャンバス背景色</label>
     </div>
-    <div id="viewframe">
+    <div id="viewblock">
         <p>
             表示倍率
             <select id="view_scale">
@@ -84,9 +88,9 @@
                 <option value="24">x24</option>
             </select>
         </p>
-        <p>
-            <canvas id="view" width="256" height="192"></canvas>
-        </p>
+        <div id="viewframe">
+            <canvas id="view" width="32" height="32"></canvas>
+        </div>
     </div>
     <div id="editblock">
         <p>
@@ -475,6 +479,10 @@ const FitDivWidth = function (modify_div_id, referencet_div_id) {
     const new_width = GetHtmlElement(referencet_div_id).clientWidth;
     GetHtmlElement(modify_div_id).style.width = `${new_width}px`;
 };
+const FitDivHeight = function (modify_div_id, referencet_div_id) {
+    const new_height = GetHtmlElement(referencet_div_id).clientHeight;
+    GetHtmlElement(modify_div_id).style.height = `${new_height}px`;
+};
 const ExtractBaseName = function (filepath) {
     const path_delimiter = /\\/g;
     const path_tokens = filepath.slice(0).replace(path_delimiter, '/').split('/');
@@ -854,6 +862,8 @@ function Initialize() {
     dom.edit_canvas.width = 256;
     dom.edit_canvas.height = 192;
     FitDivWidth('editframe', 'editblock');
+    FitDivWidth('viewframe', 'viewblock');
+    FitDivHeight('viewframe', 'viewblock');
     dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
     dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
     dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);

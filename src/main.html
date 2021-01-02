@@ -20,12 +20,16 @@
         }
 
         div#viewframe {
-            width: 32px;
-            height: 32px;
+            width: 96px;
+            height: 96px;
             overflow: scroll;
             resize: both;
             text-align: center;
+        }
+
+        div#viewblock {
             float: left;
+            background-color: darkgoldenrod;
         }
 
         div#editframe {
@@ -69,7 +73,7 @@
         <input type="color" id="canvas_bg_color" value="#ff00ff">
         <label for="canvas_bg_color">キャンバス背景色</label>
     </div>
-    <div id="viewframe">
+    <div id="viewblock">
         <p>
             表示倍率
             <select id="view_scale">
@@ -84,9 +88,9 @@
                 <option value="24">x24</option>
             </select>
         </p>
-        <p>
-            <canvas id="view" width="256" height="192"></canvas>
-        </p>
+        <div id="viewframe">
+            <canvas id="view" width="32" height="32"></canvas>
+        </div>
     </div>
     <div id="editblock">
         <p>
