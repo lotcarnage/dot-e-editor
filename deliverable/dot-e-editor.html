@@ -130,6 +130,8 @@
         <label for="pen_tool">ペン</label>
         <input type="radio" name="tools" id="paint_tool" value="paint_tool">
         <label for="paint_tool">塗りつぶし</label>
+        <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
+        <label for="paint_tool">矩形選択</label>
     </div>
     <div id="mapchipsblock">
         <p>
@@ -208,6 +210,7 @@ class Data {
         this.edit_height_ = default_edit_height;
         this.pixels_ = Misc.Make2dArray(max_edit_width, max_edit_height, 0);
         this.pixels_written_set_ = new Set();
+        this.pixels_mask_ = Misc.Make2dArray(max_edit_width, max_edit_height, false);
         this.selected_color_index_ = 0;
     }
     get edit_scale() {
@@ -246,8 +249,24 @@ class Data {
     ClearEditViewTouchedFlag() {
         this.is_edit_view_touched_ = false;
     }
+    SetMaskFlagsByRectangle(left, top, right, bottom, flag) {
+        for (let h = top; h < bottom; h++) {
+            for (let w = left; w < right; w++) {
+                this.pixels_mask_[h][w] = flag;
+            }
+        }
+    }
+    IsMasked(point) {
+        return this.pixels_mask_[point.h][point.w];
+    }
     WriteMap(point, color_index) {
+        if (this.pixels_mask_[point.h][point.w]) {
+            return;
+        }
         this.pixels_[point.h][point.w] = color_index;
+        this.pixels_written_set_.add(point.ToIndex(data.edit_width_));
+    }
+    TouchPixel(point) {
         this.pixels_written_set_.add(point.ToIndex(data.edit_width_));
     }
     GetWrittenColorIndex(point) {
@@ -463,9 +482,41 @@ class PaintTool extends Tool {
     }
     ;
 }
+class RectangleSelectTool extends Tool {
+    constructor() {
+        super();
+        this.start_point = null;
+    }
+    LeftButtonDown(event) {
+        this.start_point = GetTilePoint(event, data.edit_scale);
+    }
+    ;
+    LeftButtonUp(event) {
+        if (this.start_point == null) {
+            return;
+        }
+        const end_point = GetTilePoint(event, data.edit_scale);
+        const left = (this.start_point.w < end_point.w) ? this.start_point.w : end_point.w;
+        const right = ((this.start_point.w < end_point.w) ? end_point.w : this.start_point.w) + 1;
+        const top = (this.start_point.h < end_point.h) ? this.start_point.h : end_point.h;
+        const bottom = ((this.start_point.h < end_point.h) ? end_point.h : this.start_point.h) + 1;
+        data.SetMaskFlagsByRectangle(0, 0, data.edit_width, top, true);
+        data.SetMaskFlagsByRectangle(0, top, left, bottom, true);
+        data.SetMaskFlagsByRectangle(left, top, right, bottom, false);
+        data.SetMaskFlagsByRectangle(right, top, data.edit_width, bottom, true);
+        data.SetMaskFlagsByRectangle(0, bottom, data.edit_width, data.edit_height, true);
+        this.start_point = null;
+    }
+    ;
+    RightButtonDown(event) {
+        data.SetMaskFlagsByRectangle(0, 0, data.edit_width, data.edit_height, false);
+    }
+    ;
+}
 const data = new Data();
 const pen_tool = new PenTool();
 const paint_tool = new PaintTool();
+const rentangle_select_tool = new RectangleSelectTool();
 let tool = pen_tool;
 function GetHtmlElement(element_id) {
     return document.getElementById(element_id);
@@ -585,6 +636,7 @@ class Dom {
         this.view_grid = GetHtmlElement('view_grid');
         this.dom_pen_tool = GetHtmlElement('pen_tool');
         this.dom_paint_tool = GetHtmlElement('paint_tool');
+        this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
         this.grid_color = GetHtmlElement('grid_color');
         this.canvas_bg_color = GetHtmlElement('canvas_bg_color');
         this.save_picture_button = GetHtmlElement('download_edit_data');
@@ -655,6 +707,25 @@ const DrawMapchipIndex = function (edit_context, edit_w_count, edit_h_count, vie
         }
     }
     PartiallyDrawMapchipIndex(edit_context, target_maptile_set, view_scale, color);
+};
+const UpdateMaskedPixels = function (frame_count) {
+    const edit_context = dom.edit_canvas.getContext("2d");
+    edit_context.scale(1, 1);
+    const max_w = data.edit_width;
+    const max_h = data.edit_height;
+    frame_count = frame_count % (data.edit_height + data.edit_width);
+    for (let w = 0, h = frame_count; w < frame_count; w++, h--) {
+        if ((max_w <= w) || (max_h <= h)) {
+            continue;
+        }
+        const point = new PixelPoint(w, h);
+        if (!data.IsMasked(point)) {
+            continue;
+        }
+        edit_context.fillStyle = '#ffffff';
+        edit_context.fillRect(w, h, 1, 1);
+        data.TouchPixel(point);
+    }
 };
 const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_scale) {
     const edit_context = dom.edit_canvas.getContext("2d");
@@ -840,6 +911,7 @@ var WindowsIndexColorBitmap;
     }
     WindowsIndexColorBitmap.Deserialize = Deserialize;
 })(WindowsIndexColorBitmap || (WindowsIndexColorBitmap = {}));
+var frame_count = 0;
 const UpdateView = function () {
     if (data.is_edit_view_touched) {
         UpdateEditView(data.edit_width, data.edit_height, data.edit_scale);
@@ -848,8 +920,10 @@ const UpdateView = function () {
     else {
         UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
     }
+    UpdateMaskedPixels(frame_count);
     UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
     dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
+    frame_count++;
     window.requestAnimationFrame(UpdateView);
 };
 const MakeWebSafeColorList = function () {
@@ -920,6 +994,9 @@ function Initialize() {
     });
     dom.dom_paint_tool.addEventListener('change', (event) => {
         tool = paint_tool;
+    });
+    dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
+        tool = rentangle_select_tool;
     });
     dom.save_picture_button.addEventListener('click', DownloadEditData);
     edit_reader.addEventListener('load', (event) => {
