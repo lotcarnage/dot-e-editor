@@ -228,10 +228,11 @@ class Tool {
 	public RightButtonDown(event: MouseEvent) { };
 	public RightButtonUp(event: MouseEvent) { };
 	public MouseMove(event: MouseEvent) { };
+	public MouseOut(event: MouseEvent) { };
 }
 
 class PenTool extends Tool {
-	private last_point: PixelPoint;
+	private last_point: PixelPoint | null;
 	private WritePixel = function (x: number, y: number) {
 		data.WriteMap(new PixelPoint(x, y), data.selected_color_index);
 	}
@@ -250,10 +251,21 @@ class PenTool extends Tool {
 	public MouseMove(event: MouseEvent) {
 		if (event.buttons === 1) {
 			const point = GetTilePoint(event, data.edit_scale);
-			Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
+			if (this.last_point != null) {
+				Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
+			}
 			this.last_point = point;
 		}
 		return;
+	};
+	public MouseOut(event: MouseEvent) {
+		if (event.buttons === 1) {
+			const point = GetTilePoint(event, data.edit_scale);
+			if (this.last_point != null) {
+				Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
+			}
+		}
+		this.last_point = null;
 	};
 }
 
@@ -345,6 +357,10 @@ const MouseUpCallback = function (event) {
 
 const MouseMoveCallback = function (event) {
 	tool.MouseMove(event);
+};
+
+const MouseOutCallback = function (event) {
+	tool.MouseOut(event);
 };
 
 const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
@@ -786,6 +802,7 @@ function Initialize() {
 	dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
 	dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
 	dom.edit_canvas.addEventListener('mousemove', MouseMoveCallback);
+	dom.edit_canvas.addEventListener('mouseout', MouseOutCallback);
 
 	dom.editwidth.max = max_edit_width.toString();
 	dom.editheight.max = max_edit_height.toString();
