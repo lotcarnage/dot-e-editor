@@ -118,6 +118,13 @@ class Data {
 			}
 		}
 	}
+	public TurnMask(): void {
+		for (let h = 0; h < data.edit_height_; h++) {
+			for (let w = 0; w < data.edit_width_; w++) {
+				this.pixels_mask_[h][w] = !this.pixels_mask_[h][w];
+			}
+		}
+	}
 	public IsMasked(point: PixelPoint): boolean {
 		return this.pixels_mask_[point.h][point.w];
 	}
@@ -240,6 +247,86 @@ const GetTilePoint = function (event: MouseEvent, block_size: number): PixelPoin
 	return new PixelPoint(w, h);
 };
 
+class RectangleTargetPixels {
+	private left: number;
+	private top: number;
+	private right: number;
+	private bottom: number;
+	constructor(point1: PixelPoint, point2: PixelPoint) {
+		this.Update(point1, point2);
+	}
+	public Update(point1: PixelPoint, point2: PixelPoint) {
+		this.left = (point1.w < point2.w) ? point1.w : point2.w;
+		this.right = (point1.w < point2.w) ? point2.w : point1.w;
+		this.top = (point1.h < point2.h) ? point1.h : point2.h;
+		this.bottom = (point1.h < point2.h) ? point2.h : point1.h;
+	}
+	public In(point: PixelPoint): boolean {
+		const is_contain = (
+			(this.left <= point.w) && (point.w <= this.right) &&
+			(this.top <= point.h) && (point.h <= this.bottom));
+		return is_contain;
+	}
+	public BrakedownToPixelMask(): void {
+		data.SetMaskFlagsByRectangle(this.left, this.top, this.right, this.bottom, true);
+	}
+	public Draw(canvas_context: CanvasRenderingContext2D, view_scale: number, frame_count: number) {
+		const dot_span = 5;
+		const edit_context = dom.edit_canvas.getContext("2d");
+		edit_context.scale(1, 1);
+		canvas_context = edit_context;
+		let z = this.left + (frame_count % dot_span);
+		canvas_context.fillStyle = '#ffffff';
+		for (; z <= this.right; z += dot_span) {
+			canvas_context.fillRect(z, this.top, 1, 1);
+			data.TouchPixel(new PixelPoint(z, this.top));
+		}
+		z = z - this.right + this.top;
+		for (; z <= this.bottom; z += dot_span) {
+			canvas_context.fillRect(this.right, z, 1, 1);
+			data.TouchPixel(new PixelPoint(this.right, z));
+		}
+		z = this.right - (z - this.bottom);
+		for (; this.left <= z; z -= dot_span) {
+			canvas_context.fillRect(z, this.bottom, 1, 1);
+			data.TouchPixel(new PixelPoint(z, this.bottom));
+		}
+		z = this.bottom - (this.left - z);
+		for (; this.top <= z; z -= dot_span) {
+			canvas_context.fillRect(this.left, z, 1, 1);
+			data.TouchPixel(new PixelPoint(this.left, z));
+		}
+	}
+	public VerticalTurn(): void {
+		const half_h = Number(Math.floor((this.bottom - this.top + 1) / 2));
+		const max_h = this.top + half_h;
+		for (let h1 = this.top, h2 = this.bottom; h1 < max_h; h1++, h2--) {
+			for (let w = this.left; w <= this.right; w++) {
+				const p1 = new PixelPoint(w, h1);
+				const p2 = new PixelPoint(w, h2);
+				const c1 = data.GetWrittenColorIndex(p1);
+				const c2 = data.GetWrittenColorIndex(p2);
+				data.WriteMap(p1, c2);
+				data.WriteMap(p2, c1);
+			}
+		}
+	}
+	public HorizontalTurn(): void {
+		const half_w = Number(Math.floor((this.right - this.left + 1) / 2));
+		const max_w = this.left + half_w;
+		for (let w1 = this.left, w2 = this.right; w1 < max_w; w1++, w2--) {
+			for (let h = this.top; h <= this.bottom; h++) {
+				const p1 = new PixelPoint(w1, h);
+				const p2 = new PixelPoint(w2, h);
+				const c1 = data.GetWrittenColorIndex(p1);
+				const c2 = data.GetWrittenColorIndex(p2);
+				data.WriteMap(p1, c2);
+				data.WriteMap(p2, c1);
+			}
+		}
+	}
+}
+
 class Tool {
 	public LeftButtonDown(event: MouseEvent) { };
 	public LeftButtonUp(event: MouseEvent) { };
@@ -356,25 +443,23 @@ class RectangleSelectTool extends Tool {
 	}
 	public LeftButtonDown(event: MouseEvent) {
 		this.start_point = GetTilePoint(event, data.edit_scale);
-	};
-	public LeftButtonUp(event: MouseEvent) {
-		if (this.start_point == null) {
-			return;
+		if (target_pixels != null) {
+			target_pixels.Update(this.start_point, this.start_point);
+		} else {
+			target_pixels = new RectangleTargetPixels(this.start_point, this.start_point);
 		}
-		const end_point = GetTilePoint(event, data.edit_scale);
-		const left = (this.start_point.w < end_point.w) ? this.start_point.w : end_point.w;
-		const right = ((this.start_point.w < end_point.w) ? end_point.w : this.start_point.w) + 1;
-		const top = (this.start_point.h < end_point.h) ? this.start_point.h : end_point.h;
-		const bottom = ((this.start_point.h < end_point.h) ? end_point.h : this.start_point.h) + 1;
-		data.SetMaskFlagsByRectangle(0, 0, data.edit_width, top, true);
-		data.SetMaskFlagsByRectangle(0, top, left, bottom, true);
-		data.SetMaskFlagsByRectangle(left, top, right, bottom, false);
-		data.SetMaskFlagsByRectangle(right, top, data.edit_width, bottom, true);
-		data.SetMaskFlagsByRectangle(0, bottom, data.edit_width, data.edit_height, true);
-		this.start_point = null;
 	};
-	public RightButtonDown(event: MouseEvent) {
-		data.SetMaskFlagsByRectangle(0, 0, data.edit_width, data.edit_height, false);
+	public MouseMove(event: MouseEvent) {
+		if (event.buttons === 1) {
+			const point = GetTilePoint(event, data.edit_scale);
+			if (target_pixels != null && this.start_point != null) {
+				target_pixels.Update(this.start_point, point);
+			} else {
+				this.start_point = point;
+				target_pixels.Update(this.start_point, this.start_point);
+			}
+		}
+		return;
 	};
 }
 
@@ -383,6 +468,7 @@ const pen_tool: PenTool = new PenTool();
 const paint_tool: PaintTool = new PaintTool();
 const rentangle_select_tool: RectangleSelectTool = new RectangleSelectTool();
 let tool: Tool = pen_tool;
+let target_pixels: RectangleTargetPixels | null = null;
 
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
@@ -518,6 +604,12 @@ class Dom {
 	color_palette: HTMLTableDataCellElement[];
 	undo_button: HTMLButtonElement;
 	redo_button: HTMLButtonElement;
+	h_turn_button: HTMLButtonElement;
+	v_turn_button: HTMLButtonElement;
+	break_to_mask_button: HTMLButtonElement;
+	release_targetting_button: HTMLButtonElement;
+	turn_mask_button: HTMLButtonElement;
+	delete_mask_button: HTMLButtonElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
@@ -541,6 +633,12 @@ class Dom {
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
 		this.redo_button = GetHtmlElement<HTMLButtonElement>('redo_button');
+		this.h_turn_button = GetHtmlElement<HTMLButtonElement>('h_turn_button');
+		this.v_turn_button = GetHtmlElement<HTMLButtonElement>('v_turn_button');
+		this.break_to_mask_button = GetHtmlElement<HTMLButtonElement>('break_to_mask_button');
+		this.release_targetting_button = GetHtmlElement<HTMLButtonElement>('release_targetting_button');
+		this.turn_mask_button = GetHtmlElement<HTMLButtonElement>('turn_mask_button');
+		this.delete_mask_button = GetHtmlElement<HTMLButtonElement>('delete_mask_button');
 	}
 }
 
@@ -833,6 +931,9 @@ const UpdateView = function () {
 	} else {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
 	}
+	if (target_pixels != null) {
+		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count);
+	}
 	UpdateMaskedPixels(frame_count);
 	UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 
@@ -951,11 +1052,37 @@ function Initialize() {
 	dom.redo_button.addEventListener('click', (event) => {
 		Redo();
 	});
+	dom.v_turn_button.addEventListener('click', (event) => {
+		if (target_pixels != null) {
+			target_pixels.VerticalTurn();
+		}
+	});
+	dom.h_turn_button.addEventListener('click', (event) => {
+		if (target_pixels != null) {
+			target_pixels.HorizontalTurn();
+		}
+	});
+	dom.break_to_mask_button.addEventListener('click', (event) => {
+		if (target_pixels != null) {
+			target_pixels.BrakedownToPixelMask();
+		}
+	});
+	dom.release_targetting_button.addEventListener('click', (event) => {
+		target_pixels = null;
+	});
+	dom.turn_mask_button.addEventListener('click', (event) => {
+		data.TurnMask();
+	});
+	dom.delete_mask_button.addEventListener('click', (event) => {
+		data.SetMaskFlagsByRectangle(0, 0, data.edit_width, data.edit_height, false);
+	});
+
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {
 				case 'z': Undo(); break;
 				case 'y': Redo(); break;
+				case 'd': target_pixels = null; break;
 			}
 		}
 	})
