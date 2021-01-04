@@ -714,7 +714,7 @@ const UpdateMaskedPixels = function (frame_count) {
     const max_w = data.edit_width;
     const max_h = data.edit_height;
     frame_count = frame_count % (data.edit_height + data.edit_width);
-    for (let w = 0, h = frame_count; w < frame_count; w++, h--) {
+    for (let w = 0, h = frame_count - 1; w < frame_count; w++, h--) {
         if ((max_w <= w) || (max_h <= h)) {
             continue;
         }
