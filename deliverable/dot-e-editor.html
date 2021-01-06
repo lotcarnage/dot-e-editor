@@ -193,6 +193,14 @@ var Misc;
     }
     Misc.LineTo2d = LineTo2d;
     ;
+    function RgbStringToHexColor(rgb_string) {
+        const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+        const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
+        const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
+        const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
+        return `#${r_hex}${g_hex}${b_hex}`;
+    }
+    Misc.RgbStringToHexColor = RgbStringToHexColor;
 })(Misc || (Misc = {}));
 class PixelPoint {
     constructor(w, h) {
@@ -201,6 +209,11 @@ class PixelPoint {
     }
     ToIndex(width) {
         return width * this.h + this.w;
+    }
+    static IndexToPixelPoint(index, width) {
+        const w = Math.floor(index % width);
+        const h = Math.floor(index / width);
+        return new PixelPoint(w, h);
     }
 }
 const view_font_size = 8;
@@ -376,17 +389,6 @@ const Redo = function () {
     const redo_data = logger.PopRedoLog();
     ApplyRawData(redo_data);
 };
-const IndexToPixelPoint = function (index, width) {
-    const w = Math.floor(index % width);
-    const h = Math.floor(index / width);
-    return new PixelPoint(w, h);
-};
-const GetTilePoint = function (event, block_size) {
-    const rect = event.target.getBoundingClientRect();
-    const w = Math.floor((event.clientX - rect.left) / block_size);
-    const h = Math.floor((event.clientY - rect.top) / block_size);
-    return new PixelPoint(w, h);
-};
 class RectangleTargetPixels {
     constructor(point1, point2) {
         this.Update(point1, point2);
@@ -474,6 +476,13 @@ class Tool {
     ;
     MouseOut(event) { }
     ;
+    static GetTilePoint(event, block_size) {
+        const rect = event.target.getBoundingClientRect();
+        const w = Math.floor((event.clientX - rect.left) / block_size);
+        const h = Math.floor((event.clientY - rect.top) / block_size);
+        return new PixelPoint(w, h);
+    }
+    ;
 }
 class PenTool extends Tool {
     constructor() {
@@ -484,21 +493,21 @@ class PenTool extends Tool {
     }
     LeftButtonDown(event) {
         PushUndoLog();
-        const point = GetTilePoint(event, data.edit_scale);
+        const point = Tool.GetTilePoint(event, data.edit_scale);
         data.WriteMap(point, data.selected_color_index);
         this.last_point = point;
         return;
     }
     ;
     RightButtonDown(event) {
-        const point = GetTilePoint(event, data.edit_scale);
+        const point = Tool.GetTilePoint(event, data.edit_scale);
         data.selected_color_index = data.GetWrittenColorIndex(point);
         return;
     }
     ;
     MouseMove(event) {
         if (event.buttons === 1) {
-            const point = GetTilePoint(event, data.edit_scale);
+            const point = Tool.GetTilePoint(event, data.edit_scale);
             if (this.last_point != null) {
                 Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
             }
@@ -509,7 +518,7 @@ class PenTool extends Tool {
     ;
     MouseOut(event) {
         if (event.buttons === 1) {
-            const point = GetTilePoint(event, data.edit_scale);
+            const point = Tool.GetTilePoint(event, data.edit_scale);
             if (this.last_point != null) {
                 Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
             }
@@ -562,17 +571,17 @@ const ExtractRegionPixelSet = function (start_point) {
 class PaintTool extends Tool {
     LeftButtonDown(event) {
         PushUndoLog();
-        const selected_pixel = GetTilePoint(event, data.edit_scale);
+        const selected_pixel = Tool.GetTilePoint(event, data.edit_scale);
         const new_color_index = data.selected_color_index;
         const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
         const max_w = data.edit_width;
         region_pixel_set.forEach((pixel_index) => {
-            data.WriteMap(IndexToPixelPoint(pixel_index, max_w), new_color_index);
+            data.WriteMap(PixelPoint.IndexToPixelPoint(pixel_index, max_w), new_color_index);
         });
     }
     ;
     RightButtonDown(event) {
-        const point = GetTilePoint(event, data.edit_scale);
+        const point = Tool.GetTilePoint(event, data.edit_scale);
         data.selected_color_index = data.GetWrittenColorIndex(point);
     }
     ;
@@ -583,7 +592,7 @@ class RectangleSelectTool extends Tool {
         this.start_point = null;
     }
     LeftButtonDown(event) {
-        this.start_point = GetTilePoint(event, data.edit_scale);
+        this.start_point = Tool.GetTilePoint(event, data.edit_scale);
         if (target_pixels != null) {
             target_pixels.Update(this.start_point, this.start_point);
         }
@@ -594,7 +603,7 @@ class RectangleSelectTool extends Tool {
     ;
     MouseMove(event) {
         if (event.buttons === 1) {
-            const point = GetTilePoint(event, data.edit_scale);
+            const point = Tool.GetTilePoint(event, data.edit_scale);
             if (target_pixels != null && this.start_point != null) {
                 target_pixels.Update(this.start_point, point);
             }
@@ -708,13 +717,6 @@ function MakeTable(table_id, cols, rows) {
     tag_text += "</table>";
     return tag_text;
 }
-const RgbStringToHexColor = function (rgb_string) {
-    const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-    const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
-    const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
-    const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
-    return `#${r_hex}${g_hex}${b_hex}`;
-};
 class Dom {
     Initialize() {
         this.edit_canvas = GetHtmlElement('edit');
@@ -791,7 +793,7 @@ const PartiallyDrawMapchipIndex = function (edit_context, target_maptile_set, vi
     const y_offset = font_size / 2;
     const width = data.edit_width;
     target_maptile_set.forEach((pixel_index) => {
-        const point = IndexToPixelPoint(pixel_index, width);
+        const point = PixelPoint.IndexToPixelPoint(pixel_index, width);
         const dst_x = point.w * view_scale;
         const dst_y = point.h * view_scale;
         const ci = data.GetWrittenColorIndex(point);
@@ -836,7 +838,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
     const update_w_grid_set = new Set();
     const update_h_grid_set = new Set();
     written_pixel_set.forEach((pixel_index) => {
-        const point = IndexToPixelPoint(pixel_index, edit_w_count);
+        const point = PixelPoint.IndexToPixelPoint(pixel_index, edit_w_count);
         update_w_grid_set.add(point.w);
         update_h_grid_set.add(point.h);
         const dst_x = point.w;
@@ -1119,7 +1121,7 @@ function Initialize() {
         color_cell.style.backgroundColor = hex_color_string_array[i];
         color_cell.addEventListener('click', () => {
             data.selected_color_index = i;
-            dom.palette_color.value = RgbStringToHexColor(color_cell.style.backgroundColor);
+            dom.palette_color.value = Misc.RgbStringToHexColor(color_cell.style.backgroundColor);
         });
     }
     dom.palette_color.addEventListener('input', (event) => {
