@@ -1,38 +1,5 @@
-namespace Misc {
-	export function Make2dArray<T>(width: number, height: number, initial_value: T): T[][] {
-		return JSON.parse(JSON.stringify((new Array<Array<T>>(height)).fill((new Array<T>(width)).fill(initial_value))));
-	}
-	export function LineTo2d(x0: number, y0: number, x1: number, y1: number, PixelOnLineCallback: (x: number, y: number) => void) {
-		const dx = (x0 < x1) ? x1 - x0 : x0 - x1;
-		const dy = (y0 < y1) ? y1 - y0 : y0 - y1;
-		const sx = (x0 < x1) ? 1 : -1;
-		const sy = (y0 < y1) ? 1 : -1;
-		let e1 = dx - dy;
-
-		for (; ;) {
-			PixelOnLineCallback(x0, y0);
-			if ((x0 == x1) && (y0 == y1)) {
-				break;
-			}
-			const e2 = e1 * 2;
-			if (-dy < e2) {
-				e1 -= dy;
-				x0 += sx;
-			}
-			if (e2 < dx) {
-				e1 += dx;
-				y0 += sy;
-			}
-		}
-	};
-	export function RgbStringToHexColor(rgb_string: string) {
-		const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-		const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
-		const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
-		const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
-		return `#${r_hex}${g_hex}${b_hex}`;
-	}
-}
+/// <reference path="./windows_bitmap.ts" />
+/// <reference path="./misc.ts" />
 
 class PixelPoint {
 	public w: number;
@@ -57,16 +24,16 @@ const max_edit_height: number = 512;
 const default_edit_width: number = 32;
 const default_edit_height: number = 32;
 const default_edit_scale: number = 8;
-class RawData {
+class IndexColorBitmap {
 	width: number;
 	height: number;
 	color_palette: string[];
-	tiles: number[][];
-	constructor(width: number, height: number, color_palette: string[], tiles: number[][]) {
+	pixels: number[][];
+	constructor(width: number, height: number, color_palette: string[], pixels: number[][]) {
 		this.width = width;
 		this.height = height;
 		this.color_palette = color_palette;
-		this.tiles = tiles;
+		this.pixels = pixels;
 	};
 }
 
@@ -79,12 +46,12 @@ class Data {
 	private edit_height_: number;
 	private is_edit_view_touched_: boolean;
 	private selected_color_index_: number;
-	public constructor() {
-		this.edit_width_ = default_edit_width;
-		this.edit_height_ = default_edit_height;
-		this.pixels_ = Misc.Make2dArray<number>(max_edit_width, max_edit_height, 0);
+	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
+		this.edit_width_ = default_width;
+		this.edit_height_ = default_height;
+		this.pixels_ = Misc.Make2dArray<number>(max_width, max_height, 0);
 		this.pixels_written_set_ = new Set<number>();
-		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_edit_width, max_edit_height, false);
+		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_width, max_height, false);
 		this.selected_color_index_ = 0;
 	}
 	public get edit_scale(): number {
@@ -157,7 +124,7 @@ class Data {
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
 	}
-	public MakeRawSaveData(): RawData {
+	public MakeRawSaveData(): IndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
 		const save_tiles = new Array(edit_h_count);
@@ -168,16 +135,16 @@ class Data {
 		for (var i = 0; i < 256; i++) {
 			color_palette[i] = dom.color_palette[i].style.backgroundColor;
 		}
-		return new RawData(edit_w_count, edit_h_count, color_palette, save_tiles);
+		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_tiles);
 	}
 }
 
 class EditLogger {
-	private undo_stack_: RawData[];
-	private redo_stack_: RawData[];
+	private undo_stack_: IndexColorBitmap[];
+	private redo_stack_: IndexColorBitmap[];
 	constructor() {
-		this.undo_stack_ = new Array<RawData>(0);
-		this.redo_stack_ = new Array<RawData>(0);
+		this.undo_stack_ = new Array<IndexColorBitmap>(0);
+		this.redo_stack_ = new Array<IndexColorBitmap>(0);
 	}
 	public IsUndoLogEmpty(): boolean {
 		return (this.undo_stack_.length == 0) ? true : false;
@@ -185,16 +152,16 @@ class EditLogger {
 	public IsRedoLogEmpty(): boolean {
 		return (this.redo_stack_.length == 0) ? true : false;
 	}
-	public PushUndoLog(log: RawData): void {
-		this.undo_stack_.push(log);
+	public PushUndoLog(log_data: IndexColorBitmap): void {
+		this.undo_stack_.push(log_data);
 	}
-	public PushRedoLog(log: RawData): void {
-		this.redo_stack_.push(log);
+	public PushRedoLog(log_data: IndexColorBitmap): void {
+		this.redo_stack_.push(log_data);
 	}
-	public PopUndoLog(): RawData {
+	public PopUndoLog(): IndexColorBitmap {
 		return this.undo_stack_.pop();
 	}
-	public PopRedoLog(): RawData {
+	public PopRedoLog(): IndexColorBitmap {
 		return this.redo_stack_.pop();
 	}
 	public ClearRedoLog(): void {
@@ -204,12 +171,12 @@ class EditLogger {
 
 const logger: EditLogger = new EditLogger();
 
-const ApplyRawData = function (raw_data: RawData): void {
+const ApplyRawData = function (raw_data: IndexColorBitmap): void {
 	data.edit_width = raw_data.width;
 	data.edit_height = raw_data.height;
 	for (let h = 0; h < raw_data.height; h++) {
 		for (let w = 0; w < raw_data.width; w++) {
-			data.WriteMap(new PixelPoint(w, h), raw_data.tiles[h][w]);
+			data.WriteMap(new PixelPoint(w, h), raw_data.pixels[h][w]);
 		}
 	}
 	for (let i = 0; i < 256; i++) {
@@ -468,7 +435,7 @@ class RectangleSelectTool extends Tool {
 	};
 }
 
-const data: Data = new Data();
+const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const pen_tool: PenTool = new PenTool();
 const paint_tool: PaintTool = new PaintTool();
 const rentangle_select_tool: RectangleSelectTool = new RectangleSelectTool();
@@ -522,7 +489,7 @@ const ExtractBaseName = function (filepath: string) {
 }
 
 const TryReadEditDataByJson = function (bytes: string) {
-	const read_data = JSON.parse(bytes) as RawData;
+	const read_data = JSON.parse(bytes) as IndexColorBitmap;
 	data.edit_width = read_data.width as number;
 	data.edit_height = read_data.height as number;
 	dom.editwidth.value = data.edit_width.toString();
@@ -531,7 +498,7 @@ const TryReadEditDataByJson = function (bytes: string) {
 	const edit_h_count = data.edit_height;
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			data.WriteMap(new PixelPoint(w, h), read_data.tiles[h][w]);
+			data.WriteMap(new PixelPoint(w, h), read_data.pixels[h][w]);
 		}
 	}
 	for (var i = 0; i < 256; i++) {
@@ -794,132 +761,7 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	}
 }
 
-namespace WindowsIndexColorBitmap {
-	const bmp_file_header_size = 14;
-	const bmp_info_header_size = 40;
-	const palette_size = 4 * 256;
-	const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
 
-	const Store16LE = function (bytes: Uint8Array, offset: number, value: number): void {
-		bytes[offset + 0] = value & 0x00ff;
-		bytes[offset + 1] = (value >> 8) & 0x00ff;
-	}
-	const Store32LE = function (bytes: Uint8Array, offset: number, value: number): void {
-		bytes[offset + 0] = value & 0x000000ff;
-		bytes[offset + 1] = (value >> 8) & 0x000000ff;
-		bytes[offset + 2] = (value >> 16) & 0x000000ff;
-		bytes[offset + 3] = (value >> 24) & 0x000000ff;
-	}
-	const Load16LE = function (bytes: Uint8Array, offset: number): number {
-		return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
-	}
-	const Load32LE = function (bytes: Uint8Array, offset: number): number {
-		return (bytes[offset + 0] & 0x000000ff)
-			| ((bytes[offset + 1] << 8) & 0x0000ff00)
-			| ((bytes[offset + 2] << 16) & 0x00ff0000)
-			| ((bytes[offset + 3] << 14) & 0xff000000);
-	}
-
-	const RgbStringToRgbValues = function (rgb_string: string) {
-		const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-		return [Number(r_string), Number(g_string), Number(b_string)];
-	}
-
-
-	export function Serialize(
-		color_palette: string[], pixels: number[][], width: number, height: number)
-		: Uint8Array {
-		const bmp_width = Math.ceil(width / 4) * 4;
-		const pixels_size = bmp_width * height;
-		const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
-		const buffer = new ArrayBuffer(binary_size);
-		const bytes = new Uint8Array(buffer);
-		bytes[0] = 0x42;
-		bytes[1] = 0x4d;
-		/* Bitmap File Header */
-		Store32LE(bytes, 2, binary_size);
-		Store16LE(bytes, 6, 0);
-		Store16LE(bytes, 8, 0);
-		Store32LE(bytes, 10, pixels_offset);
-
-		/* Bitmap Info Header */
-		Store32LE(bytes, 14, 40);
-		Store32LE(bytes, 18, width);
-		Store32LE(bytes, 22, height);
-		Store16LE(bytes, 26, 1);
-		Store16LE(bytes, 28, 8);
-		Store32LE(bytes, 30, 0);
-		Store32LE(bytes, 34, pixels_size);
-		Store32LE(bytes, 38, 0);
-		Store32LE(bytes, 42, 0);
-		Store32LE(bytes, 46, 256);
-		Store32LE(bytes, 50, 256);
-
-		/* Color palette */
-		for (let i = 0; i < 256; i++) {
-			const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
-			bytes[54 + 4 * i + 0] = b;
-			bytes[54 + 4 * i + 1] = g;
-			bytes[54 + 4 * i + 2] = r;
-			bytes[54 + 4 * i + 3] = 0;
-		}
-
-		/* pixels */
-		/* ラスタ座標系から数学座標系に入れ替えて出力する */
-		for (let h = 0; h < height; h++) {
-			for (let w = 0; w < width; w++) {
-				let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-				bytes[offset] = pixels[h][w];
-			}
-		}
-		return bytes;
-	}
-	export function Deserialize(buffer: ArrayBuffer): [string[], number[][], number, number] | null {
-		const bytes = new Uint8Array(buffer);
-		console.log(bytes[0]);
-		console.log(bytes[1]);
-		if (bytes[0] != 0x42) {
-			return null;
-		}
-		if (bytes[1] != 0x4d) {
-			return null;
-		}
-		if (Load32LE(bytes, 10) != pixels_offset) {
-			return null;
-		}
-		if (Load16LE(bytes, 26) != 1) {
-			return null;
-		}
-		if (Load16LE(bytes, 28) != 8) {
-			return null;
-		}
-		const width = Load32LE(bytes, 18);
-		const height = Load32LE(bytes, 22);
-		const bmp_width = Math.ceil(width / 4) * 4;
-		const pixels_size = bmp_width * height;
-		if (Load32LE(bytes, 34) != pixels_size) {
-			return null;
-		}
-
-		const color_palette: string[] = new Array<string>(256);
-		for (let i = 0; i < 256; i++) {
-			const b = bytes[54 + 4 * i + 0];
-			const g = bytes[54 + 4 * i + 1];
-			const r = bytes[54 + 4 * i + 2];
-			color_palette[i] = `rgb(${r},${g},${b})`;
-		}
-		/* pixels */
-		/* 数学座標系からラスタ座標系に入れ替えて読みこむ */
-		const pixels: number[][] = Misc.Make2dArray<number>(width, height, 0);
-		for (let h = 0; h < height; h++) {
-			for (let w = 0; w < width; w++) {
-				let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-				pixels[h][w] = bytes[offset];
-			}
-		}
-		return [color_palette, pixels, width, height];
-	}
-}
 
 var frame_count = 0;
 const UpdateView = function () {
@@ -1090,7 +932,7 @@ function Initialize() {
 
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
 	const save_data = data.MakeRawSaveData();
-	const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.tiles, save_data.width, save_data.height);
+	const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.pixels, save_data.width, save_data.height);
 	const save_data_blob = new Blob([bmp_bytes]);
 	return save_data_blob;
 };

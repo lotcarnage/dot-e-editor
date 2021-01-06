@@ -163,6 +163,125 @@
 /*!***********************!*\
   !*** ./built/main.js ***!
   \***********************/
+var WindowsIndexColorBitmap;
+(function (WindowsIndexColorBitmap) {
+    const bmp_file_header_size = 14;
+    const bmp_info_header_size = 40;
+    const palette_size = 4 * 256;
+    const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
+    const Store16LE = function (bytes, offset, value) {
+        bytes[offset + 0] = value & 0x00ff;
+        bytes[offset + 1] = (value >> 8) & 0x00ff;
+    };
+    const Store32LE = function (bytes, offset, value) {
+        bytes[offset + 0] = value & 0x000000ff;
+        bytes[offset + 1] = (value >> 8) & 0x000000ff;
+        bytes[offset + 2] = (value >> 16) & 0x000000ff;
+        bytes[offset + 3] = (value >> 24) & 0x000000ff;
+    };
+    const Load16LE = function (bytes, offset) {
+        return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
+    };
+    const Load32LE = function (bytes, offset) {
+        return (bytes[offset + 0] & 0x000000ff)
+            | ((bytes[offset + 1] << 8) & 0x0000ff00)
+            | ((bytes[offset + 2] << 16) & 0x00ff0000)
+            | ((bytes[offset + 3] << 14) & 0xff000000);
+    };
+    const RgbStringToRgbValues = function (rgb_string) {
+        const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+        return [Number(r_string), Number(g_string), Number(b_string)];
+    };
+    function Serialize(color_palette, pixels, width, height) {
+        const bmp_width = Math.ceil(width / 4) * 4;
+        const pixels_size = bmp_width * height;
+        const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
+        const buffer = new ArrayBuffer(binary_size);
+        const bytes = new Uint8Array(buffer);
+        bytes[0] = 0x42;
+        bytes[1] = 0x4d;
+        /* Bitmap File Header */
+        Store32LE(bytes, 2, binary_size);
+        Store16LE(bytes, 6, 0);
+        Store16LE(bytes, 8, 0);
+        Store32LE(bytes, 10, pixels_offset);
+        /* Bitmap Info Header */
+        Store32LE(bytes, 14, 40);
+        Store32LE(bytes, 18, width);
+        Store32LE(bytes, 22, height);
+        Store16LE(bytes, 26, 1);
+        Store16LE(bytes, 28, 8);
+        Store32LE(bytes, 30, 0);
+        Store32LE(bytes, 34, pixels_size);
+        Store32LE(bytes, 38, 0);
+        Store32LE(bytes, 42, 0);
+        Store32LE(bytes, 46, 256);
+        Store32LE(bytes, 50, 256);
+        /* Color palette */
+        for (let i = 0; i < 256; i++) {
+            const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
+            bytes[54 + 4 * i + 0] = b;
+            bytes[54 + 4 * i + 1] = g;
+            bytes[54 + 4 * i + 2] = r;
+            bytes[54 + 4 * i + 3] = 0;
+        }
+        /* pixels */
+        /* ラスタ座標系から数学座標系に入れ替えて出力する */
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+                bytes[offset] = pixels[h][w];
+            }
+        }
+        return bytes;
+    }
+    WindowsIndexColorBitmap.Serialize = Serialize;
+    function Deserialize(buffer) {
+        const bytes = new Uint8Array(buffer);
+        console.log(bytes[0]);
+        console.log(bytes[1]);
+        if (bytes[0] != 0x42) {
+            return null;
+        }
+        if (bytes[1] != 0x4d) {
+            return null;
+        }
+        if (Load32LE(bytes, 10) != pixels_offset) {
+            return null;
+        }
+        if (Load16LE(bytes, 26) != 1) {
+            return null;
+        }
+        if (Load16LE(bytes, 28) != 8) {
+            return null;
+        }
+        const width = Load32LE(bytes, 18);
+        const height = Load32LE(bytes, 22);
+        const bmp_width = Math.ceil(width / 4) * 4;
+        const pixels_size = bmp_width * height;
+        if (Load32LE(bytes, 34) != pixels_size) {
+            return null;
+        }
+        const color_palette = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            const b = bytes[54 + 4 * i + 0];
+            const g = bytes[54 + 4 * i + 1];
+            const r = bytes[54 + 4 * i + 2];
+            color_palette[i] = `rgb(${r},${g},${b})`;
+        }
+        /* pixels */
+        /* 数学座標系からラスタ座標系に入れ替えて読みこむ */
+        const pixels = Misc.Make2dArray(width, height, 0);
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+                pixels[h][w] = bytes[offset];
+            }
+        }
+        return [color_palette, pixels, width, height];
+    }
+    WindowsIndexColorBitmap.Deserialize = Deserialize;
+})(WindowsIndexColorBitmap || (WindowsIndexColorBitmap = {}));
 var Misc;
 (function (Misc) {
     function Make2dArray(width, height, initial_value) {
@@ -202,6 +321,8 @@ var Misc;
     }
     Misc.RgbStringToHexColor = RgbStringToHexColor;
 })(Misc || (Misc = {}));
+/// <reference path="./windows_bitmap.ts" />
+/// <reference path="./misc.ts" />
 class PixelPoint {
     constructor(w, h) {
         this.w = w;
@@ -222,22 +343,22 @@ const max_edit_height = 512;
 const default_edit_width = 32;
 const default_edit_height = 32;
 const default_edit_scale = 8;
-class RawData {
-    constructor(width, height, color_palette, tiles) {
+class IndexColorBitmap {
+    constructor(width, height, color_palette, pixels) {
         this.width = width;
         this.height = height;
         this.color_palette = color_palette;
-        this.tiles = tiles;
+        this.pixels = pixels;
     }
     ;
 }
 class Data {
-    constructor() {
-        this.edit_width_ = default_edit_width;
-        this.edit_height_ = default_edit_height;
-        this.pixels_ = Misc.Make2dArray(max_edit_width, max_edit_height, 0);
+    constructor(default_width, default_height, max_width, max_height) {
+        this.edit_width_ = default_width;
+        this.edit_height_ = default_height;
+        this.pixels_ = Misc.Make2dArray(max_width, max_height, 0);
         this.pixels_written_set_ = new Set();
-        this.pixels_mask_ = Misc.Make2dArray(max_edit_width, max_edit_height, false);
+        this.pixels_mask_ = Misc.Make2dArray(max_width, max_height, false);
         this.selected_color_index_ = 0;
     }
     get edit_scale() {
@@ -320,7 +441,7 @@ class Data {
         for (var i = 0; i < 256; i++) {
             color_palette[i] = dom.color_palette[i].style.backgroundColor;
         }
-        return new RawData(edit_w_count, edit_h_count, color_palette, save_tiles);
+        return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_tiles);
     }
 }
 class EditLogger {
@@ -334,11 +455,11 @@ class EditLogger {
     IsRedoLogEmpty() {
         return (this.redo_stack_.length == 0) ? true : false;
     }
-    PushUndoLog(log) {
-        this.undo_stack_.push(log);
+    PushUndoLog(log_data) {
+        this.undo_stack_.push(log_data);
     }
-    PushRedoLog(log) {
-        this.redo_stack_.push(log);
+    PushRedoLog(log_data) {
+        this.redo_stack_.push(log_data);
     }
     PopUndoLog() {
         return this.undo_stack_.pop();
@@ -356,7 +477,7 @@ const ApplyRawData = function (raw_data) {
     data.edit_height = raw_data.height;
     for (let h = 0; h < raw_data.height; h++) {
         for (let w = 0; w < raw_data.width; w++) {
-            data.WriteMap(new PixelPoint(w, h), raw_data.tiles[h][w]);
+            data.WriteMap(new PixelPoint(w, h), raw_data.pixels[h][w]);
         }
     }
     for (let i = 0; i < 256; i++) {
@@ -616,7 +737,7 @@ class RectangleSelectTool extends Tool {
     }
     ;
 }
-const data = new Data();
+const data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const pen_tool = new PenTool();
 const paint_tool = new PaintTool();
 const rentangle_select_tool = new RectangleSelectTool();
@@ -673,7 +794,7 @@ const TryReadEditDataByJson = function (bytes) {
     const edit_h_count = data.edit_height;
     for (var h = 0; h < edit_h_count; h++) {
         for (var w = 0; w < edit_w_count; w++) {
-            data.WriteMap(new PixelPoint(w, h), read_data.tiles[h][w]);
+            data.WriteMap(new PixelPoint(w, h), read_data.pixels[h][w]);
         }
     }
     for (var i = 0; i < 256; i++) {
@@ -895,125 +1016,6 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
         DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
     }
 };
-var WindowsIndexColorBitmap;
-(function (WindowsIndexColorBitmap) {
-    const bmp_file_header_size = 14;
-    const bmp_info_header_size = 40;
-    const palette_size = 4 * 256;
-    const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
-    const Store16LE = function (bytes, offset, value) {
-        bytes[offset + 0] = value & 0x00ff;
-        bytes[offset + 1] = (value >> 8) & 0x00ff;
-    };
-    const Store32LE = function (bytes, offset, value) {
-        bytes[offset + 0] = value & 0x000000ff;
-        bytes[offset + 1] = (value >> 8) & 0x000000ff;
-        bytes[offset + 2] = (value >> 16) & 0x000000ff;
-        bytes[offset + 3] = (value >> 24) & 0x000000ff;
-    };
-    const Load16LE = function (bytes, offset) {
-        return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
-    };
-    const Load32LE = function (bytes, offset) {
-        return (bytes[offset + 0] & 0x000000ff)
-            | ((bytes[offset + 1] << 8) & 0x0000ff00)
-            | ((bytes[offset + 2] << 16) & 0x00ff0000)
-            | ((bytes[offset + 3] << 14) & 0xff000000);
-    };
-    const RgbStringToRgbValues = function (rgb_string) {
-        const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-        return [Number(r_string), Number(g_string), Number(b_string)];
-    };
-    function Serialize(color_palette, pixels, width, height) {
-        const bmp_width = Math.ceil(width / 4) * 4;
-        const pixels_size = bmp_width * height;
-        const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
-        const buffer = new ArrayBuffer(binary_size);
-        const bytes = new Uint8Array(buffer);
-        bytes[0] = 0x42;
-        bytes[1] = 0x4d;
-        /* Bitmap File Header */
-        Store32LE(bytes, 2, binary_size);
-        Store16LE(bytes, 6, 0);
-        Store16LE(bytes, 8, 0);
-        Store32LE(bytes, 10, pixels_offset);
-        /* Bitmap Info Header */
-        Store32LE(bytes, 14, 40);
-        Store32LE(bytes, 18, width);
-        Store32LE(bytes, 22, height);
-        Store16LE(bytes, 26, 1);
-        Store16LE(bytes, 28, 8);
-        Store32LE(bytes, 30, 0);
-        Store32LE(bytes, 34, pixels_size);
-        Store32LE(bytes, 38, 0);
-        Store32LE(bytes, 42, 0);
-        Store32LE(bytes, 46, 256);
-        Store32LE(bytes, 50, 256);
-        /* Color palette */
-        for (let i = 0; i < 256; i++) {
-            const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
-            bytes[54 + 4 * i + 0] = b;
-            bytes[54 + 4 * i + 1] = g;
-            bytes[54 + 4 * i + 2] = r;
-            bytes[54 + 4 * i + 3] = 0;
-        }
-        /* pixels */
-        /* ラスタ座標系から数学座標系に入れ替えて出力する */
-        for (let h = 0; h < height; h++) {
-            for (let w = 0; w < width; w++) {
-                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-                bytes[offset] = pixels[h][w];
-            }
-        }
-        return bytes;
-    }
-    WindowsIndexColorBitmap.Serialize = Serialize;
-    function Deserialize(buffer) {
-        const bytes = new Uint8Array(buffer);
-        console.log(bytes[0]);
-        console.log(bytes[1]);
-        if (bytes[0] != 0x42) {
-            return null;
-        }
-        if (bytes[1] != 0x4d) {
-            return null;
-        }
-        if (Load32LE(bytes, 10) != pixels_offset) {
-            return null;
-        }
-        if (Load16LE(bytes, 26) != 1) {
-            return null;
-        }
-        if (Load16LE(bytes, 28) != 8) {
-            return null;
-        }
-        const width = Load32LE(bytes, 18);
-        const height = Load32LE(bytes, 22);
-        const bmp_width = Math.ceil(width / 4) * 4;
-        const pixels_size = bmp_width * height;
-        if (Load32LE(bytes, 34) != pixels_size) {
-            return null;
-        }
-        const color_palette = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            const b = bytes[54 + 4 * i + 0];
-            const g = bytes[54 + 4 * i + 1];
-            const r = bytes[54 + 4 * i + 2];
-            color_palette[i] = `rgb(${r},${g},${b})`;
-        }
-        /* pixels */
-        /* 数学座標系からラスタ座標系に入れ替えて読みこむ */
-        const pixels = Misc.Make2dArray(width, height, 0);
-        for (let h = 0; h < height; h++) {
-            for (let w = 0; w < width; w++) {
-                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-                pixels[h][w] = bytes[offset];
-            }
-        }
-        return [color_palette, pixels, width, height];
-    }
-    WindowsIndexColorBitmap.Deserialize = Deserialize;
-})(WindowsIndexColorBitmap || (WindowsIndexColorBitmap = {}));
 var frame_count = 0;
 const UpdateView = function () {
     if (data.is_edit_view_touched) {
@@ -1178,7 +1180,7 @@ function Initialize() {
 }
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
     const save_data = data.MakeRawSaveData();
-    const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.tiles, save_data.width, save_data.height);
+    const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.pixels, save_data.width, save_data.height);
     const save_data_blob = new Blob([bmp_bytes]);
     return save_data_blob;
 };
