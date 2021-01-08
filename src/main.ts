@@ -1,6 +1,47 @@
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
 
+class RgbColor {
+	r: number;
+	g: number;
+	b: number;
+	public constructor(r = 0, g = 0, b = 0) {
+		this.r = r;
+		this.g = g;
+		this.b = b;
+	}
+	public ToHexColor(): string {
+		const r_hex = ('00' + this.r.toString(16)).slice(-2);
+		const g_hex = ('00' + this.g.toString(16)).slice(-2);
+		const b_hex = ('00' + this.b.toString(16)).slice(-2);
+		return `#${r_hex}${g_hex}${b_hex}`;
+	}
+	public ToRgbString(): string {
+		return `rgb(${this.r},${this.g},${this.b})`;
+	}
+	public SetHexColor(hex_color: string): boolean {
+		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex_color);
+		if (result) {
+			this.r = parseInt(result[1], 16);
+			this.g = parseInt(result[2], 16);
+			this.b = parseInt(result[3], 16);
+		}
+		return !!(result);
+	}
+	public SetRgbString(rgb_string: string): boolean {
+		const result = /^rgb\s*\(\s*([\d]+)\s*,\s*([\d]+)\s*,\s*([\d]+)\s*\)/i.exec(rgb_string);
+		if (result) {
+			this.r = Number(result[1]);
+			this.g = Number(result[2]);
+			this.b = Number(result[3]);
+		}
+		return !!(result);
+	}
+	public SetColorString(color_string: string): boolean {
+		return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
+	}
+}
+
 class PixelPoint {
 	public w: number;
 	public h: number;
@@ -46,6 +87,7 @@ class Data {
 	private edit_height_: number;
 	private is_edit_view_touched_: boolean;
 	private selected_color_index_: number;
+	private color_palette_: RgbColor[];
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
@@ -53,6 +95,10 @@ class Data {
 		this.pixels_written_set_ = new Set<number>();
 		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_width, max_height, false);
 		this.selected_color_index_ = 0;
+		this.color_palette_ = new Array<RgbColor>(256);
+		for (let i = 0; i < 256; i++) {
+			this.color_palette_[i] = new RgbColor();
+		}
 	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
@@ -124,6 +170,14 @@ class Data {
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
 	}
+	public SetRgbColorToPalette(index: number, color: RgbColor) {
+		this.color_palette_[index].r = color.r;
+		this.color_palette_[index].g = color.g;
+		this.color_palette_[index].b = color.b;
+	}
+	public GetRgbColorFromPalette(index: number): RgbColor {
+		return this.color_palette_[index];
+	}
 	public MakeRawSaveData(): IndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
@@ -133,7 +187,7 @@ class Data {
 		}
 		const color_palette = new Array(256);
 		for (var i = 0; i < 256; i++) {
-			color_palette[i] = dom.color_palette[i].style.backgroundColor;
+			color_palette[i] = this.color_palette_[i].ToRgbString();
 		}
 		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_tiles);
 	}
@@ -180,6 +234,7 @@ const ApplyRawData = function (raw_data: IndexColorBitmap): void {
 		}
 	}
 	for (let i = 0; i < 256; i++) {
+		data.GetRgbColorFromPalette(i).SetColorString(raw_data.color_palette[i]);
 		dom.color_palette[i].style.backgroundColor = raw_data.color_palette[i];
 	}
 	dom.editwidth.value = raw_data.width.toString();
@@ -490,20 +545,7 @@ const ExtractBaseName = function (filepath: string) {
 
 const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as IndexColorBitmap;
-	data.edit_width = read_data.width as number;
-	data.edit_height = read_data.height as number;
-	dom.editwidth.value = data.edit_width.toString();
-	dom.editheight.value = data.edit_height.toString();
-	const edit_w_count = data.edit_width;
-	const edit_h_count = data.edit_height;
-	for (var h = 0; h < edit_h_count; h++) {
-		for (var w = 0; w < edit_w_count; w++) {
-			data.WriteMap(new PixelPoint(w, h), read_data.pixels[h][w]);
-		}
-	}
-	for (var i = 0; i < 256; i++) {
-		dom.color_palette[i].style.backgroundColor = read_data.color_palette[i];
-	}
+	ApplyRawData(read_data);
 	return true;
 }
 
@@ -511,18 +553,8 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	const bmp_data = WindowsIndexColorBitmap.Deserialize(bytes as ArrayBuffer);
 	if (bmp_data != null) {
 		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
-		data.edit_width = width;
-		data.edit_height = height;
-		dom.editwidth.value = data.edit_width.toString();
-		dom.editheight.value = data.edit_height.toString();
-		for (var h = 0; h < height; h++) {
-			for (var w = 0; w < width; w++) {
-				data.WriteMap(new PixelPoint(w, h), pixels[h][w]);
-			}
-		}
-		for (var i = 0; i < 256; i++) {
-			dom.color_palette[i].style.backgroundColor = color_palette[i];
-		}
+		const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
+		ApplyRawData(raw_data);
 		return true;
 	}
 	const bs = Array.from(new Uint8Array(bytes as ArrayBuffer), (v) => String.fromCharCode(v)).join("");
@@ -709,7 +741,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		const dst_x = point.w;
 		const dst_y = point.h;
 		const mi = data.GetWrittenColorIndex(point);
-		edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
+		edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillRect(dst_x, dst_y, 1, 1);
 	});
 	const grid_color = dom.grid_color.value;
@@ -732,7 +764,7 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 			const dst_x = w;
 			const dst_y = h;
 			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
-			view_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
+			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
 			view_context.fillRect(dst_x, dst_y, 1, 1);
 		}
 	}
@@ -748,7 +780,7 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 			const dst_x = w;
 			const dst_y = h;
 			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
-			edit_context.fillStyle = dom.color_palette[mi].style.backgroundColor;
+			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			edit_context.fillRect(dst_x, dst_y, 1, 1);
 		}
 	}
@@ -874,15 +906,20 @@ function Initialize() {
 	const hex_color_string_array = MakeWebSafeColorList();
 	for (let i = 0; i < 256; i++) {
 		const color_cell = dom.color_palette[i];
-		color_cell.style.backgroundColor = hex_color_string_array[i];
+		const hex_color = hex_color_string_array[i];
+		data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
+		color_cell.style.backgroundColor = hex_color;
 		color_cell.addEventListener('click', () => {
 			data.selected_color_index = i;
-			dom.palette_color.value = Misc.RgbStringToHexColor(color_cell.style.backgroundColor);
+			dom.palette_color.value = data.GetRgbColorFromPalette(i).ToHexColor();
 		});
 	}
 	dom.palette_color.addEventListener('input', (event) => {
-		const color_cell = dom.color_palette[data.selected_color_index];
-		color_cell.style.backgroundColor = (<HTMLInputElement>event.target).value;
+		const i = data.selected_color_index;
+		const rgb_color = data.GetRgbColorFromPalette(i);
+		const color_cell = dom.color_palette[i];
+		rgb_color.SetHexColor((<HTMLInputElement>event.target).value);
+		color_cell.style.backgroundColor = rgb_color.ToRgbString();
 		data.TouchEditView();
 	});
 
