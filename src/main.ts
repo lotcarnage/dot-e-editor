@@ -564,7 +564,8 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	return false;
 }
 
-function MakeTable(table_id: string, cols: number, rows: number) {
+function MakeTable(table_id: string, cols: number, rows: number, parent_dom: HTMLElement)
+	: HTMLTableDataCellElement[] {
 	let tag_text = `<table id="${table_id}">`;
 	for (let row_i = 0; row_i < rows; row_i++) {
 		tag_text += "<tr>";
@@ -574,7 +575,13 @@ function MakeTable(table_id: string, cols: number, rows: number) {
 		tag_text += "<td>";
 	}
 	tag_text += "</table>";
-	return tag_text;
+	parent_dom.innerHTML += tag_text;
+	const num_cells = cols * rows;
+	const cells = Array<HTMLTableDataCellElement>(num_cells);
+	for (let i = 0; i < 256; i++) {
+		cells[i] = GetHtmlElement<HTMLTableDataCellElement>(`${table_id}#${i}`);
+	}
+	return cells;
 }
 
 
@@ -898,11 +905,7 @@ function Initialize() {
 		data.TouchEditView();
 	});
 
-	dom.blank_frame.innerHTML = MakeTable('color_palette', 16, 16);
-	for (let i = 0; i < 256; i++) {
-		dom.color_palette[i] = GetHtmlElement<HTMLTableDataCellElement>(`color_palette#${i}`);
-	}
-
+	dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
 	const hex_color_string_array = MakeWebSafeColorList();
 	for (let i = 0; i < 256; i++) {
 		const color_cell = dom.color_palette[i];
@@ -917,9 +920,8 @@ function Initialize() {
 	dom.palette_color.addEventListener('input', (event) => {
 		const i = data.selected_color_index;
 		const rgb_color = data.GetRgbColorFromPalette(i);
-		const color_cell = dom.color_palette[i];
-		rgb_color.SetHexColor((<HTMLInputElement>event.target).value);
-		color_cell.style.backgroundColor = rgb_color.ToRgbString();
+		data.GetRgbColorFromPalette(i).SetHexColor((<HTMLInputElement>event.target).value);
+		dom.color_palette[i].style.backgroundColor = rgb_color.ToRgbString();
 		data.TouchEditView();
 	});
 

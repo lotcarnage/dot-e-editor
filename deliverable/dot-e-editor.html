@@ -853,7 +853,7 @@ const LoadEditData = function (bytes) {
     }
     return false;
 };
-function MakeTable(table_id, cols, rows) {
+function MakeTable(table_id, cols, rows, parent_dom) {
     let tag_text = `<table id="${table_id}">`;
     for (let row_i = 0; row_i < rows; row_i++) {
         tag_text += "<tr>";
@@ -863,7 +863,13 @@ function MakeTable(table_id, cols, rows) {
         tag_text += "<td>";
     }
     tag_text += "</table>";
-    return tag_text;
+    parent_dom.innerHTML += tag_text;
+    const num_cells = cols * rows;
+    const cells = Array(num_cells);
+    for (let i = 0; i < 256; i++) {
+        cells[i] = GetHtmlElement(`${table_id}#${i}`);
+    }
+    return cells;
 }
 class Dom {
     Initialize() {
@@ -1141,10 +1147,7 @@ function Initialize() {
         dom.edit_data_name.value = basename;
         data.TouchEditView();
     });
-    dom.blank_frame.innerHTML = MakeTable('color_palette', 16, 16);
-    for (let i = 0; i < 256; i++) {
-        dom.color_palette[i] = GetHtmlElement(`color_palette#${i}`);
-    }
+    dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
     const hex_color_string_array = MakeWebSafeColorList();
     for (let i = 0; i < 256; i++) {
         const color_cell = dom.color_palette[i];
@@ -1159,9 +1162,8 @@ function Initialize() {
     dom.palette_color.addEventListener('input', (event) => {
         const i = data.selected_color_index;
         const rgb_color = data.GetRgbColorFromPalette(i);
-        const color_cell = dom.color_palette[i];
-        rgb_color.SetHexColor(event.target.value);
-        color_cell.style.backgroundColor = rgb_color.ToRgbString();
+        data.GetRgbColorFromPalette(i).SetHexColor(event.target.value);
+        dom.color_palette[i].style.backgroundColor = rgb_color.ToRgbString();
         data.TouchEditView();
     });
     dom.undo_button.addEventListener('click', (event) => {
