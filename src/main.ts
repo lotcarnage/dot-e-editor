@@ -732,10 +732,16 @@ const UpdateMaskedPixels = function (frame_count: number) {
 }
 
 const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_scale) {
-	const edit_context = dom.edit_canvas.getContext("2d");
 	const written_pixel_set = data.GetWrittenPixelSet();
+
+	const edit_context = dom.edit_canvas.getContext("2d");
 	edit_context.scale(1, 1);
 	edit_context.imageSmoothingEnabled = false;
+
+	const view_context = dom.view_canvas.getContext('2d');
+	view_context.scale(1, 1);
+	view_context.imageSmoothingEnabled = false;
+
 	const update_w_grid_set = new Set<number>();
 	const update_h_grid_set = new Set<number>();
 	written_pixel_set.forEach((pixel_index) => {
@@ -745,8 +751,11 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		const dst_x = point.w;
 		const dst_y = point.h;
 		const mi = data.GetWrittenColorIndex(point);
-		edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
+		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
+		edit_context.fillStyle = color;
 		edit_context.fillRect(dst_x, dst_y, 1, 1);
+		view_context.fillStyle = color;
+		view_context.fillRect(dst_x, dst_y, 1, 1);
 	});
 	const grid_color = dom.grid_color.value;
 	if (dom.view_grid.checked) {
@@ -803,6 +812,7 @@ var frame_count = 0;
 const UpdateView = function () {
 	if (data.is_edit_view_touched) {
 		UpdateEditView(data.edit_width, data.edit_height, data.edit_scale);
+		UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 		data.ClearEditViewTouchedFlag();
 	} else {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
@@ -811,7 +821,6 @@ const UpdateView = function () {
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count);
 	}
 	UpdateMaskedPixels(frame_count);
-	UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 
 	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 	frame_count++;
