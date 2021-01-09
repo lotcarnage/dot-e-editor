@@ -962,34 +962,25 @@ const MakeSaveDataBlobAsJson = function () {
 	return save_data_blob;
 };
 
-class SaveData {
-	filename: string;
-	blob: Blob;
-	constructor(filename: string, blob: Blob) {
-		this.filename = filename;
-		this.blob = blob;
-	}
-}
-
-const MakeSaveData = function (basename: string, save_format: string): SaveData {
+const MakeSaveData = function (basename: string, save_format: string): [string, Blob] {
 	switch (save_format) {
 		case "WindowsIndexColorBitmap":
-			return new SaveData(`${basename}.bmp`, MakeSaveDataBlobAsWindowsIndexColorBitmap());
+			return [`${basename}.bmp`, MakeSaveDataBlobAsWindowsIndexColorBitmap()];
 		case "JSON":
 		default:
-			return new SaveData(`${basename}.json`, MakeSaveDataBlobAsJson());
+			return [`${basename}.json`, MakeSaveDataBlobAsJson()];
 	}
 };
 
 function DownloadEditData() {
 	const basename = dom.edit_data_name.value;
 	const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
-	const savedata = MakeSaveData(basename, save_format)
-	const object_url = window.URL.createObjectURL(savedata.blob);
+	const [savefilename, savedata_blob] = MakeSaveData(basename, save_format)
+	const object_url = window.URL.createObjectURL(savedata_blob);
 	const user_agent = window.navigator.userAgent.toLowerCase();
 	const download_link = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 	download_link.setAttribute('href', object_url);
-	download_link.setAttribute('download', savedata.filename);
+	download_link.setAttribute('download', savefilename);
 }
 
 Initialize();
