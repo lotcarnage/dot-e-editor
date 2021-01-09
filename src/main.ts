@@ -813,10 +813,14 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 
 
 var frame_count = 0;
+let is_preview_touched = true;
 const UpdateView = function () {
+	if (is_preview_touched || data.is_edit_view_touched) {
+		UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
+		is_preview_touched = false;
+	}
 	if (data.is_edit_view_touched) {
 		UpdateEditView(data.edit_width, data.edit_height, data.edit_scale);
-		UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 		data.ClearEditViewTouchedFlag();
 	} else {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
@@ -867,6 +871,9 @@ function Initialize() {
 	dom.edit_filepath.addEventListener('change', (event) => {
 		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
+	dom.view_scale.addEventListener('change', (event) => {
+		is_preview_touched = true;
+	});
 	dom.view_index.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
