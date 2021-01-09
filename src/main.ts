@@ -388,7 +388,9 @@ class PenTool extends Tool {
 	};
 	public RightButtonDown(event: MouseEvent) {
 		const point = Tool.GetTilePoint(event, data.edit_scale);
-		data.selected_color_index = data.GetWrittenColorIndex(point);
+		const color_index = data.GetWrittenColorIndex(point);
+		data.selected_color_index = color_index;
+		dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
 		return;
 	};
 	public MouseMove(event: MouseEvent) {
@@ -471,7 +473,9 @@ class PaintTool extends Tool {
 	};
 	public RightButtonDown(event: MouseEvent) {
 		const point = Tool.GetTilePoint(event, data.edit_scale);
-		data.selected_color_index = data.GetWrittenColorIndex(point);
+		const color_index = data.GetWrittenColorIndex(point);
+		data.selected_color_index = color_index;
+		dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
 	};
 }
 
