@@ -65,6 +65,37 @@ const max_edit_height: number = 512;
 const default_edit_width: number = 32;
 const default_edit_height: number = 32;
 const default_edit_scale: number = 8;
+
+class EditLogger {
+	private undo_stack_: IndexColorBitmap[];
+	private redo_stack_: IndexColorBitmap[];
+	constructor() {
+		this.undo_stack_ = new Array<IndexColorBitmap>(0);
+		this.redo_stack_ = new Array<IndexColorBitmap>(0);
+	}
+	public IsUndoLogEmpty(): boolean {
+		return (this.undo_stack_.length == 0) ? true : false;
+	}
+	public IsRedoLogEmpty(): boolean {
+		return (this.redo_stack_.length == 0) ? true : false;
+	}
+	public PushUndoLog(log_data: IndexColorBitmap): void {
+		this.undo_stack_.push(log_data);
+	}
+	public PushRedoLog(log_data: IndexColorBitmap): void {
+		this.redo_stack_.push(log_data);
+	}
+	public PopUndoLog(): IndexColorBitmap {
+		return this.undo_stack_.pop();
+	}
+	public PopRedoLog(): IndexColorBitmap {
+		return this.redo_stack_.pop();
+	}
+	public ClearRedoLog(): void {
+		this.redo_stack_.splice(0);
+	}
+}
+
 class IndexColorBitmap {
 	width: number;
 	height: number;
@@ -88,6 +119,7 @@ class Data {
 	private is_edit_view_touched_: boolean;
 	private selected_color_index_: number;
 	private color_palette_: RgbColor[];
+	private logger_: EditLogger;
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
@@ -99,6 +131,7 @@ class Data {
 		for (let i = 0; i < 256; i++) {
 			this.color_palette_[i] = new RgbColor();
 		}
+		this.logger_ = new EditLogger();
 	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
@@ -191,81 +224,52 @@ class Data {
 		}
 		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_tiles);
 	}
-}
-
-class EditLogger {
-	private undo_stack_: IndexColorBitmap[];
-	private redo_stack_: IndexColorBitmap[];
-	constructor() {
-		this.undo_stack_ = new Array<IndexColorBitmap>(0);
-		this.redo_stack_ = new Array<IndexColorBitmap>(0);
-	}
-	public IsUndoLogEmpty(): boolean {
-		return (this.undo_stack_.length == 0) ? true : false;
-	}
-	public IsRedoLogEmpty(): boolean {
-		return (this.redo_stack_.length == 0) ? true : false;
-	}
-	public PushUndoLog(log_data: IndexColorBitmap): void {
-		this.undo_stack_.push(log_data);
-	}
-	public PushRedoLog(log_data: IndexColorBitmap): void {
-		this.redo_stack_.push(log_data);
-	}
-	public PopUndoLog(): IndexColorBitmap {
-		return this.undo_stack_.pop();
-	}
-	public PopRedoLog(): IndexColorBitmap {
-		return this.redo_stack_.pop();
-	}
-	public ClearRedoLog(): void {
-		this.redo_stack_.splice(0);
-	}
-}
-
-const logger: EditLogger = new EditLogger();
-
-const ApplyRawData = function (raw_data: IndexColorBitmap): void {
-	data.edit_width = raw_data.width;
-	data.edit_height = raw_data.height;
-	for (let h = 0; h < raw_data.height; h++) {
-		for (let w = 0; w < raw_data.width; w++) {
-			data.WriteMap(new PixelPoint(w, h), raw_data.pixels[h][w]);
+	public ApplyRawData(raw_data: IndexColorBitmap): void {
+		this.edit_width_ = raw_data.width;
+		this.edit_height_ = raw_data.height;
+		for (let h = 0; h < raw_data.height; h++) {
+			for (let w = 0; w < raw_data.width; w++) {
+				this.pixels_[h][w] = raw_data.pixels[h][w];
+			}
 		}
+		for (let i = 0; i < 256; i++) {
+			data.GetRgbColorFromPalette(i).SetColorString(raw_data.color_palette[i]);
+		}
+		this.TouchEditView();
 	}
+
+	public PushUndoLog(): void {
+		const current_data = data.MakeRawSaveData();
+		this.logger_.PushUndoLog(current_data);
+		this.logger_.ClearRedoLog();
+	}
+	public Undo(): void {
+		if (this.logger_.IsUndoLogEmpty()) {
+			return;
+		}
+		const current_data = data.MakeRawSaveData();
+		this.logger_.PushRedoLog(current_data);
+		const undo_data = this.logger_.PopUndoLog();
+		this.ApplyRawData(undo_data);
+	}
+	public Redo() {
+		if (this.logger_.IsRedoLogEmpty()) {
+			return;
+		}
+		const current_data = data.MakeRawSaveData();
+		this.logger_.PushUndoLog(current_data);
+		const redo_data = this.logger_.PopRedoLog();
+		this.ApplyRawData(redo_data);
+	}
+}
+
+const ApplyView = function (): void {
 	for (let i = 0; i < 256; i++) {
-		data.GetRgbColorFromPalette(i).SetColorString(raw_data.color_palette[i]);
-		dom.color_palette[i].style.backgroundColor = raw_data.color_palette[i];
+		dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
 	}
-	dom.editwidth.value = raw_data.width.toString();
-	dom.editheight.value = raw_data.height.toString();
+	dom.editwidth.value = data.edit_width.toString();
+	dom.editheight.value = data.edit_height.toString();
 	return;
-}
-
-const PushUndoLog = function (): void {
-	const current_data = data.MakeRawSaveData();
-	logger.PushUndoLog(current_data);
-	logger.ClearRedoLog();
-}
-
-const Undo = function (): void {
-	if (logger.IsUndoLogEmpty()) {
-		return;
-	}
-	const current_data = data.MakeRawSaveData();
-	logger.PushRedoLog(current_data);
-	const undo_data = logger.PopUndoLog();
-	ApplyRawData(undo_data);
-}
-
-const Redo = function () {
-	if (logger.IsRedoLogEmpty()) {
-		return;
-	}
-	const current_data = data.MakeRawSaveData();
-	logger.PushUndoLog(current_data);
-	const redo_data = logger.PopRedoLog();
-	ApplyRawData(redo_data);
 }
 
 class RectangleTargetPixels {
@@ -369,7 +373,7 @@ class PenTool extends Tool {
 		data.WriteMap(new PixelPoint(x, y), data.selected_color_index);
 	}
 	public LeftButtonDown(event: MouseEvent) {
-		PushUndoLog();
+		data.PushUndoLog();
 		const point = Tool.GetTilePoint(event, data.edit_scale);
 		data.WriteMap(point, data.selected_color_index);
 		this.last_point = point;
@@ -447,7 +451,7 @@ const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
 
 class PaintTool extends Tool {
 	public LeftButtonDown(event: MouseEvent) {
-		PushUndoLog();
+		data.PushUndoLog();
 		const selected_pixel = Tool.GetTilePoint(event, data.edit_scale);
 		const new_color_index = data.selected_color_index;
 		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
@@ -536,7 +540,8 @@ const FitDivHeight = function (modify_div_id: string, referencet_div_id: string)
 
 const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as IndexColorBitmap;
-	ApplyRawData(read_data);
+	data.ApplyRawData(read_data);
+	ApplyView();
 	return true;
 }
 
@@ -545,7 +550,8 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	if (bmp_data != null) {
 		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
 		const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
-		ApplyRawData(raw_data);
+		data.ApplyRawData(raw_data);
+		ApplyView();
 		return true;
 	}
 	const bs = Array.from(new Uint8Array(bytes as ArrayBuffer), (v) => String.fromCharCode(v)).join("");
@@ -895,10 +901,12 @@ function Initialize() {
 	});
 
 	dom.undo_button.addEventListener('click', (event) => {
-		Undo();
+		data.Undo();
+		ApplyView();
 	});
 	dom.redo_button.addEventListener('click', (event) => {
-		Redo();
+		data.Redo();
+		ApplyView();
 	});
 	dom.v_turn_button.addEventListener('click', (event) => {
 		if (target_pixels != null) {
@@ -928,8 +936,8 @@ function Initialize() {
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {
-				case 'z': Undo(); break;
-				case 'y': Redo(); break;
+				case 'z': data.Undo(); ApplyView(); break;
+				case 'y': data.Redo(); ApplyView(); break;
 				case 'd': target_pixels = null; break;
 			}
 		}
