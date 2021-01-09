@@ -306,13 +306,13 @@ class RectangleTargetPixels {
 	public BrakedownToPixelMask(): void {
 		data.SetMaskFlagsByRectangle(this.left, this.top, this.right, this.bottom, true);
 	}
-	public Draw(canvas_context: CanvasRenderingContext2D, view_scale: number, frame_count: number) {
+	public Draw(canvas_context: CanvasRenderingContext2D, view_scale: number, frame_count: number, hex_color: string) {
 		const dot_span = 5;
 		const edit_context = dom.edit_canvas.getContext("2d");
 		edit_context.scale(1, 1);
 		canvas_context = edit_context;
 		let z = this.left + (frame_count % dot_span);
-		canvas_context.fillStyle = '#ffffff';
+		canvas_context.fillStyle = hex_color;
 		for (; z <= this.right; z += dot_span) {
 			canvas_context.fillRect(z, this.top, 1, 1);
 			data.TouchPixel(z, this.top);
@@ -822,7 +822,8 @@ const UpdateView = function () {
 		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
 	}
 	if (target_pixels != null) {
-		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count);
+		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
+		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
 	}
 	UpdateMaskedPixels(frame_count);
 
