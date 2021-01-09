@@ -57,6 +57,12 @@ class PixelPoint {
 		const h = Math.floor(index / width);
 		return new PixelPoint(w, h);
 	}
+	static IndexToPixelPointW(index: number, width: number): number {
+		return Math.floor(index % width);
+	}
+	static IndexToPixelPointH(index: number, width: number): number {
+		return Math.floor(index / width);
+	}
 }
 
 const view_font_size: number = 8;
@@ -183,22 +189,27 @@ class Data {
 			}
 		}
 	}
-	public IsMasked(point: PixelPoint): boolean {
-		return this.pixels_mask_[point.h][point.w];
+	public IsMasked(w: number, h: number): boolean {
+		return this.pixels_mask_[h][w];
 	}
-	public WriteMap(point: PixelPoint, color_index: number) {
-		if (this.pixels_mask_[point.h][point.w]) {
+	public WriteMap(w: number, h: number, color_index: number) {
+		if (this.pixels_mask_[h][w]) {
 			return;
 		}
-		this.pixels_[point.h][point.w] = color_index;
-		this.pixels_written_set_.add(point.ToIndex(this.edit_width_));
+		this.pixels_[h][w] = color_index;
+		const pixel_index = this.edit_width_ * h + w;
+		this.pixels_written_set_.add(pixel_index);
 	}
-	public TouchPixel(point: PixelPoint): void {
-		this.pixels_written_set_.add(point.ToIndex(this.edit_width_));
+	public TouchPixel(w: number, h: number): void {
+		const pixel_index = this.edit_width_ * h + w;
+		this.pixels_written_set_.add(pixel_index);
 	}
 	public GetWrittenColorIndex(point: PixelPoint): number {
 		return this.pixels_[point.h][point.w];
 
+	}
+	public GetWrittenColorIndex2(w: number, h: number): number {
+		return this.pixels_[h][w];
 	}
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
@@ -304,22 +315,22 @@ class RectangleTargetPixels {
 		canvas_context.fillStyle = '#ffffff';
 		for (; z <= this.right; z += dot_span) {
 			canvas_context.fillRect(z, this.top, 1, 1);
-			data.TouchPixel(new PixelPoint(z, this.top));
+			data.TouchPixel(z, this.top);
 		}
 		z = z - this.right + this.top;
 		for (; z <= this.bottom; z += dot_span) {
 			canvas_context.fillRect(this.right, z, 1, 1);
-			data.TouchPixel(new PixelPoint(this.right, z));
+			data.TouchPixel(this.right, z);
 		}
 		z = this.right - (z - this.bottom);
 		for (; this.left <= z; z -= dot_span) {
 			canvas_context.fillRect(z, this.bottom, 1, 1);
-			data.TouchPixel(new PixelPoint(z, this.bottom));
+			data.TouchPixel(z, this.bottom);
 		}
 		z = this.bottom - (this.left - z);
 		for (; this.top <= z; z -= dot_span) {
 			canvas_context.fillRect(this.left, z, 1, 1);
-			data.TouchPixel(new PixelPoint(this.left, z));
+			data.TouchPixel(this.left, z);
 		}
 	}
 	public VerticalTurn(): void {
@@ -327,12 +338,10 @@ class RectangleTargetPixels {
 		const max_h = this.top + half_h;
 		for (let h1 = this.top, h2 = this.bottom; h1 < max_h; h1++, h2--) {
 			for (let w = this.left; w <= this.right; w++) {
-				const p1 = new PixelPoint(w, h1);
-				const p2 = new PixelPoint(w, h2);
-				const c1 = data.GetWrittenColorIndex(p1);
-				const c2 = data.GetWrittenColorIndex(p2);
-				data.WriteMap(p1, c2);
-				data.WriteMap(p2, c1);
+				const c1 = data.GetWrittenColorIndex2(w, h1);
+				const c2 = data.GetWrittenColorIndex2(w, h2);
+				data.WriteMap(w, h1, c2);
+				data.WriteMap(w, h2, c1);
 			}
 		}
 	}
@@ -341,12 +350,10 @@ class RectangleTargetPixels {
 		const max_w = this.left + half_w;
 		for (let w1 = this.left, w2 = this.right; w1 < max_w; w1++, w2--) {
 			for (let h = this.top; h <= this.bottom; h++) {
-				const p1 = new PixelPoint(w1, h);
-				const p2 = new PixelPoint(w2, h);
-				const c1 = data.GetWrittenColorIndex(p1);
-				const c2 = data.GetWrittenColorIndex(p2);
-				data.WriteMap(p1, c2);
-				data.WriteMap(p2, c1);
+				const c1 = data.GetWrittenColorIndex2(w1, h);
+				const c2 = data.GetWrittenColorIndex2(w2, h);
+				data.WriteMap(w1, h, c2);
+				data.WriteMap(w2, h, c1);
 			}
 		}
 	}
@@ -370,12 +377,12 @@ class Tool {
 class PenTool extends Tool {
 	private last_point: PixelPoint | null;
 	private WritePixel = function (x: number, y: number) {
-		data.WriteMap(new PixelPoint(x, y), data.selected_color_index);
+		data.WriteMap(x, y, data.selected_color_index);
 	}
 	public LeftButtonDown(event: MouseEvent) {
 		data.PushUndoLog();
 		const point = Tool.GetTilePoint(event, data.edit_scale);
-		data.WriteMap(point, data.selected_color_index);
+		data.WriteMap(point.w, point.h, data.selected_color_index);
 		this.last_point = point;
 		return;
 	};
@@ -457,7 +464,9 @@ class PaintTool extends Tool {
 		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
 		const max_w = data.edit_width;
 		region_pixel_set.forEach((pixel_index) => {
-			data.WriteMap(PixelPoint.IndexToPixelPoint(pixel_index, max_w), new_color_index);
+			const w = PixelPoint.IndexToPixelPointW(pixel_index, max_w);
+			const h = PixelPoint.IndexToPixelPointH(pixel_index, max_w);
+			data.WriteMap(w, h, new_color_index);
 		});
 	};
 	public RightButtonDown(event: MouseEvent) {
@@ -691,10 +700,11 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 	const y_offset = font_size / 2;
 	const width = data.edit_width;
 	target_maptile_set.forEach((pixel_index) => {
-		const point = PixelPoint.IndexToPixelPoint(pixel_index, width);
-		const dst_x = point.w * view_scale;
-		const dst_y = point.h * view_scale;
-		const ci = data.GetWrittenColorIndex(point);
+		const w = PixelPoint.IndexToPixelPointW(pixel_index, width);
+		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
+		const dst_x = w * view_scale;
+		const dst_y = h * view_scale;
+		const ci = data.GetWrittenColorIndex2(w, h);
 		const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
 		edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
 	});
@@ -721,13 +731,12 @@ const UpdateMaskedPixels = function (frame_count: number) {
 		if ((max_w <= w) || (max_h <= h)) {
 			continue;
 		}
-		const point = new PixelPoint(w, h);
-		if (!data.IsMasked(point)) {
+		if (!data.IsMasked(w, h)) {
 			continue;
 		}
 		edit_context.fillStyle = '#ffffff';
 		edit_context.fillRect(w, h, 1, 1);
-		data.TouchPixel(point);
+		data.TouchPixel(w, h);
 	}
 }
 
@@ -735,27 +744,25 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 	const written_pixel_set = data.GetWrittenPixelSet();
 
 	const edit_context = dom.edit_canvas.getContext("2d");
-	edit_context.scale(1, 1);
 	edit_context.imageSmoothingEnabled = false;
 
 	const view_context = dom.view_canvas.getContext('2d');
-	view_context.scale(1, 1);
 	view_context.imageSmoothingEnabled = false;
 
 	const update_w_grid_set = new Set<number>();
 	const update_h_grid_set = new Set<number>();
+	const pi = written_pixel_set.values[0];
 	written_pixel_set.forEach((pixel_index) => {
-		const point = PixelPoint.IndexToPixelPoint(pixel_index, edit_w_count);
-		update_w_grid_set.add(point.w);
-		update_h_grid_set.add(point.h);
-		const dst_x = point.w;
-		const dst_y = point.h;
-		const mi = data.GetWrittenColorIndex(point);
+		const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
+		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
+		update_w_grid_set.add(w);
+		update_h_grid_set.add(h);
+		const mi = data.GetWrittenColorIndex2(w, h);
 		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillStyle = color;
-		edit_context.fillRect(dst_x, dst_y, 1, 1);
+		edit_context.fillRect(w, h, 1, 1);
 		view_context.fillStyle = color;
-		view_context.fillRect(dst_x, dst_y, 1, 1);
+		view_context.fillRect(w, h, 1, 1);
 	});
 	const grid_color = dom.grid_color.value;
 	if (dom.view_grid.checked) {
@@ -774,11 +781,9 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 	view_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const dst_x = w;
-			const dst_y = h;
-			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
+			const mi = data.GetWrittenColorIndex2(w, h);
 			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
-			view_context.fillRect(dst_x, dst_y, 1, 1);
+			view_context.fillRect(w, h, 1, 1);
 		}
 	}
 }
@@ -790,11 +795,9 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	edit_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const dst_x = w;
-			const dst_y = h;
-			const mi = data.GetWrittenColorIndex(new PixelPoint(w, h));
+			const mi = data.GetWrittenColorIndex2(w, h);
 			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
-			edit_context.fillRect(dst_x, dst_y, 1, 1);
+			edit_context.fillRect(w, h, 1, 1);
 		}
 	}
 	const grid_color = dom.grid_color.value;
@@ -804,6 +807,7 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	if (dom.view_grid.checked) {
 		DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
 	}
+	data.GetWrittenPixelSet().clear();
 }
 
 
