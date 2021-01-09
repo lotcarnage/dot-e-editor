@@ -222,6 +222,21 @@ class Data {
 	public GetRgbColorFromPalette(index: number): RgbColor {
 		return this.color_palette_[index];
 	}
+	public DeleteAllUnusedColors(): void {
+		const histogram = new Array<number>(256).fill(0);
+		for (let h = 0; h < this.edit_height_; h++) {
+			for (let w = 0; w < this.edit_width_; w++) {
+				histogram[this.pixels_[h][w]]++;
+			}
+		}
+		for (let i = 0; i < 256; i++) {
+			if (histogram[i] == 0) {
+				data.color_palette_[i].r = 0;
+				data.color_palette_[i].g = 0;
+				data.color_palette_[i].b = 0;
+			}
+		}
+	}
 	public MakeRawSaveData(): IndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
@@ -624,6 +639,7 @@ class Dom {
 	release_targetting_button: HTMLButtonElement;
 	turn_mask_button: HTMLButtonElement;
 	delete_mask_button: HTMLButtonElement;
+	delete_all_unused_colors_button: HTMLButtonElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
@@ -653,6 +669,7 @@ class Dom {
 		this.release_targetting_button = GetHtmlElement<HTMLButtonElement>('release_targetting_button');
 		this.turn_mask_button = GetHtmlElement<HTMLButtonElement>('turn_mask_button');
 		this.delete_mask_button = GetHtmlElement<HTMLButtonElement>('delete_mask_button');
+		this.delete_all_unused_colors_button = GetHtmlElement<HTMLButtonElement>('delete_all_unused_colors_button');
 	}
 }
 
@@ -960,7 +977,12 @@ function Initialize() {
 	dom.delete_mask_button.addEventListener('click', (event) => {
 		data.SetMaskFlagsByRectangle(0, 0, data.edit_width, data.edit_height, false);
 	});
-
+	dom.delete_all_unused_colors_button.addEventListener('click', (event) => {
+		data.DeleteAllUnusedColors();
+		for (let i = 0; i < 256; i++) {
+			dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
+		}
+	});
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {
