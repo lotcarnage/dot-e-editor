@@ -862,6 +862,9 @@ function Initialize() {
 	dom.grid_color.addEventListener('input', (event) => {
 		data.TouchEditView();
 	});
+	dom.canvas_bg_color.addEventListener('input', (event) => {
+		dom.edit_frame.style.backgroundColor = (<HTMLInputElement>event.target).value;
+	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
 		tool = pen_tool;
 	});
