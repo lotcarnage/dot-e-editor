@@ -144,8 +144,8 @@ class Data {
 		}
 	}
 	public TurnMask(): void {
-		for (let h = 0; h < data.edit_height_; h++) {
-			for (let w = 0; w < data.edit_width_; w++) {
+		for (let h = 0; h < this.edit_height_; h++) {
+			for (let w = 0; w < this.edit_width_; w++) {
 				this.pixels_mask_[h][w] = !this.pixels_mask_[h][w];
 			}
 		}
@@ -158,10 +158,10 @@ class Data {
 			return;
 		}
 		this.pixels_[point.h][point.w] = color_index;
-		this.pixels_written_set_.add(point.ToIndex(data.edit_width_));
+		this.pixels_written_set_.add(point.ToIndex(this.edit_width_));
 	}
 	public TouchPixel(point: PixelPoint): void {
-		this.pixels_written_set_.add(point.ToIndex(data.edit_width_));
+		this.pixels_written_set_.add(point.ToIndex(this.edit_width_));
 	}
 	public GetWrittenColorIndex(point: PixelPoint): number {
 		return this.pixels_[point.h][point.w];
