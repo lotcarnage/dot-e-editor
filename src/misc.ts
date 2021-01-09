@@ -32,4 +32,32 @@ namespace Misc {
 		const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
 		return `#${r_hex}${g_hex}${b_hex}`;
 	}
+	export function ExtractBaseName(filepath: string) {
+		const path_delimiter = /\\/g;
+		const path_tokens = filepath.slice(0).replace(path_delimiter, '/').split('/');
+		const filename = (2 <= path_tokens.length) ? path_tokens[path_tokens.length - 1] : path_tokens[0];
+		const name_tokens = filename.split('.');
+		const basename = (2 <= name_tokens.length) ? name_tokens.splice(0, name_tokens.length - 1).join('.') : name_tokens[0];
+		return basename;
+	}
+	export function MakeWebSafeColorList(): string[] {
+		const gray_colors = Array<string>(0); /* 利便性のためにグレースケールだけ別で並べる */
+		const other_colors = Array<string>(0);
+		const blank_colors = Array<string>(256 - (6 * 6 * 6)).fill('#000000');
+		const c = ['00', '33', '66', '99', 'cc', 'ff'];
+		let i = 0;
+		for (let b = 0; b < 6; b++) {
+			for (let g = 0; g < 6; g++) {
+				for (let r = 0; r < 6; r++) {
+					const color = `#${c[r]}${c[g]}${c[b]}`;
+					if (r == g && r == b) {
+						gray_colors.push(color);
+					} else {
+						other_colors.push(color);
+					}
+				}
+			}
+		}
+		return gray_colors.concat(other_colors).concat(blank_colors);
+	}
 }

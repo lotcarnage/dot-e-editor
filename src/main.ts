@@ -534,15 +534,6 @@ const FitDivHeight = function (modify_div_id: string, referencet_div_id: string)
 	GetHtmlElement<HTMLDivElement>(modify_div_id).style.height = `${new_height}px`;
 };
 
-const ExtractBaseName = function (filepath: string) {
-	const path_delimiter = /\\/g;
-	const path_tokens = filepath.slice(0).replace(path_delimiter, '/').split('/');
-	const filename = (2 <= path_tokens.length) ? path_tokens[path_tokens.length - 1] : path_tokens[0];
-	const name_tokens = filename.split('.');
-	const basename = (2 <= name_tokens.length) ? name_tokens.splice(0, name_tokens.length - 1).join('.') : name_tokens[0];
-	return basename;
-}
-
 const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as IndexColorBitmap;
 	ApplyRawData(read_data);
@@ -821,28 +812,6 @@ const UpdateView = function () {
 	window.requestAnimationFrame(UpdateView);
 }
 
-const MakeWebSafeColorList = function (): string[] {
-	const gray_colors = Array<string>(0); /* 利便性のためにグレースケールだけ別で並べる */
-	const other_colors = Array<string>(0);
-	const blank_colors = Array<string>(256 - (6 * 6 * 6)).fill('#000000');
-	const c = ['00', '33', '66', '99', 'cc', 'ff'];
-	let i = 0;
-	for (let b = 0; b < 6; b++) {
-		for (let g = 0; g < 6; g++) {
-			for (let r = 0; r < 6; r++) {
-				const color = `#${c[r]}${c[g]}${c[b]}`;
-				if (r == g && r == b) {
-					gray_colors.push(color);
-				} else {
-					other_colors.push(color);
-				}
-			}
-		}
-	}
-	return gray_colors.concat(other_colors).concat(blank_colors);
-}
-
-
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -900,13 +869,13 @@ function Initialize() {
 
 	edit_reader.addEventListener('load', (event) => {
 		LoadEditData((<FileReader>event.target).result);
-		const basename = ExtractBaseName(dom.edit_filepath.value);
+		const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
 		dom.edit_data_name.value = basename;
 		data.TouchEditView();
 	});
 
 	dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
-	const hex_color_string_array = MakeWebSafeColorList();
+	const hex_color_string_array = Misc.MakeWebSafeColorList();
 	for (let i = 0; i < 256; i++) {
 		const color_cell = dom.color_palette[i];
 		const hex_color = hex_color_string_array[i];
