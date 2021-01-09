@@ -10,151 +10,182 @@
         }
 
         body {
-            background-color: darkgray;
+            background-color: darkslategrey;
         }
 
         input[type="number"] {
-            font-size: 24px;
-            width: 96px;
+            width: 64px;
             text-align: right;
         }
 
-        div#viewframe {
-            width: 96px;
-            height: 96px;
-            overflow: scroll;
-            resize: both;
-            text-align: center;
+        div.hbox {
+            clear: both;
         }
 
-        div#viewblock {
+        div.vbox {
             float: left;
-            background-color: darkgoldenrod;
         }
 
-        div#editframe {
-            width: 32px;
-            height: 384px;
+        div.rightvbox {
+            float: right;
+        }
+
+        div.canvasframe {
             overflow: scroll;
             resize: both;
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            clear: both;
         }
 
         div#settingsblock {
             background-color: darkgrey;
         }
 
-        div#editblock {
-            float: left;
-            background-color: darkolivegreen;
+        div#toolsblock {
+            background-color: skyblue;
         }
 
-        div#mapchipblock {
-            text-align: center;
-            float: left;
-            background-color: darkslateblue;
-        }
-
-        div#mapchipsblock {
-            float: left;
+        div#paletteblock {
             background-color: darkseagreen;
+        }
+
+        div#viewblock {
+            background-color: darkgoldenrod;
+        }
+
+        div#viewframe {
+            width: 200px;
+            height: 200px;
+        }
+
+        div#editblock {
+            background-color: mediumpurple;
+        }
+
+        div#editframe {
+            width: 128px;
+            height: 384px;
         }
     </style>
 </head>
 
 <body>
-    <div id="settingsblock">
-        <input type="checkbox" id="view_index">
-        <label for="view_index">色番号表示</label>
-        <input type="checkbox" id="view_grid" checked>
-        <label for="view_grid">グリッド表示</label>
-        <input type="color" id="grid_color" value="#333333">
-        <label for="grid_color">グリッド／番号色</label>
-        <input type="color" id="canvas_bg_color" value="#ff00ff">
-        <label for="canvas_bg_color">キャンバス背景色</label>
-    </div>
-    <div id="viewblock">
-        <p>
-            表示倍率
-            <select id="view_scale">
-                <option value="1">x1</option>
-                <option value="2">x2</option>
-                <option value="3">x3</option>
-                <option value="4" selected>x4</option>
-                <option value="6">x6</option>
-                <option value="8">x8</option>
-                <option value="12">x12</option>
-                <option value="16">x16</option>
-                <option value="24">x24</option>
-            </select>
-        </p>
-        <div id="viewframe">
-            <canvas id="view" width="32" height="32"></canvas>
+    <div class="hbox">
+        <div class="vbox" id="settingsblock">
+            <div class="hbox">
+                <input type="checkbox" id="view_index">
+                <label for="view_index">色番号表示</label>
+                <input type="checkbox" id="view_grid" checked>
+                <label for="view_grid">グリッド表示</label>
+            </div>
+            <div class="hbox">
+                <label for="grid_color">グリッド／番号色</label>
+                <input type="color" id="grid_color" value="#333333">
+            </div>
+            <div class="hbox">
+                <label for="canvas_bg_color">キャンバス背景色</label>
+                <input type="color" id="canvas_bg_color" value="#ff00ff">
+            </div>
+        </div>
+        <div class="vbox" id="toolsblock">
+            <div class="vbox">
+                <div class="hbox">
+                    <input type="radio" name="tools" id="pen_tool" value="pen_tool" checked>
+                    <label for="pen_tool">ペン</label>
+                </div>
+                <div class="hbox">
+                    <input type="radio" name="tools" id="paint_tool" value="paint_tool">
+                    <label for="paint_tool">塗りつぶし</label>
+                </div>
+                <div class="hbox">
+                    <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
+                    <label for="rectangle_select_tool">矩形選択</label>
+                    <button id="v_turn_button">上下反転</button>
+                    <button id="h_turn_button">左右反転</button>
+                    <button id="break_to_mask_button">マスク化</button>
+                    <button id="release_targetting_button">選択解除(Ctrl+d)</button>
+                </div>
+            </div>
+            <div class="vbox">
+                <div class="hbox">
+                    <button id="undo_button">Undo(Ctrl+z)</button>
+                    <button id="redo_button">Redo(Ctrl+y)</button>
+                </div>
+                <div class="hbox">
+                    <button id="turn_mask_button">マスク反転</button>
+                    <button id="delete_mask_button">マスク消去</button>
+                </div>
+            </div>
         </div>
     </div>
-    <div id="editblock">
-        <p>
-            横ピクセル数<input id="editwidth" type="number" min="1">
-            縦ピクセル数<input id="editheight" type="number" min="1">
-            編集画面表示倍率
-            <select id="edit_scale">
-                <option value="1">x1</option>
-                <option value="2">x2</option>
-                <option value="4" selected>x4</option>
-                <option value="8">x8</option>
-                <option value="16">x16</option>
-                <option value="24">x24</option>
-                <option value="32">x32</option>
-            </select>
-        </p>
-        <p>
-            読み込み<input type="file" id="edit_filepath">
-        </p>
-        <p>
-            保存形式
-            <select id="edit_save_format">
-                <option value="WindowsIndexColorBitmap" selected>BMP</option>
-                <option value="JSON">JSON</option>
-            </select>
-            <input type="text" id="edit_data_name" value="new_picture">
-            <a id="download_edit_data" href="#"><button>保存(ダウンロード)</button></a>
-        </p>
-        <div id="editframe">
-            <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
+
+    <div class="hbox">
+        <div class="vbox">
+            <div class="hbox" id="paletteblock">
+                <div id="blank_frame">
+                </div>
+                <label for="palette_color">パレット色変更</label>
+                <input type="color" id="palette_color" value="#000000">
+            </div>
+            <div class="hbox" id="viewblock">
+                <div class="hbox">
+                    <div class="rightvbox">
+                        表示倍率
+                        <select id="view_scale">
+                            <option value="1">x1</option>
+                            <option value="2">x2</option>
+                            <option value="3">x3</option>
+                            <option value="4" selected>x4</option>
+                            <option value="6">x6</option>
+                            <option value="8">x8</option>
+                            <option value="12">x12</option>
+                            <option value="16">x16</option>
+                            <option value="24">x24</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="canvasframe" id="viewframe">
+                    <canvas id="view" width="32" height="32"></canvas>
+                </div>
+            </div>
         </div>
-    </div>
-    <div>
-        <p>
-            <button id="undo_button">Undo(Ctrl+z)</button>
-            <button id="redo_button">Redo(Ctrl+y)</button>
-        </p>
-        <p>
-            <input type="radio" name="tools" id="pen_tool" value="pen_tool" checked>
-            <label for="pen_tool">ペン</label>
-            <input type="radio" name="tools" id="paint_tool" value="paint_tool">
-            <label for="paint_tool">塗りつぶし</label>
-        </p>
-        <p>
-            <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
-            <label for="rectangle_select_tool">矩形選択</label>
-            <button id="v_turn_button">上下反転</button>
-            <button id="h_turn_button">左右反転</button>
-            <button id="break_to_mask_button">マスク化</button>
-            <button id="release_targetting_button">選択解除(Ctrl+d)</button>
-        </p>
-        <p>
-            <button id="turn_mask_button">マスク反転</button>
-            <button id="delete_mask_button">マスク消去</button>
-        </p>
-    </div>
-    <div id="mapchipsblock">
-        <p>
-            パレット読み込み<input type="file" accept="image/*" id="mapchip_filepath">
-        </p>
-        <div id="blank_frame">
+        <div class="vbox" id="editblock">
+            <div class="hbox">
+                読み込み<input type="file" id="edit_filepath">
+            </div>
+            <div class="hbox">
+                保存形式
+                <select id="edit_save_format">
+                    <option value="WindowsIndexColorBitmap" selected>BMP</option>
+                    <option value="JSON">JSON</option>
+                </select>
+                <input type="text" id="edit_data_name" value="new_picture">
+                <a id="download_edit_data" href="#"><button>保存(ダウンロード)</button></a>
+            </div>
+            <div class="hbox">
+                <div class="vbox">
+                    横x縦<input id="editwidth" type="number" min="1">x
+                    <input id="editheight" type="number" min="1">
+                </div>
+                <div class="rightvbox">
+                    表示倍率
+                    <select id="edit_scale">
+                        <option value="1">x1</option>
+                        <option value="2">x2</option>
+                        <option value="4" selected>x4</option>
+                        <option value="8">x8</option>
+                        <option value="16">x16</option>
+                        <option value="24">x24</option>
+                        <option value="32">x32</option>
+                    </select>
+                </div>
+            </div>
+            <div class="canvasframe" id="editframe">
+                <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
+            </div>
         </div>
-        <input type="color" id="palette_color" value="#000000">
-        <label for="palette_color">パレット色変更</label>
     </div>
 
     <canvas id="mapchip_bg" width="1" height="1" hidden></canvas>
