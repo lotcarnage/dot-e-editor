@@ -127,8 +127,10 @@
                 <div id="blank_frame">
                 </div>
                 <div class="hbox">
-                    <label for="palette_color">パレット色変更</label>
+                    <label for="palette_color">色変更</label>
                     <input type="color" id="palette_color" value="#000000">
+                    <div class="rightvbox" id="color_caption">
+                    </div>
                 </div>
                 <div class="hbox">
                     <button id="delete_all_unused_colors_button">未使用色を全削除</button>
@@ -767,8 +769,7 @@ class PenTool extends Tool {
     RightButtonDown(event) {
         const point = Tool.GetTilePoint(event, data.edit_scale);
         const color_index = data.GetWrittenColorIndex(point);
-        data.selected_color_index = color_index;
-        dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
+        ChengeCurrentColor(color_index);
         return;
     }
     ;
@@ -852,8 +853,7 @@ class PaintTool extends Tool {
     RightButtonDown(event) {
         const point = Tool.GetTilePoint(event, data.edit_scale);
         const color_index = data.GetWrittenColorIndex(point);
-        data.selected_color_index = color_index;
-        dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
+        ChengeCurrentColor(color_index);
     }
     ;
 }
@@ -947,12 +947,22 @@ const LoadEditData = function (bytes) {
     }
     return false;
 };
+const SetUnselectedColorCellStyle = function (color_cell) {
+    color_cell.style.borderStyle = 'solid';
+    color_cell.style.borderColor = '#000000';
+    color_cell.style.borderWidth = '1';
+};
+const SetSelectedColorCellStyle = function (color_cell) {
+    color_cell.style.borderStyle = 'solid';
+    color_cell.style.borderColor = '#00ff00';
+    color_cell.style.borderWidth = '1';
+};
 function MakeTable(table_id, cols, rows, parent_dom) {
-    let tag_text = `<table id="${table_id}">`;
+    let tag_text = `<table id="${table_id}" cellspacing="0">`;
     for (let row_i = 0; row_i < rows; row_i++) {
         tag_text += "<tr>";
         for (let col_i = 0; col_i < cols; col_i++) {
-            tag_text += `<td id \="${table_id}#${row_i * cols + col_i}"><canvas width="16" height="16"></canvas></td>`;
+            tag_text += `<td id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
         }
         tag_text += "<td>";
     }
@@ -962,6 +972,7 @@ function MakeTable(table_id, cols, rows, parent_dom) {
     const cells = Array(num_cells);
     for (let i = 0; i < 256; i++) {
         cells[i] = GetHtmlElement(`${table_id}#${i}`);
+        SetUnselectedColorCellStyle(cells[i]);
     }
     return cells;
 }
@@ -972,6 +983,7 @@ class Dom {
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_frame = GetHtmlElement('editframe');
         this.palette_color = GetHtmlElement('palette_color');
+        this.color_caption = GetHtmlElement('color_caption');
         this.editwidth = GetHtmlElement('editwidth');
         this.editheight = GetHtmlElement('editheight');
         this.edit_scale = GetHtmlElement('edit_scale');
@@ -1169,6 +1181,15 @@ const UpdateView = function () {
     frame_count++;
     window.requestAnimationFrame(UpdateView);
 };
+const ChengeCurrentColor = function (new_color_index) {
+    const last_index = data.selected_color_index;
+    const color = data.GetRgbColorFromPalette(new_color_index).ToHexColor();
+    dom.palette_color.value = color;
+    SetUnselectedColorCellStyle(dom.color_palette[last_index]);
+    SetSelectedColorCellStyle(dom.color_palette[new_color_index]);
+    data.selected_color_index = new_color_index;
+    dom.color_caption.innerText = `${new_color_index}:${color}`;
+};
 function Initialize() {
     dom.Initialize();
     const edit_reader = new FileReader();
@@ -1241,8 +1262,7 @@ function Initialize() {
         data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
         color_cell.style.backgroundColor = hex_color;
         color_cell.addEventListener('click', () => {
-            data.selected_color_index = i;
-            dom.palette_color.value = data.GetRgbColorFromPalette(i).ToHexColor();
+            ChengeCurrentColor(i);
         });
     }
     dom.palette_color.addEventListener('input', (event) => {
@@ -1289,6 +1309,7 @@ function Initialize() {
         for (let i = 0; i < 256; i++) {
             dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
         }
+        ChengeCurrentColor(data.selected_color_index);
     });
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
@@ -1307,6 +1328,7 @@ function Initialize() {
             }
         }
     });
+    ChengeCurrentColor(data.selected_color_index);
     window.requestAnimationFrame(UpdateView);
 }
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {

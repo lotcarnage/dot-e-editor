@@ -404,8 +404,7 @@ class PenTool extends Tool {
 	public RightButtonDown(event: MouseEvent) {
 		const point = Tool.GetTilePoint(event, data.edit_scale);
 		const color_index = data.GetWrittenColorIndex(point);
-		data.selected_color_index = color_index;
-		dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
+		ChengeCurrentColor(color_index);
 		return;
 	};
 	public MouseMove(event: MouseEvent) {
@@ -489,8 +488,7 @@ class PaintTool extends Tool {
 	public RightButtonDown(event: MouseEvent) {
 		const point = Tool.GetTilePoint(event, data.edit_scale);
 		const color_index = data.GetWrittenColorIndex(point);
-		data.selected_color_index = color_index;
-		dom.palette_color.value = data.GetRgbColorFromPalette(color_index).ToHexColor();
+		ChengeCurrentColor(color_index);
 	};
 }
 
@@ -589,13 +587,25 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	return false;
 }
 
+const SetUnselectedColorCellStyle = function (color_cell: HTMLTableDataCellElement): void {
+	color_cell.style.borderStyle = 'solid';
+	color_cell.style.borderColor = '#000000';
+	color_cell.style.borderWidth = '1';
+}
+
+const SetSelectedColorCellStyle = function (color_cell: HTMLTableDataCellElement): void {
+	color_cell.style.borderStyle = 'solid';
+	color_cell.style.borderColor = '#00ff00';
+	color_cell.style.borderWidth = '1';
+}
+
 function MakeTable(table_id: string, cols: number, rows: number, parent_dom: HTMLElement)
 	: HTMLTableDataCellElement[] {
-	let tag_text = `<table id="${table_id}">`;
+	let tag_text = `<table id="${table_id}" cellspacing="0">`;
 	for (let row_i = 0; row_i < rows; row_i++) {
 		tag_text += "<tr>";
 		for (let col_i = 0; col_i < cols; col_i++) {
-			tag_text += `<td id \="${table_id}#${row_i * cols + col_i}"><canvas width="16" height="16"></canvas></td>`;
+			tag_text += `<td id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
 		}
 		tag_text += "<td>";
 	}
@@ -605,6 +615,7 @@ function MakeTable(table_id: string, cols: number, rows: number, parent_dom: HTM
 	const cells = Array<HTMLTableDataCellElement>(num_cells);
 	for (let i = 0; i < 256; i++) {
 		cells[i] = GetHtmlElement<HTMLTableDataCellElement>(`${table_id}#${i}`);
+		SetUnselectedColorCellStyle(cells[i]);
 	}
 	return cells;
 }
@@ -616,6 +627,7 @@ class Dom {
 	blank_frame: HTMLDivElement;
 	edit_frame: HTMLDivElement;
 	palette_color: HTMLInputElement;
+	color_caption: HTMLDivElement;
 	editwidth: HTMLInputElement;
 	editheight: HTMLInputElement;
 	edit_scale: HTMLSelectElement;
@@ -646,6 +658,7 @@ class Dom {
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
 		this.palette_color = GetHtmlElement<HTMLInputElement>('palette_color');
+		this.color_caption = GetHtmlElement<HTMLInputElement>('color_caption');
 		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
 		this.editheight = GetHtmlElement<HTMLInputElement>('editheight');
 		this.edit_scale = GetHtmlElement<HTMLSelectElement>('edit_scale');
@@ -857,6 +870,16 @@ const UpdateView = function () {
 	window.requestAnimationFrame(UpdateView);
 }
 
+const ChengeCurrentColor = function (new_color_index: number): void {
+	const last_index = data.selected_color_index;
+	const color = data.GetRgbColorFromPalette(new_color_index).ToHexColor();
+	dom.palette_color.value = color;
+	SetUnselectedColorCellStyle(dom.color_palette[last_index]);
+	SetSelectedColorCellStyle(dom.color_palette[new_color_index]);
+	data.selected_color_index = new_color_index;
+	dom.color_caption.innerText = `${new_color_index}:${color}`;
+}
+
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -933,8 +956,7 @@ function Initialize() {
 		data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
 		color_cell.style.backgroundColor = hex_color;
 		color_cell.addEventListener('click', () => {
-			data.selected_color_index = i;
-			dom.palette_color.value = data.GetRgbColorFromPalette(i).ToHexColor();
+			ChengeCurrentColor(i);
 		});
 	}
 	dom.palette_color.addEventListener('input', (event) => {
@@ -982,6 +1004,7 @@ function Initialize() {
 		for (let i = 0; i < 256; i++) {
 			dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
 		}
+		ChengeCurrentColor(data.selected_color_index);
 	});
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
@@ -992,6 +1015,8 @@ function Initialize() {
 			}
 		}
 	})
+
+	ChengeCurrentColor(data.selected_color_index);
 
 	window.requestAnimationFrame(UpdateView);
 }
