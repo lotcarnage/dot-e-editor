@@ -25,6 +25,12 @@ namespace Misc {
 			}
 		}
 	};
+	export function RgbToHexColor(r: number, g: number, b: number): string {
+		const r_hex = ('00' + r.toString(16)).slice(-2);
+		const g_hex = ('00' + g.toString(16)).slice(-2);
+		const b_hex = ('00' + b.toString(16)).slice(-2);
+		return `#${r_hex}${g_hex}${b_hex}`;
+	}
 	export function RgbStringToHexColor(rgb_string: string) {
 		const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
 		const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
@@ -59,5 +65,52 @@ namespace Misc {
 			}
 		}
 		return gray_colors.concat(other_colors).concat(blank_colors);
+	}
+	export function HsvToRgb(H: number, S: number, V: number): [number, number, number] {
+		/* 0 <= h < 360 */
+		const F = V * (1 - S); /* floor */
+		const C = V; /* ceil */
+		const area_index = Number(Math.floor(H / 60));
+		const coef = (area_index % 2) == 0 ? (H % 60) / 60 : 1 - (H % 60) / 60;
+		const X = coef * (C - F) + F;
+		let r: number = 0;
+		let g: number = 0;
+		let b: number = 0;
+		switch (area_index) {
+			case 0: [r, g, b] = [C, X, F]; break;
+			case 1: [r, g, b] = [X, C, F]; break;
+			case 2: [r, g, b] = [F, C, X]; break;
+			case 3: [r, g, b] = [F, X, C]; break;
+			case 4: [r, g, b] = [X, F, C]; break;
+			case 5: [r, g, b] = [C, F, X]; break;
+		}
+		return [Math.floor(r * 255), Math.floor(g * 255), Math.floor(b * 255)];
+	}
+	export function MakeHSVBalancedColorList(s_divide: 1 | 2 | 4): string[] {
+		const colors = new Array<string>(256);
+		const num_colors = 16;
+		let i = 0;
+		/* gray scale */
+		const grayscale_max_v = Math.floor(256 / num_colors);
+		for (let v = 0; v < grayscale_max_v; v++) {
+			let [r, g, b] = HsvToRgb(0, 0, v / (grayscale_max_v - 1));
+			colors[i] = this.RgbToHexColor(r, g, b);
+			i++;
+		}
+		const h_step = Math.floor(360 / (num_colors - 1));
+		const num_s = s_divide;
+		const num_v = Math.floor(256 / (s_divide * num_colors));
+		const max_s = num_s + 1;
+		const max_v = num_v + 1;
+		for (let h = 0; h < 360; h += h_step) {
+			for (let s = 1; s < max_s; s++) {
+				for (let v = 1; v < max_v; v++) {
+					let [r, g, b] = HsvToRgb(h, s / num_s, v / num_v);
+					colors[i] = this.RgbToHexColor(r, g, b);
+					i++;
+				}
+			}
+		}
+		return colors;
 	}
 }

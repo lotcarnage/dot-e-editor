@@ -626,6 +626,8 @@ class Dom {
 	view_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
 	edit_frame: HTMLDivElement;
+	default_palette_selector: HTMLSelectElement;
+	reset_color_palette_button: HTMLButtonElement;
 	palette_color: HTMLInputElement;
 	color_caption: HTMLDivElement;
 	editwidth: HTMLInputElement;
@@ -657,6 +659,8 @@ class Dom {
 		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
+		this.default_palette_selector = GetHtmlElement<HTMLSelectElement>('default_palette_selector');
+		this.reset_color_palette_button = GetHtmlElement<HTMLButtonElement>('reset_color_palette_button');
 		this.palette_color = GetHtmlElement<HTMLInputElement>('palette_color');
 		this.color_caption = GetHtmlElement<HTMLInputElement>('color_caption');
 		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
@@ -949,16 +953,33 @@ function Initialize() {
 	});
 
 	dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
-	const hex_color_string_array = Misc.MakeWebSafeColorList();
-	for (let i = 0; i < 256; i++) {
-		const color_cell = dom.color_palette[i];
-		const hex_color = hex_color_string_array[i];
-		data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
-		color_cell.style.backgroundColor = hex_color;
-		color_cell.addEventListener('click', () => {
-			ChengeCurrentColor(i);
-		});
-	}
+	const ResetColorPalette = function (palette_type: number) {
+		if (palette_type == 0) {
+			return;
+		}
+		const hex_color_string_array
+			= palette_type == 1 ? Misc.MakeHSVBalancedColorList(1)
+				: palette_type == 2 ? Misc.MakeHSVBalancedColorList(2)
+					: palette_type == 3 ? Misc.MakeHSVBalancedColorList(4)
+						: palette_type == 4 ? Misc.MakeWebSafeColorList()
+							: Misc.MakeWebSafeColorList();
+		for (let i = 0; i < 256; i++) {
+			const color_cell = dom.color_palette[i];
+			const hex_color = hex_color_string_array[i];
+			data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
+			color_cell.style.backgroundColor = hex_color;
+			color_cell.addEventListener('click', () => {
+				ChengeCurrentColor(i);
+			});
+		}
+		ChengeCurrentColor(data.selected_color_index);
+	};
+	dom.reset_color_palette_button.addEventListener('click', (event) => {
+		ResetColorPalette(Number(dom.default_palette_selector.value));
+		dom.default_palette_selector.value = "0";
+	});
+	ResetColorPalette(1);
+
 	dom.palette_color.addEventListener('input', (event) => {
 		const i = data.selected_color_index;
 		const rgb_color = data.GetRgbColorFromPalette(i);
@@ -1015,8 +1036,6 @@ function Initialize() {
 			}
 		}
 	})
-
-	ChengeCurrentColor(data.selected_color_index);
 
 	window.requestAnimationFrame(UpdateView);
 }
