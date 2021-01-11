@@ -204,11 +204,7 @@ class Data {
 		const pixel_index = this.edit_width_ * h + w;
 		this.pixels_written_set_.add(pixel_index);
 	}
-	public GetWrittenColorIndex(point: PixelPoint): number {
-		return this.pixels_[point.h][point.w];
-
-	}
-	public GetWrittenColorIndex2(w: number, h: number): number {
+	public GetWrittenColorIndex(w: number, h: number): number {
 		return this.pixels_[h][w];
 	}
 	public GetWrittenPixelSet(): Set<number> {
@@ -353,8 +349,8 @@ class RectangleTargetPixels {
 		const max_h = this.top + half_h;
 		for (let h1 = this.top, h2 = this.bottom; h1 < max_h; h1++, h2--) {
 			for (let w = this.left; w <= this.right; w++) {
-				const c1 = data.GetWrittenColorIndex2(w, h1);
-				const c2 = data.GetWrittenColorIndex2(w, h2);
+				const c1 = data.GetWrittenColorIndex(w, h1);
+				const c2 = data.GetWrittenColorIndex(w, h2);
 				data.WriteMap(w, h1, c2);
 				data.WriteMap(w, h2, c1);
 			}
@@ -365,8 +361,8 @@ class RectangleTargetPixels {
 		const max_w = this.left + half_w;
 		for (let w1 = this.left, w2 = this.right; w1 < max_w; w1++, w2--) {
 			for (let h = this.top; h <= this.bottom; h++) {
-				const c1 = data.GetWrittenColorIndex2(w1, h);
-				const c2 = data.GetWrittenColorIndex2(w2, h);
+				const c1 = data.GetWrittenColorIndex(w1, h);
+				const c2 = data.GetWrittenColorIndex(w2, h);
 				data.WriteMap(w1, h, c2);
 				data.WriteMap(w2, h, c1);
 			}
@@ -399,7 +395,7 @@ class PenTool extends Tool {
 		return;
 	};
 	public RightButtonDown(pixel_w: number, pixel_h: number) {
-		const color_index = data.GetWrittenColorIndex2(pixel_w, pixel_h);
+		const color_index = data.GetWrittenColorIndex(pixel_w, pixel_h);
 		ChengeCurrentColor(color_index);
 		return;
 	};
@@ -427,11 +423,11 @@ const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
 	const max_h: number = data.edit_height;
 	const region_pixels = new Set<number>();
 	const next_pixel_queue: PixelPoint[] = new Array<PixelPoint>();
-	const target_color_index: number = data.GetWrittenColorIndex(start_point);
+	const target_color_index: number = data.GetWrittenColorIndex(start_point.w, start_point.h);
 	region_pixels.add(start_point.ToIndex(max_w));
 	next_pixel_queue.push(start_point);
 	const AddPixelToRegion = function (new_point: PixelPoint) {
-		if (data.GetWrittenColorIndex(new_point) != target_color_index) {
+		if (data.GetWrittenColorIndex(new_point.w, new_point.h) != target_color_index) {
 			return;
 		}
 		if (region_pixels.has(new_point.ToIndex(max_w))) {
@@ -477,7 +473,7 @@ class PaintTool extends Tool {
 		});
 	};
 	public RightButtonDown(pixel_w: number, pixel_h: number) {
-		const color_index = data.GetWrittenColorIndex2(pixel_w, pixel_h);
+		const color_index = data.GetWrittenColorIndex(pixel_w, pixel_h);
 		ChengeCurrentColor(color_index);
 	};
 }
@@ -740,7 +736,7 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
 		const dst_x = w * view_scale;
 		const dst_y = h * view_scale;
-		const ci = data.GetWrittenColorIndex2(w, h);
+		const ci = data.GetWrittenColorIndex(w, h);
 		const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
 		edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
 	});
@@ -793,7 +789,7 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
 		update_w_grid_set.add(w);
 		update_h_grid_set.add(h);
-		const mi = data.GetWrittenColorIndex2(w, h);
+		const mi = data.GetWrittenColorIndex(w, h);
 		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillStyle = color;
 		edit_context.fillRect(w, h, 1, 1);
@@ -817,7 +813,7 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 	view_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = data.GetWrittenColorIndex2(w, h);
+			const mi = data.GetWrittenColorIndex(w, h);
 			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
 			view_context.fillRect(w, h, 1, 1);
 		}
@@ -831,7 +827,7 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 	edit_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = data.GetWrittenColorIndex2(w, h);
+			const mi = data.GetWrittenColorIndex(w, h);
 			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			edit_context.fillRect(w, h, 1, 1);
 		}
