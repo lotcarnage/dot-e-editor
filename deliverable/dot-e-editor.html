@@ -963,6 +963,12 @@ const GetTilePoint = function (event, block_size) {
     const h = Math.floor((event.clientY - rect.top) / block_size);
     return [w, h];
 };
+const GetTouchTilePoint = function (event, block_size) {
+    const rect = event.target.getBoundingClientRect();
+    const w = Math.floor((event.touches[0].clientX - rect.left) / block_size);
+    const h = Math.floor((event.touches[0].clientY - rect.top) / block_size);
+    return [w, h];
+};
 const MouseDownCallback = function (event) {
     if (event.button === 0) {
         tool.LeftButtonDown(...GetTilePoint(event, data.edit_scale));
@@ -988,6 +994,22 @@ const MouseOutCallback = function (event) {
     if (event.buttons == 0x01) {
         tool.MouseOut(...GetTilePoint(event, data.edit_scale));
     }
+};
+const TouchStartCallback = function (event) {
+    if (event.touches.length == 1) {
+        tool.LeftButtonDown(...GetTouchTilePoint(event, data.edit_scale));
+    }
+};
+const TouchEndCallback = function (event) {
+    if (event.touches.length == 1) {
+        tool.LeftButtonUp(...GetTouchTilePoint(event, data.edit_scale));
+    }
+};
+const TouchMoveCallback = function (event) {
+    if (event.touches.length == 1) {
+        tool.MouseMove(...GetTouchTilePoint(event, data.edit_scale));
+    }
+    event.preventDefault();
 };
 const FitDivWidth = function (modify_div_id, referencet_div_id) {
     const new_width = GetHtmlElement(referencet_div_id).clientWidth;
@@ -1276,6 +1298,9 @@ function Initialize() {
     dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
     dom.edit_canvas.addEventListener('mousemove', MouseMoveCallback);
     dom.edit_canvas.addEventListener('mouseout', MouseOutCallback);
+    dom.edit_canvas.addEventListener('touchstart', TouchStartCallback);
+    dom.edit_canvas.addEventListener('touchend', TouchEndCallback);
+    dom.edit_canvas.addEventListener('touchmove', TouchMoveCallback);
     dom.editwidth.max = max_edit_width.toString();
     dom.editheight.max = max_edit_height.toString();
     dom.editwidth.value = default_edit_width.toString();

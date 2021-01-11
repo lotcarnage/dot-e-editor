@@ -520,6 +520,12 @@ const GetTilePoint = function (event: MouseEvent, block_size: number): [number, 
 	const h: number = Math.floor((event.clientY - rect.top) / block_size);
 	return [w, h];
 };
+const GetTouchTilePoint = function (event: TouchEvent, block_size: number): [number, number] {
+	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
+	const w: number = Math.floor((event.touches[0].clientX - rect.left) / block_size);
+	const h: number = Math.floor((event.touches[0].clientY - rect.top) / block_size);
+	return [w, h];
+};
 
 const MouseDownCallback = function (event: MouseEvent) {
 	if (event.button === 0) {
@@ -548,6 +554,26 @@ const MouseOutCallback = function (event: MouseEvent) {
 		tool.MouseOut(...GetTilePoint(event, data.edit_scale));
 	}
 };
+
+const TouchStartCallback = function (event: TouchEvent) {
+	if (event.touches.length == 1) {
+		tool.LeftButtonDown(...GetTouchTilePoint(event, data.edit_scale));
+	}
+};
+
+const TouchEndCallback = function (event: TouchEvent) {
+	if (event.touches.length == 1) {
+		tool.LeftButtonUp(...GetTouchTilePoint(event, data.edit_scale));
+	}
+};
+
+const TouchMoveCallback = function (event: TouchEvent) {
+	if (event.touches.length == 1) {
+		tool.MouseMove(...GetTouchTilePoint(event, data.edit_scale));
+	}
+	event.preventDefault();
+};
+
 
 const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
 	const new_width = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientWidth;
@@ -891,6 +917,10 @@ function Initialize() {
 	dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
 	dom.edit_canvas.addEventListener('mousemove', MouseMoveCallback);
 	dom.edit_canvas.addEventListener('mouseout', MouseOutCallback);
+
+	dom.edit_canvas.addEventListener('touchstart', TouchStartCallback);
+	dom.edit_canvas.addEventListener('touchend', TouchEndCallback);
+	dom.edit_canvas.addEventListener('touchmove', TouchMoveCallback);
 
 	dom.editwidth.max = max_edit_width.toString();
 	dom.editheight.max = max_edit_height.toString();
