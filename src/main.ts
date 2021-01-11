@@ -375,56 +375,47 @@ class RectangleTargetPixels {
 }
 
 class Tool {
-	public LeftButtonDown(event: MouseEvent) { };
-	public LeftButtonUp(event: MouseEvent) { };
-	public RightButtonDown(event: MouseEvent) { };
-	public RightButtonUp(event: MouseEvent) { };
-	public MouseMove(event: MouseEvent) { };
-	public MouseOut(event: MouseEvent) { };
-	protected static GetTilePoint(event: MouseEvent, block_size: number): PixelPoint {
-		const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
-		const w: number = Math.floor((event.clientX - rect.left) / block_size);
-		const h: number = Math.floor((event.clientY - rect.top) / block_size);
-		return new PixelPoint(w, h);
-	};
+	public LeftButtonDown(pixel_w: number, pixel_h: number) { };
+	public LeftButtonUp(pixel_w: number, pixel_h: number) { };
+	public RightButtonDown(pixel_w: number, pixel_h: number) { };
+	public RightButtonUp(pixel_w: number, pixel_h: number) { };
+	public MouseMove(pixel_w: number, pixel_h: number) { };
+	public MouseOut(pixel_w: number, pixel_h: number) { };
 }
 
 class PenTool extends Tool {
-	private last_point: PixelPoint | null;
+	private is_activated: boolean = false;
+	private last_point_w: number;
+	private last_point_h: number;
 	private WritePixel = function (x: number, y: number) {
 		data.WriteMap(x, y, data.selected_color_index);
 	}
-	public LeftButtonDown(event: MouseEvent) {
+	public LeftButtonDown(pixel_w: number, pixel_h: number) {
 		data.PushUndoLog();
-		const point = Tool.GetTilePoint(event, data.edit_scale);
-		data.WriteMap(point.w, point.h, data.selected_color_index);
-		this.last_point = point;
+		data.WriteMap(pixel_w, pixel_h, data.selected_color_index);
+		this.last_point_w = pixel_w;
+		this.last_point_h = pixel_h;
+		this.is_activated = true;
 		return;
 	};
-	public RightButtonDown(event: MouseEvent) {
-		const point = Tool.GetTilePoint(event, data.edit_scale);
-		const color_index = data.GetWrittenColorIndex(point);
+	public RightButtonDown(pixel_w: number, pixel_h: number) {
+		const color_index = data.GetWrittenColorIndex2(pixel_w, pixel_h);
 		ChengeCurrentColor(color_index);
 		return;
 	};
-	public MouseMove(event: MouseEvent) {
-		if (event.buttons === 1) {
-			const point = Tool.GetTilePoint(event, data.edit_scale);
-			if (this.last_point != null) {
-				Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
-			}
-			this.last_point = point;
+	public MouseMove(pixel_w: number, pixel_h: number) {
+		if (this.is_activated) {
+			Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.WritePixel);
 		}
+		this.last_point_w = pixel_w;
+		this.last_point_h = pixel_h;
 		return;
 	};
-	public MouseOut(event: MouseEvent) {
-		if (event.buttons === 1) {
-			const point = Tool.GetTilePoint(event, data.edit_scale);
-			if (this.last_point != null) {
-				Misc.LineTo2d(this.last_point.w, this.last_point.h, point.w, point.h, this.WritePixel);
-			}
+	public MouseOut(pixel_w: number, pixel_h: number) {
+		if (this.is_activated) {
+			Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.WritePixel);
 		}
-		this.last_point = null;
+		this.is_activated = false;
 	};
 }
 
@@ -473,9 +464,9 @@ const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
 
 
 class PaintTool extends Tool {
-	public LeftButtonDown(event: MouseEvent) {
+	public LeftButtonDown(pixel_w: number, pixel_h: number) {
 		data.PushUndoLog();
-		const selected_pixel = Tool.GetTilePoint(event, data.edit_scale);
+		const selected_pixel = new PixelPoint(pixel_w, pixel_h);
 		const new_color_index = data.selected_color_index;
 		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
 		const max_w = data.edit_width;
@@ -485,9 +476,8 @@ class PaintTool extends Tool {
 			data.WriteMap(w, h, new_color_index);
 		});
 	};
-	public RightButtonDown(event: MouseEvent) {
-		const point = Tool.GetTilePoint(event, data.edit_scale);
-		const color_index = data.GetWrittenColorIndex(point);
+	public RightButtonDown(pixel_w: number, pixel_h: number) {
+		const color_index = data.GetWrittenColorIndex2(pixel_w, pixel_h);
 		ChengeCurrentColor(color_index);
 	};
 }
@@ -498,23 +488,21 @@ class RectangleSelectTool extends Tool {
 		super();
 		this.start_point = null;
 	}
-	public LeftButtonDown(event: MouseEvent) {
-		this.start_point = Tool.GetTilePoint(event, data.edit_scale);
+	public LeftButtonDown(pixel_w: number, pixel_h: number) {
+		this.start_point = new PixelPoint(pixel_w, pixel_h);
 		if (target_pixels != null) {
 			target_pixels.Update(this.start_point, this.start_point);
 		} else {
 			target_pixels = new RectangleTargetPixels(this.start_point, this.start_point);
 		}
 	};
-	public MouseMove(event: MouseEvent) {
-		if (event.buttons === 1) {
-			const point = Tool.GetTilePoint(event, data.edit_scale);
-			if (target_pixels != null && this.start_point != null) {
-				target_pixels.Update(this.start_point, point);
-			} else {
-				this.start_point = point;
-				target_pixels.Update(this.start_point, this.start_point);
-			}
+	public MouseMove(pixel_w: number, pixel_h: number) {
+		const point = new PixelPoint(pixel_w, pixel_h);
+		if (target_pixels != null && this.start_point != null) {
+			target_pixels.Update(this.start_point, point);
+		} else {
+			this.start_point = point;
+			target_pixels.Update(this.start_point, this.start_point);
 		}
 		return;
 	};
@@ -530,29 +518,39 @@ let target_pixels: RectangleTargetPixels | null = null;
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
 }
+const GetTilePoint = function (event: MouseEvent, block_size: number): [number, number] {
+	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
+	const w: number = Math.floor((event.clientX - rect.left) / block_size);
+	const h: number = Math.floor((event.clientY - rect.top) / block_size);
+	return [w, h];
+};
 
 const MouseDownCallback = function (event: MouseEvent) {
 	if (event.button === 0) {
-		tool.LeftButtonDown(event);
+		tool.LeftButtonDown(...GetTilePoint(event, data.edit_scale));
 	} else if (event.button === 2) {
-		tool.RightButtonDown(event);
+		tool.RightButtonDown(...GetTilePoint(event, data.edit_scale));
 	}
 };
 
-const MouseUpCallback = function (event) {
+const MouseUpCallback = function (event: MouseEvent) {
 	if (event.button === 0) {
-		tool.LeftButtonUp(event);
+		tool.LeftButtonUp(...GetTilePoint(event, data.edit_scale));
 	} else if (event.button === 2) {
-		tool.RightButtonUp(event);
+		tool.RightButtonUp(...GetTilePoint(event, data.edit_scale));
 	}
 };
 
-const MouseMoveCallback = function (event) {
-	tool.MouseMove(event);
+const MouseMoveCallback = function (event: MouseEvent) {
+	if (event.buttons == 0x01) {
+		tool.MouseMove(...GetTilePoint(event, data.edit_scale));
+	}
 };
 
-const MouseOutCallback = function (event) {
-	tool.MouseOut(event);
+const MouseOutCallback = function (event: MouseEvent) {
+	if (event.buttons == 0x01) {
+		tool.MouseOut(...GetTilePoint(event, data.edit_scale));
+	}
 };
 
 const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
