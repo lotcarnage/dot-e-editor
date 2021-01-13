@@ -179,6 +179,7 @@ class Data {
 		for (let h = top; h < bottom; h++) {
 			for (let w = left; w < right; w++) {
 				this.pixels_mask_[h][w] = flag;
+				this.TouchPixel(w, h);
 			}
 		}
 	}
@@ -186,6 +187,7 @@ class Data {
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
 				this.pixels_mask_[h][w] = !this.pixels_mask_[h][w];
+				this.TouchPixel(w, h);
 			}
 		}
 	}
@@ -779,25 +781,6 @@ const DrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, edit_
 	PartiallyDrawMapchipIndex(edit_context, target_maptile_set, view_scale, color);
 }
 
-const UpdateMaskedPixels = function (frame_count: number) {
-	const edit_context = dom.edit_canvas.getContext("2d");
-	edit_context.scale(1, 1);
-	const max_w = data.edit_width;
-	const max_h = data.edit_height;
-	frame_count = frame_count % (data.edit_height + data.edit_width);
-	for (let w = 0, h = frame_count - 1; w < frame_count; w++, h--) {
-		if ((max_w <= w) || (max_h <= h)) {
-			continue;
-		}
-		if (!data.IsMasked(w, h)) {
-			continue;
-		}
-		edit_context.fillStyle = '#ffffff';
-		edit_context.fillRect(w, h, 1, 1);
-		data.TouchPixel(w, h);
-	}
-}
-
 const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_scale) {
 	const written_pixel_set = data.GetWrittenPixelSet();
 
@@ -822,6 +805,19 @@ const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_sca
 		view_context.fillStyle = color;
 		view_context.fillRect(w, h, 1, 1);
 	});
+
+	/* マスク表示 */
+	edit_context.fillStyle = '#ff0000';
+	edit_context.globalAlpha = 0.5;
+	written_pixel_set.forEach((pixel_index) => {
+		const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
+		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
+		if (data.IsMasked(w, h)) {
+			edit_context.fillRect(w, h, 1, 1);
+		}
+	});
+	edit_context.globalAlpha = 1;
+
 	const grid_color = dom.grid_color.value;
 	if (dom.view_grid.checked) {
 		PartiallyDrawGrid(edit_context, update_w_grid_set, update_h_grid_set, edit_w_count, edit_h_count, view_scale, 1, grid_color);
@@ -858,6 +854,19 @@ const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
 			edit_context.fillRect(w, h, 1, 1);
 		}
 	}
+
+	/* マスク表示 */
+	edit_context.fillStyle = '#ff0000';
+	edit_context.globalAlpha = 0.5;
+	for (var h = 0; h < edit_h_count; h++) {
+		for (var w = 0; w < edit_w_count; w++) {
+			if (data.IsMasked(w, h)) {
+				edit_context.fillRect(w, h, 1, 1);
+			}
+		}
+	}
+	edit_context.globalAlpha = 1;
+
 	const grid_color = dom.grid_color.value;
 	if (dom.view_index.checked) {
 		DrawMapchipIndex(edit_context, edit_w_count, edit_h_count, view_scale, grid_color);
@@ -887,7 +896,6 @@ const UpdateView = function () {
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
 	}
-	UpdateMaskedPixels(frame_count);
 
 	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 	frame_count++;
