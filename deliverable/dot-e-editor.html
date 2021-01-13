@@ -620,8 +620,8 @@ class Data {
         this.is_edit_view_touched_ = false;
     }
     SetMaskFlagsByRectangle(left, top, right, bottom, flag) {
-        for (let h = top; h < bottom; h++) {
-            for (let w = left; w < right; w++) {
+        for (let h = top; h <= bottom; h++) {
+            for (let w = left; w <= right; w++) {
                 this.pixels_mask_[h][w] = flag;
                 this.TouchPixel(w, h);
             }
