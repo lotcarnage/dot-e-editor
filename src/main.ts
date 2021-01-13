@@ -445,16 +445,24 @@ const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
 		}
 		let pixel = next_pixel_queue.shift();
 		if (min_h < pixel.h) {
-			AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h - 1));
+			if (!data.IsMasked(pixel.w + 0, pixel.h - 1)) {
+				AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h - 1));
+			}
 		}
 		if (min_w < pixel.w) {
-			AddPixelToRegion(new PixelPoint(pixel.w - 1, pixel.h + 0));
+			if (!data.IsMasked(pixel.w - 1, pixel.h + 0)) {
+				AddPixelToRegion(new PixelPoint(pixel.w - 1, pixel.h + 0));
+			}
 		}
 		if (pixel.w < max_w - 1) {
-			AddPixelToRegion(new PixelPoint(pixel.w + 1, pixel.h + 0));
+			if (!data.IsMasked(pixel.w + 1, pixel.h + 0)) {
+				AddPixelToRegion(new PixelPoint(pixel.w + 1, pixel.h + 0));
+			}
 		}
 		if (pixel.h < max_h - 1) {
-			AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h + 1));
+			if (!data.IsMasked(pixel.w + 0, pixel.h + 1)) {
+				AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h + 1));
+			}
 		}
 	}
 	return region_pixels;
