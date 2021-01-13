@@ -126,13 +126,21 @@ class Data {
 	private selected_color_index_: number;
 	private color_palette_: RgbColor[];
 	private logger_: EditLogger;
+	private pixels_clipboard_: number[][];
+	private clipboard_stored_width_: number;
+	private clipboard_stored_height_: number;
+	private selected_bg_color_index_: number;
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
 		this.pixels_ = Misc.Make2dArray<number>(max_width, max_height, 0);
+		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
+		this.clipboard_stored_width_ = 0;
+		this.clipboard_stored_height_ = 0;
 		this.pixels_written_set_ = new Set<number>();
 		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_width, max_height, false);
 		this.selected_color_index_ = 0;
+		this.selected_bg_color_index_ = 0;
 		this.color_palette_ = new Array<RgbColor>(256);
 		for (let i = 0; i < 256; i++) {
 			this.color_palette_[i] = new RgbColor();
@@ -262,6 +270,34 @@ class Data {
 		this.TouchEditView();
 	}
 
+	public CopyToClipBoard(left: number, top: number, right: number, bottom: number): void {
+		const copy_w = right - left + 1;
+		const copy_h = bottom - top + 1;
+		for (let dst_h = 0; dst_h < copy_h; dst_h++) {
+			const src_h = top + dst_h;
+			for (let dst_w = 0; dst_w < copy_w; dst_w++) {
+				const src_w = left + dst_w;
+				this.pixels_clipboard_[dst_h][dst_w] = this.pixels_[src_h][src_w];
+			}
+		}
+		this.clipboard_stored_width_ = copy_w;
+		this.clipboard_stored_height_ = copy_h;
+	}
+
+	public PasteToCanvas(left: number, top: number) {
+		const paste_w = Math.min(this.clipboard_stored_width_, this.edit_width_ - left);
+		const paste_h = Math.min(this.clipboard_stored_height_, this.edit_height_ - top);
+		for (let src_h = 0; src_h < paste_h; src_h++) {
+			const dst_h = top + src_h;
+			for (let src_w = 0; src_w < paste_w; src_w++) {
+				if (this.selected_bg_color_index_ != this.pixels_clipboard_[src_h][src_w]) {
+					const dst_w = left + src_w;
+					data.WriteMap(dst_w, dst_h, this.pixels_clipboard_[src_h][src_w]);
+				}
+			}
+		}
+	}
+
 	public PushUndoLog(): void {
 		const current_data = data.MakeRawSaveData();
 		this.logger_.PushUndoLog(current_data);
@@ -369,6 +405,13 @@ class RectangleTargetPixels {
 				data.WriteMap(w2, h, c1);
 			}
 		}
+	}
+	public CopyToClipboard(): void {
+		data.CopyToClipBoard(this.left, this.top, this.right, this.bottom);
+	}
+	public Paste(): void {
+		data.PushUndoLog();
+		data.PasteToCanvas(this.left, this.top);
 	}
 }
 
@@ -1073,6 +1116,19 @@ function Initialize() {
 				case 'z': data.Undo(); ApplyView(); break;
 				case 'y': data.Redo(); ApplyView(); break;
 				case 'd': target_pixels = null; break;
+				case 'c':
+					if (!!target_pixels) {
+						target_pixels.CopyToClipboard();
+					}
+					break;
+				case 'v':
+					if (!!target_pixels) {
+						target_pixels.Paste();
+					} else {
+						data.PushUndoLog();
+						data.PasteToCanvas(0, 0);
+					}
+					break;
 			}
 		}
 	})
