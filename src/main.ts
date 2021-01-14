@@ -428,7 +428,10 @@ class PenTool extends Tool {
 	private is_activated: boolean = false;
 	private last_point_w: number;
 	private last_point_h: number;
-	private WritePixel = function (x: number, y: number) {
+	private WritePixel = function (x: number, y: number): void {
+		if (x < 0 || y < 0 || data.edit_width <= x || data.edit_height <= y) {
+			return;
+		}
 		data.WriteMap(x, y, data.selected_color_index);
 	}
 	public LeftButtonDown(pixel_w: number, pixel_h: number) {

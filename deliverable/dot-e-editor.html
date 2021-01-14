@@ -871,6 +871,9 @@ class PenTool extends Tool {
         super(...arguments);
         this.is_activated = false;
         this.WritePixel = function (x, y) {
+            if (x < 0 || y < 0 || data.edit_width <= x || data.edit_height <= y) {
+                return;
+            }
             data.WriteMap(x, y, data.selected_color_index);
         };
     }
