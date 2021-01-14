@@ -886,6 +886,9 @@ class PenTool extends Tool {
         return;
     }
     ;
+    LeftButtonUp(pixel_w, pixel_h) {
+        this.is_activated = false;
+    }
     RightButtonDown(pixel_w, pixel_h) {
         const color_index = data.GetWrittenColorIndex(pixel_w, pixel_h);
         ChengeCurrentColor(color_index);
@@ -898,6 +901,7 @@ class PenTool extends Tool {
         }
         this.last_point_w = pixel_w;
         this.last_point_h = pixel_h;
+        this.is_activated = true;
         return;
     }
     ;
