@@ -1167,7 +1167,6 @@ function DownloadEditData() {
 	const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
 	const [savefilename, savedata_blob] = MakeSaveData(basename, save_format)
 	const object_url = window.URL.createObjectURL(savedata_blob);
-	const user_agent = window.navigator.userAgent.toLowerCase();
 	const download_link = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 	download_link.setAttribute('href', object_url);
 	download_link.setAttribute('download', savefilename);
