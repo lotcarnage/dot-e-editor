@@ -1,5 +1,6 @@
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
+/// <reference path="./browser.ts" />
 
 class RgbColor {
 	r: number;
@@ -146,6 +147,18 @@ class Data {
 			this.color_palette_[i] = new RgbColor();
 		}
 		this.logger_ = new EditLogger();
+	}
+	public CopyFrom(other_data: Data): void {
+		this.pixels_ = other_data.pixels_;
+		this.edit_width_ = other_data.edit_width_;
+		this.edit_height_ = other_data.edit_height_;
+		this.selected_color_index_ = other_data.selected_color_index_;
+		for (let i = 0; i < 256; i++) {
+			this.color_palette_[i].r = other_data.color_palette_[i].r;
+			this.color_palette_[i].g = other_data.color_palette_[i].g;
+			this.color_palette_[i].b = other_data.color_palette_[i].b;
+		}
+		this.selected_bg_color_index_ = other_data.selected_bg_color_index_;
 	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
@@ -302,6 +315,7 @@ class Data {
 		const current_data = data.MakeRawSaveData();
 		this.logger_.PushUndoLog(current_data);
 		this.logger_.ClearRedoLog();
+		AutoSave();
 	}
 	public Undo(): void {
 		if (this.logger_.IsUndoLogEmpty()) {
@@ -970,6 +984,30 @@ const ChengeCurrentColor = function (new_color_index: number): void {
 	dom.color_caption.innerText = `${new_color_index}:${color}`;
 }
 
+const AutoSave = function () {
+	if (Browser.isStorageAvailable('localStorage')) {
+		window.localStorage.setItem('data', JSON.stringify(data));
+	}
+}
+const AutoLoad = function (): boolean {
+	if (Browser.isStorageAvailable('localStorage')) {
+		const data_json = window.localStorage.getItem('data') as string | null;
+		if (data_json != null) {
+			const load_data = JSON.parse(data_json) as Data;
+			data.CopyFrom(load_data);
+			return true;
+		}
+	}
+	return false;
+}
+
+const ApplyColorPalette = function (): void {
+	for (let i = 0; i < 256; i++) {
+		const color_cell = dom.color_palette[i];
+		color_cell.style.backgroundColor = data.GetRgbColorFromPalette(i).ToHexColor();
+	}
+}
+
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -1043,6 +1081,12 @@ function Initialize() {
 	});
 
 	dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
+	for (let i = 0; i < 256; i++) {
+		dom.color_palette[i].addEventListener('click', () => {
+			ChengeCurrentColor(i);
+		});
+	}
+
 	const ResetColorPalette = function (palette_type: number) {
 		if (palette_type == 0) {
 			return;
@@ -1058,9 +1102,6 @@ function Initialize() {
 			const hex_color = hex_color_string_array[i];
 			data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
 			color_cell.style.backgroundColor = hex_color;
-			color_cell.addEventListener('click', () => {
-				ChengeCurrentColor(i);
-			});
 		}
 		ChengeCurrentColor(data.selected_color_index);
 	};
@@ -1068,7 +1109,13 @@ function Initialize() {
 		ResetColorPalette(Number(dom.default_palette_selector.value));
 		dom.default_palette_selector.value = "0";
 	});
-	ResetColorPalette(1);
+	if (AutoLoad()) {
+		ApplyColorPalette();
+	} else {
+		ResetColorPalette(1);
+	}
+	dom.editwidth.value = data.edit_width.toString();
+	dom.editheight.value = data.edit_height.toString();
 
 	dom.palette_color.addEventListener('input', (event) => {
 		const i = data.selected_color_index;
@@ -1120,6 +1167,7 @@ function Initialize() {
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {
+				case 's': AutoSave(); break;
 				case 'z': data.Undo(); ApplyView(); break;
 				case 'y': data.Redo(); ApplyView(); break;
 				case 'd': target_pixels = null; break;

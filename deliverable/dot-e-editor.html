@@ -219,6 +219,34 @@
 /*!***********************!*\
   !*** ./built/main.js ***!
   \***********************/
+var Browser;
+(function (Browser) {
+    function isStorageAvailable(type) {
+        let storage;
+        try {
+            storage = window[type];
+            const x = '__storage_test__';
+            storage.setItem(x, x);
+            storage.removeItem(x);
+            return true;
+        }
+        catch (e) {
+            return (e instanceof DOMException) && (
+            // everything except Firefox
+            e.code === 22 ||
+                // Firefox
+                e.code === 1014 ||
+                // test name field too, because code might not be present
+                // everything except Firefox
+                e.name === 'QuotaExceededError' ||
+                // Firefox
+                e.name === 'NS_ERROR_DOM_QUOTA_REACHED') &&
+                // acknowledge QuotaExceededError only if there's something already stored
+                (storage && storage.length !== 0);
+        }
+    }
+    Browser.isStorageAvailable = isStorageAvailable;
+})(Browser || (Browser = {}));
 var WindowsIndexColorBitmap;
 (function (WindowsIndexColorBitmap) {
     const bmp_file_header_size = 14;
@@ -478,6 +506,7 @@ var Misc;
 })(Misc || (Misc = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
+/// <reference path="./browser.ts" />
 class RgbColor {
     constructor(r = 0, g = 0, b = 0) {
         this.r = r;
@@ -594,6 +623,18 @@ class Data {
             this.color_palette_[i] = new RgbColor();
         }
         this.logger_ = new EditLogger();
+    }
+    CopyFrom(other_data) {
+        this.pixels_ = other_data.pixels_;
+        this.edit_width_ = other_data.edit_width_;
+        this.edit_height_ = other_data.edit_height_;
+        this.selected_color_index_ = other_data.selected_color_index_;
+        for (let i = 0; i < 256; i++) {
+            this.color_palette_[i].r = other_data.color_palette_[i].r;
+            this.color_palette_[i].g = other_data.color_palette_[i].g;
+            this.color_palette_[i].b = other_data.color_palette_[i].b;
+        }
+        this.selected_bg_color_index_ = other_data.selected_bg_color_index_;
     }
     get edit_scale() {
         return this.edit_scale_;
@@ -747,6 +788,7 @@ class Data {
         const current_data = data.MakeRawSaveData();
         this.logger_.PushUndoLog(current_data);
         this.logger_.ClearRedoLog();
+        AutoSave();
     }
     Undo() {
         if (this.logger_.IsUndoLogEmpty()) {
@@ -1350,6 +1392,28 @@ const ChengeCurrentColor = function (new_color_index) {
     data.selected_color_index = new_color_index;
     dom.color_caption.innerText = `${new_color_index}:${color}`;
 };
+const AutoSave = function () {
+    if (Browser.isStorageAvailable('localStorage')) {
+        window.localStorage.setItem('data', JSON.stringify(data));
+    }
+};
+const AutoLoad = function () {
+    if (Browser.isStorageAvailable('localStorage')) {
+        const data_json = window.localStorage.getItem('data');
+        if (data_json != null) {
+            const load_data = JSON.parse(data_json);
+            data.CopyFrom(load_data);
+            return true;
+        }
+    }
+    return false;
+};
+const ApplyColorPalette = function () {
+    for (let i = 0; i < 256; i++) {
+        const color_cell = dom.color_palette[i];
+        color_cell.style.backgroundColor = data.GetRgbColorFromPalette(i).ToHexColor();
+    }
+};
 function Initialize() {
     dom.Initialize();
     const edit_reader = new FileReader();
@@ -1418,6 +1482,11 @@ function Initialize() {
         data.TouchEditView();
     });
     dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
+    for (let i = 0; i < 256; i++) {
+        dom.color_palette[i].addEventListener('click', () => {
+            ChengeCurrentColor(i);
+        });
+    }
     const ResetColorPalette = function (palette_type) {
         if (palette_type == 0) {
             return;
@@ -1432,9 +1501,6 @@ function Initialize() {
             const hex_color = hex_color_string_array[i];
             data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
             color_cell.style.backgroundColor = hex_color;
-            color_cell.addEventListener('click', () => {
-                ChengeCurrentColor(i);
-            });
         }
         ChengeCurrentColor(data.selected_color_index);
     };
@@ -1442,7 +1508,14 @@ function Initialize() {
         ResetColorPalette(Number(dom.default_palette_selector.value));
         dom.default_palette_selector.value = "0";
     });
-    ResetColorPalette(1);
+    if (AutoLoad()) {
+        ApplyColorPalette();
+    }
+    else {
+        ResetColorPalette(1);
+    }
+    dom.editwidth.value = data.edit_width.toString();
+    dom.editheight.value = data.edit_height.toString();
     dom.palette_color.addEventListener('input', (event) => {
         const i = data.selected_color_index;
         const rgb_color = data.GetRgbColorFromPalette(i);
@@ -1492,6 +1565,9 @@ function Initialize() {
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             switch (event.key) {
+                case 's':
+                    AutoSave();
+                    break;
                 case 'z':
                     data.Undo();
                     ApplyView();
