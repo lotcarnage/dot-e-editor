@@ -259,15 +259,15 @@ class Data {
 	public MakeRawSaveData(): IndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
-		const save_tiles = new Array(edit_h_count);
+		const save_pixels = new Array<number[]>(edit_h_count);
 		for (var h = 0; h < edit_h_count; h++) {
-			save_tiles[h] = this.pixels_[h].slice(0, edit_w_count);
+			save_pixels[h] = this.pixels_[h].slice(0, edit_w_count);
 		}
 		const color_palette = new Array(256);
 		for (var i = 0; i < 256; i++) {
 			color_palette[i] = this.color_palette_[i].ToRgbString();
 		}
-		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_tiles);
+		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_pixels);
 	}
 	public ApplyRawData(raw_data: IndexColorBitmap): void {
 		this.edit_width_ = raw_data.width;
@@ -588,13 +588,13 @@ let target_pixels: RectangleTargetPixels | null = null;
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
 }
-const GetTilePoint = function (event: MouseEvent, block_size: number): [number, number] {
+const GetPixelPoint = function (event: MouseEvent, block_size: number): [number, number] {
 	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
 	const w: number = Math.floor((event.clientX - rect.left) / block_size);
 	const h: number = Math.floor((event.clientY - rect.top) / block_size);
 	return [w, h];
 };
-const GetTouchTilePoint = function (event: TouchEvent, block_size: number): [number, number] {
+const GetTouchPixelPoint = function (event: TouchEvent, block_size: number): [number, number] {
 	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
 	const w: number = Math.floor((event.touches[0].clientX - rect.left) / block_size);
 	const h: number = Math.floor((event.touches[0].clientY - rect.top) / block_size);
@@ -603,47 +603,47 @@ const GetTouchTilePoint = function (event: TouchEvent, block_size: number): [num
 
 const MouseDownCallback = function (event: MouseEvent) {
 	if (event.button === 0) {
-		tool.LeftButtonDown(...GetTilePoint(event, data.edit_scale));
+		tool.LeftButtonDown(...GetPixelPoint(event, data.edit_scale));
 	} else if (event.button === 2) {
-		tool.RightButtonDown(...GetTilePoint(event, data.edit_scale));
+		tool.RightButtonDown(...GetPixelPoint(event, data.edit_scale));
 	}
 };
 
 const MouseUpCallback = function (event: MouseEvent) {
 	if (event.button === 0) {
-		tool.LeftButtonUp(...GetTilePoint(event, data.edit_scale));
+		tool.LeftButtonUp(...GetPixelPoint(event, data.edit_scale));
 	} else if (event.button === 2) {
-		tool.RightButtonUp(...GetTilePoint(event, data.edit_scale));
+		tool.RightButtonUp(...GetPixelPoint(event, data.edit_scale));
 	}
 };
 
 const MouseMoveCallback = function (event: MouseEvent) {
 	if (event.buttons == 0x01) {
-		tool.MouseMove(...GetTilePoint(event, data.edit_scale));
+		tool.MouseMove(...GetPixelPoint(event, data.edit_scale));
 	}
 };
 
 const MouseOutCallback = function (event: MouseEvent) {
 	if (event.buttons == 0x01) {
-		tool.MouseOut(...GetTilePoint(event, data.edit_scale));
+		tool.MouseOut(...GetPixelPoint(event, data.edit_scale));
 	}
 };
 
 const TouchStartCallback = function (event: TouchEvent) {
 	if (event.touches.length == 1) {
-		tool.LeftButtonDown(...GetTouchTilePoint(event, data.edit_scale));
+		tool.LeftButtonDown(...GetTouchPixelPoint(event, data.edit_scale));
 	}
 };
 
 const TouchEndCallback = function (event: TouchEvent) {
 	if (event.touches.length == 1) {
-		tool.LeftButtonUp(...GetTouchTilePoint(event, data.edit_scale));
+		tool.LeftButtonUp(...GetTouchPixelPoint(event, data.edit_scale));
 	}
 };
 
 const TouchMoveCallback = function (event: TouchEvent) {
 	if (event.touches.length == 1) {
-		tool.MouseMove(...GetTouchTilePoint(event, data.edit_scale));
+		tool.MouseMove(...GetTouchPixelPoint(event, data.edit_scale));
 	}
 	event.preventDefault();
 };
@@ -821,7 +821,7 @@ const DrawGrid = function (canvas_context, width_count, height_count, scale, gri
 	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
 }
 
-const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, target_maptile_set: Set<number>, view_scale: number, color) {
+const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, target_pixel_set: Set<number>, view_scale: number, color) {
 	const font_size = view_font_size;
 	edit_context.save();
 	edit_context.textAlign = "center";
@@ -831,7 +831,7 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 	edit_context.scale(1 / view_scale, 1 / view_scale);
 	const y_offset = font_size / 2;
 	const width = data.edit_width;
-	target_maptile_set.forEach((pixel_index) => {
+	target_pixel_set.forEach((pixel_index) => {
 		const w = PixelPoint.IndexToPixelPointW(pixel_index, width);
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
 		const dst_x = w * view_scale;
@@ -844,16 +844,16 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 }
 
 const DrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, edit_w_count, edit_h_count, view_scale, color) {
-	const target_maptile_set = new Set<number>();
+	const target_pixel_set = new Set<number>();
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			target_maptile_set.add((new PixelPoint(w, h)).ToIndex(edit_w_count));
+			target_pixel_set.add((new PixelPoint(w, h)).ToIndex(edit_w_count));
 		}
 	}
-	PartiallyDrawMapchipIndex(edit_context, target_maptile_set, view_scale, color);
+	PartiallyDrawMapchipIndex(edit_context, target_pixel_set, view_scale, color);
 }
 
-const UpdateEditViewUpdateTiles = function (edit_w_count, edit_h_count, view_scale) {
+const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale) {
 	const written_pixel_set = data.GetWrittenPixelSet();
 
 	const edit_context = dom.edit_canvas.getContext("2d");
@@ -913,7 +913,7 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 		}
 	}
 }
-const UpdateEditView = function (edit_w_count, edit_h_count, view_scale) {
+const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	const edit_context = dom.edit_canvas.getContext("2d");
 	dom.edit_canvas.width = edit_w_count * view_scale;
 	dom.edit_canvas.height = edit_h_count * view_scale;
@@ -959,10 +959,10 @@ const UpdateView = function () {
 		is_preview_touched = false;
 	}
 	if (data.is_edit_view_touched) {
-		UpdateEditView(data.edit_width, data.edit_height, data.edit_scale);
+		DrawCanvasPixelsAll(data.edit_width, data.edit_height, data.edit_scale);
 		data.ClearEditViewTouchedFlag();
 	} else {
-		UpdateEditViewUpdateTiles(data.edit_width, data.edit_height, data.edit_scale);
+		DrawCanvasPixelsPartial(data.edit_width, data.edit_height, data.edit_scale);
 	}
 	if (target_pixels != null) {
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
