@@ -11,7 +11,7 @@ namespace Misc {
 
 		for (; ;) {
 			PixelOnLineCallback(x0, y0);
-			if ((x0 == x1) && (y0 == y1)) {
+			if ((x0 === x1) && (y0 === y1)) {
 				break;
 			}
 			const e2 = e1 * 2;
@@ -56,7 +56,7 @@ namespace Misc {
 			for (let g = 0; g < 6; g++) {
 				for (let r = 0; r < 6; r++) {
 					const color = `#${c[r]}${c[g]}${c[b]}`;
-					if (r == g && r == b) {
+					if (r === g && r === b) {
 						gray_colors.push(color);
 					} else {
 						other_colors.push(color);
@@ -71,7 +71,7 @@ namespace Misc {
 		const F = V * (1 - S); /* floor */
 		const C = V; /* ceil */
 		const area_index = Number(Math.floor(H / 60));
-		const coef = (area_index % 2) == 0 ? (H % 60) / 60 : 1 - (H % 60) / 60;
+		const coef = (area_index % 2) === 0 ? (H % 60) / 60 : 1 - (H % 60) / 60;
 		const X = coef * (C - F) + F;
 		let r: number = 0;
 		let g: number = 0;

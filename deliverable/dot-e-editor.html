@@ -327,26 +327,26 @@ var WindowsIndexColorBitmap;
         const bytes = new Uint8Array(buffer);
         console.log(bytes[0]);
         console.log(bytes[1]);
-        if (bytes[0] != 0x42) {
+        if (bytes[0] !== 0x42) {
             return null;
         }
-        if (bytes[1] != 0x4d) {
+        if (bytes[1] !== 0x4d) {
             return null;
         }
-        if (Load32LE(bytes, 10) != pixels_offset) {
+        if (Load32LE(bytes, 10) !== pixels_offset) {
             return null;
         }
-        if (Load16LE(bytes, 26) != 1) {
+        if (Load16LE(bytes, 26) !== 1) {
             return null;
         }
-        if (Load16LE(bytes, 28) != 8) {
+        if (Load16LE(bytes, 28) !== 8) {
             return null;
         }
         const width = Load32LE(bytes, 18);
         const height = Load32LE(bytes, 22);
         const bmp_width = Math.ceil(width / 4) * 4;
         const pixels_size = bmp_width * height;
-        if (Load32LE(bytes, 34) != pixels_size) {
+        if (Load32LE(bytes, 34) !== pixels_size) {
             return null;
         }
         const color_palette = new Array(256);
@@ -383,7 +383,7 @@ var Misc;
         let e1 = dx - dy;
         for (;;) {
             PixelOnLineCallback(x0, y0);
-            if ((x0 == x1) && (y0 == y1)) {
+            if ((x0 === x1) && (y0 === y1)) {
                 break;
             }
             const e2 = e1 * 2;
@@ -433,7 +433,7 @@ var Misc;
             for (let g = 0; g < 6; g++) {
                 for (let r = 0; r < 6; r++) {
                     const color = `#${c[r]}${c[g]}${c[b]}`;
-                    if (r == g && r == b) {
+                    if (r === g && r === b) {
                         gray_colors.push(color);
                     }
                     else {
@@ -450,7 +450,7 @@ var Misc;
         const F = V * (1 - S); /* floor */
         const C = V; /* ceil */
         const area_index = Number(Math.floor(H / 60));
-        const coef = (area_index % 2) == 0 ? (H % 60) / 60 : 1 - (H % 60) / 60;
+        const coef = (area_index % 2) === 0 ? (H % 60) / 60 : 1 - (H % 60) / 60;
         const X = coef * (C - F) + F;
         let r = 0;
         let g = 0;
@@ -580,10 +580,10 @@ class EditLogger {
         this.redo_stack_ = new Array(0);
     }
     IsUndoLogEmpty() {
-        return (this.undo_stack_.length == 0) ? true : false;
+        return (this.undo_stack_.length === 0) ? true : false;
     }
     IsRedoLogEmpty() {
-        return (this.redo_stack_.length == 0) ? true : false;
+        return (this.redo_stack_.length === 0) ? true : false;
     }
     PushUndoLog(log_data) {
         this.undo_stack_.push(log_data);
@@ -729,7 +729,7 @@ class Data {
             }
         }
         for (let i = 0; i < 256; i++) {
-            if (histogram[i] == 0) {
+            if (histogram[i] === 0) {
                 data.color_palette_[i].r = 0;
                 data.color_palette_[i].g = 0;
                 data.color_palette_[i].b = 0;
@@ -781,7 +781,7 @@ class Data {
         for (let src_h = 0; src_h < paste_h; src_h++) {
             const dst_h = top + src_h;
             for (let src_w = 0; src_w < paste_w; src_w++) {
-                if (this.selected_bg_color_index_ != this.pixels_clipboard_[src_h][src_w]) {
+                if (this.selected_bg_color_index_ !== this.pixels_clipboard_[src_h][src_w]) {
                     const dst_w = left + src_w;
                     data.WriteMap(dst_w, dst_h, this.pixels_clipboard_[src_h][src_w]);
                 }
@@ -973,7 +973,7 @@ const ExtractRegionPixelSet = function (start_point) {
     region_pixels.add(start_point.ToIndex(max_w));
     next_pixel_queue.push(start_point);
     const AddPixelToRegion = function (new_point) {
-        if (data.GetWrittenColorIndex(new_point.w, new_point.h) != target_color_index) {
+        if (data.GetWrittenColorIndex(new_point.w, new_point.h) !== target_color_index) {
             return;
         }
         if (region_pixels.has(new_point.ToIndex(max_w))) {
@@ -984,7 +984,7 @@ const ExtractRegionPixelSet = function (start_point) {
         return;
     };
     for (;;) {
-        if (next_pixel_queue.length == 0) {
+        if (next_pixel_queue.length === 0) {
             break;
         }
         let pixel = next_pixel_queue.shift();
@@ -1038,7 +1038,7 @@ class RectangleSelectTool extends Tool {
     }
     LeftButtonDown(pixel_w, pixel_h) {
         this.start_point = new PixelPoint(pixel_w, pixel_h);
-        if (target_pixels != null) {
+        if (target_pixels !== null) {
             target_pixels.Update(this.start_point, this.start_point);
         }
         else {
@@ -1048,7 +1048,7 @@ class RectangleSelectTool extends Tool {
     ;
     MouseMove(pixel_w, pixel_h) {
         const point = new PixelPoint(pixel_w, pixel_h);
-        if (target_pixels != null && this.start_point != null) {
+        if (target_pixels !== null && this.start_point !== null) {
             target_pixels.Update(this.start_point, point);
         }
         else {
@@ -1097,27 +1097,27 @@ const MouseUpCallback = function (event) {
     }
 };
 const MouseMoveCallback = function (event) {
-    if (event.buttons == 0x01) {
+    if (event.buttons === 0x01) {
         tool.MouseMove(...GetPixelPoint(event, data.edit_scale));
     }
 };
 const MouseOutCallback = function (event) {
-    if (event.buttons == 0x01) {
+    if (event.buttons === 0x01) {
         tool.MouseOut(...GetPixelPoint(event, data.edit_scale));
     }
 };
 const TouchStartCallback = function (event) {
-    if (event.touches.length == 1) {
+    if (event.touches.length === 1) {
         tool.LeftButtonDown(...GetTouchPixelPoint(event, data.edit_scale));
     }
 };
 const TouchEndCallback = function (event) {
-    if (event.touches.length == 1) {
+    if (event.touches.length === 1) {
         tool.LeftButtonUp(...GetTouchPixelPoint(event, data.edit_scale));
     }
 };
 const TouchMoveCallback = function (event) {
-    if (event.touches.length == 1) {
+    if (event.touches.length === 1) {
         tool.MouseMove(...GetTouchPixelPoint(event, data.edit_scale));
     }
     event.preventDefault();
@@ -1138,7 +1138,7 @@ const TryReadEditDataByJson = function (bytes) {
 };
 const LoadEditData = function (bytes) {
     const bmp_data = WindowsIndexColorBitmap.Deserialize(bytes);
-    if (bmp_data != null) {
+    if (bmp_data !== null) {
         const [color_palette, pixels, width, height] = bmp_data;
         const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
         data.ApplyRawData(raw_data);
@@ -1406,7 +1406,7 @@ const UpdateView = function () {
     else {
         DrawCanvasPixelsPartial(data.edit_width, data.edit_height, data.edit_scale);
     }
-    if (target_pixels != null) {
+    if (target_pixels !== null) {
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
     }
@@ -1431,7 +1431,7 @@ const AutoSave = function () {
 const AutoLoad = function () {
     if (Browser.isStorageAvailable('localStorage')) {
         const data_json = window.localStorage.getItem('data');
-        if (data_json != null) {
+        if (data_json !== null) {
             const load_data = JSON.parse(data_json);
             data.CopyFrom(load_data);
             return true;
@@ -1522,13 +1522,13 @@ function Initialize() {
         });
     }
     const ResetColorPalette = function (palette_type) {
-        if (palette_type == 0) {
+        if (palette_type === 0) {
             return;
         }
-        const hex_color_string_array = palette_type == 1 ? Misc.MakeHSVBalancedColorList(1)
-            : palette_type == 2 ? Misc.MakeHSVBalancedColorList(2)
-                : palette_type == 3 ? Misc.MakeHSVBalancedColorList(4)
-                    : palette_type == 4 ? Misc.MakeWebSafeColorList()
+        const hex_color_string_array = palette_type === 1 ? Misc.MakeHSVBalancedColorList(1)
+            : palette_type === 2 ? Misc.MakeHSVBalancedColorList(2)
+                : palette_type === 3 ? Misc.MakeHSVBalancedColorList(4)
+                    : palette_type === 4 ? Misc.MakeWebSafeColorList()
                         : Misc.MakeWebSafeColorList();
         for (let i = 0; i < 256; i++) {
             const color_cell = dom.color_palette[i];
@@ -1566,17 +1566,17 @@ function Initialize() {
         ApplyView();
     });
     dom.v_turn_button.addEventListener('click', (event) => {
-        if (target_pixels != null) {
+        if (target_pixels !== null) {
             target_pixels.VerticalTurn();
         }
     });
     dom.h_turn_button.addEventListener('click', (event) => {
-        if (target_pixels != null) {
+        if (target_pixels !== null) {
             target_pixels.HorizontalTurn();
         }
     });
     dom.break_to_mask_button.addEventListener('click', (event) => {
-        if (target_pixels != null) {
+        if (target_pixels !== null) {
             target_pixels.BrakedownToPixelMask();
         }
     });

@@ -82,26 +82,26 @@ namespace WindowsIndexColorBitmap {
 		const bytes = new Uint8Array(buffer);
 		console.log(bytes[0]);
 		console.log(bytes[1]);
-		if (bytes[0] != 0x42) {
+		if (bytes[0] !== 0x42) {
 			return null;
 		}
-		if (bytes[1] != 0x4d) {
+		if (bytes[1] !== 0x4d) {
 			return null;
 		}
-		if (Load32LE(bytes, 10) != pixels_offset) {
+		if (Load32LE(bytes, 10) !== pixels_offset) {
 			return null;
 		}
-		if (Load16LE(bytes, 26) != 1) {
+		if (Load16LE(bytes, 26) !== 1) {
 			return null;
 		}
-		if (Load16LE(bytes, 28) != 8) {
+		if (Load16LE(bytes, 28) !== 8) {
 			return null;
 		}
 		const width = Load32LE(bytes, 18);
 		const height = Load32LE(bytes, 22);
 		const bmp_width = Math.ceil(width / 4) * 4;
 		const pixels_size = bmp_width * height;
-		if (Load32LE(bytes, 34) != pixels_size) {
+		if (Load32LE(bytes, 34) !== pixels_size) {
 			return null;
 		}
 
