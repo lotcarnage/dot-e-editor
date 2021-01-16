@@ -337,10 +337,14 @@ class Data {
 	}
 }
 
-const ApplyView = function (): void {
+const ApplyColorPalette = function (): void {
 	for (let i = 0; i < 256; i++) {
 		dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
 	}
+}
+
+const ApplyView = function (): void {
+	ApplyColorPalette();
 	dom.editwidth.value = data.edit_width.toString();
 	dom.editheight.value = data.edit_height.toString();
 	return;
@@ -1001,13 +1005,6 @@ const AutoLoad = function (): boolean {
 	return false;
 }
 
-const ApplyColorPalette = function (): void {
-	for (let i = 0; i < 256; i++) {
-		const color_cell = dom.color_palette[i];
-		color_cell.style.backgroundColor = data.GetRgbColorFromPalette(i).ToHexColor();
-	}
-}
-
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -1159,9 +1156,7 @@ function Initialize() {
 	});
 	dom.delete_all_unused_colors_button.addEventListener('click', (event) => {
 		data.DeleteAllUnusedColors();
-		for (let i = 0; i < 256; i++) {
-			dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
-		}
+		ApplyColorPalette();
 		ChengeCurrentColor(data.selected_color_index);
 	});
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
