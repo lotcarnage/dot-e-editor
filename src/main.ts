@@ -72,6 +72,7 @@ const max_edit_height: number = 512;
 const default_edit_width: number = 32;
 const default_edit_height: number = 32;
 const default_edit_scale: number = 8;
+const large_grid_color = '#ffff00';
 
 class EditLogger {
 	private undo_stack_: IndexColorBitmap[];
@@ -735,6 +736,9 @@ class Dom {
 	edit_filepath: HTMLInputElement;
 	view_index: HTMLInputElement;
 	view_grid: HTMLInputElement;
+	view_large_grid: HTMLInputElement;
+	large_grid_width: HTMLInputElement;
+	large_grid_height: HTMLInputElement;
 	dom_pen_tool: HTMLInputElement;
 	dom_paint_tool: HTMLInputElement;
 	dom_rectangle_select_tool: HTMLInputElement;
@@ -768,6 +772,9 @@ class Dom {
 		this.edit_filepath = GetHtmlElement<HTMLInputElement>('edit_filepath');
 		this.view_index = GetHtmlElement<HTMLInputElement>('view_index');
 		this.view_grid = GetHtmlElement<HTMLInputElement>('view_grid');
+		this.view_large_grid = GetHtmlElement<HTMLInputElement>('view_large_grid');
+		this.large_grid_width = GetHtmlElement<HTMLInputElement>('large_grid_width');
+		this.large_grid_height = GetHtmlElement<HTMLInputElement>('large_grid_height');
 		this.dom_pen_tool = GetHtmlElement<HTMLInputElement>('pen_tool');
 		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
 		this.dom_rectangle_select_tool = GetHtmlElement<HTMLInputElement>('rectangle_select_tool');
@@ -824,6 +831,22 @@ const DrawGrid = function (canvas_context, width_count, height_count, scale, gri
 	}
 	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
 }
+
+const DrawLargeGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
+	const all_w_grid_set = new Set();
+	const all_h_grid_set = new Set();
+	const large_grid_width = Math.min(512, Math.max(2, dom.large_grid_width.valueAsNumber));
+	const large_grid_height = Math.min(512, Math.max(2, dom.large_grid_height.valueAsNumber));
+	for (var w = large_grid_width; w <= width_count; w += large_grid_width) {
+		all_w_grid_set.add(w - 1);
+	}
+	for (var h = large_grid_height; h <= height_count; h += large_grid_height) {
+		all_h_grid_set.add(h - 1);
+	}
+	canvas_context.setLineDash([0.5, 0.5]);
+	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
+}
+
 
 const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, target_pixel_set: Set<number>, view_scale: number, color) {
 	const font_size = view_font_size;
@@ -901,6 +924,9 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 	if (dom.view_index.checked) {
 		PartiallyDrawMapchipIndex(edit_context, written_pixel_set, view_scale, grid_color);
 	}
+	if (dom.view_large_grid.checked) {
+		DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
+	}
 	written_pixel_set.clear();
 }
 const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
@@ -949,6 +975,9 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	}
 	if (dom.view_grid.checked) {
 		DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
+	}
+	if (dom.view_large_grid.checked) {
+		DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
 	}
 	data.GetWrittenPixelSet().clear();
 }
@@ -1051,6 +1080,15 @@ function Initialize() {
 		data.TouchEditView();
 	});
 	dom.view_grid.addEventListener('change', (event) => {
+		data.TouchEditView();
+	});
+	dom.view_large_grid.addEventListener('change', (event) => {
+		data.TouchEditView();
+	});
+	dom.large_grid_width.addEventListener('change', (event) => {
+		data.TouchEditView();
+	});
+	dom.large_grid_height.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
 	dom.grid_color.addEventListener('input', (event) => {

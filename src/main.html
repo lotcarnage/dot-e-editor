@@ -90,10 +90,16 @@
     <div class="layout">
         <div class="vbox" id="settingsblock">
             <div class="hbox">
+                <input type="checkbox" id="view_grid" checked>
+                <label for="view_grid">小グリッド</label>
                 <input type="checkbox" id="view_index">
                 <label for="view_index">色番号表示</label>
-                <input type="checkbox" id="view_grid" checked>
-                <label for="view_grid">グリッド表示</label>
+            </div>
+            <div class="hbox">
+                <input type="checkbox" id="view_large_grid" checked>
+                <label for="view_large_grid">大グリッド</label>
+                <input type="number" id="large_grid_width" min="2" max="512" value="16">
+                <input type="number" id="large_grid_height" min="2" max="512" value="16">
             </div>
             <div class="hbox">
                 <label for="grid_color">グリッド／番号色</label>

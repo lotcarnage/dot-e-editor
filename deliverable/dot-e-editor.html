@@ -90,10 +90,16 @@
     <div class="layout">
         <div class="vbox" id="settingsblock">
             <div class="hbox">
+                <input type="checkbox" id="view_grid" checked>
+                <label for="view_grid">小グリッド</label>
                 <input type="checkbox" id="view_index">
                 <label for="view_index">色番号表示</label>
-                <input type="checkbox" id="view_grid" checked>
-                <label for="view_grid">グリッド表示</label>
+            </div>
+            <div class="hbox">
+                <input type="checkbox" id="view_large_grid" checked>
+                <label for="view_large_grid">大グリッド</label>
+                <input type="number" id="large_grid_width" min="2" max="512" value="16">
+                <input type="number" id="large_grid_height" min="2" max="512" value="16">
             </div>
             <div class="hbox">
                 <label for="grid_color">グリッド／番号色</label>
@@ -570,6 +576,7 @@ const max_edit_height = 512;
 const default_edit_width = 32;
 const default_edit_height = 32;
 const default_edit_scale = 8;
+const large_grid_color = '#ffff00';
 class EditLogger {
     constructor() {
         this.undo_stack_ = new Array(0);
@@ -1193,6 +1200,9 @@ class Dom {
         this.edit_filepath = GetHtmlElement('edit_filepath');
         this.view_index = GetHtmlElement('view_index');
         this.view_grid = GetHtmlElement('view_grid');
+        this.view_large_grid = GetHtmlElement('view_large_grid');
+        this.large_grid_width = GetHtmlElement('large_grid_width');
+        this.large_grid_height = GetHtmlElement('large_grid_height');
         this.dom_pen_tool = GetHtmlElement('pen_tool');
         this.dom_paint_tool = GetHtmlElement('paint_tool');
         this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
@@ -1243,6 +1253,20 @@ const DrawGrid = function (canvas_context, width_count, height_count, scale, gri
     for (var h = 0; h < height_count; h++) {
         all_h_grid_set.add(h);
     }
+    PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
+};
+const DrawLargeGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
+    const all_w_grid_set = new Set();
+    const all_h_grid_set = new Set();
+    const large_grid_width = Math.min(512, Math.max(2, dom.large_grid_width.valueAsNumber));
+    const large_grid_height = Math.min(512, Math.max(2, dom.large_grid_height.valueAsNumber));
+    for (var w = large_grid_width; w <= width_count; w += large_grid_width) {
+        all_w_grid_set.add(w - 1);
+    }
+    for (var h = large_grid_height; h <= height_count; h += large_grid_height) {
+        all_h_grid_set.add(h - 1);
+    }
+    canvas_context.setLineDash([0.5, 0.5]);
     PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
 };
 const PartiallyDrawMapchipIndex = function (edit_context, target_pixel_set, view_scale, color) {
@@ -1314,6 +1338,9 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
     if (dom.view_index.checked) {
         PartiallyDrawMapchipIndex(edit_context, written_pixel_set, view_scale, grid_color);
     }
+    if (dom.view_large_grid.checked) {
+        DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
+    }
     written_pixel_set.clear();
 };
 const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
@@ -1361,6 +1388,9 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
     }
     if (dom.view_grid.checked) {
         DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
+    }
+    if (dom.view_large_grid.checked) {
+        DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
     }
     data.GetWrittenPixelSet().clear();
 };
@@ -1454,6 +1484,15 @@ function Initialize() {
         data.TouchEditView();
     });
     dom.view_grid.addEventListener('change', (event) => {
+        data.TouchEditView();
+    });
+    dom.view_large_grid.addEventListener('change', (event) => {
+        data.TouchEditView();
+    });
+    dom.large_grid_width.addEventListener('change', (event) => {
+        data.TouchEditView();
+    });
+    dom.large_grid_height.addEventListener('change', (event) => {
         data.TouchEditView();
     });
     dom.grid_color.addEventListener('input', (event) => {
