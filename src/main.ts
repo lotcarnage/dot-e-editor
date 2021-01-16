@@ -845,6 +845,7 @@ const DrawLargeGrid = function (canvas_context, width_count, height_count, scale
 	}
 	canvas_context.setLineDash([0.5, 0.5]);
 	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
+	canvas_context.setLineDash([]);
 }
 
 
