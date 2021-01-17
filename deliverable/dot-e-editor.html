@@ -130,6 +130,7 @@
                 <div class="hbox">
                     <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
                     <label for="rectangle_select_tool">矩形選択</label>
+                    <button id="rectangle_fill_button">矩形塗り潰し</button>
                     <button id="v_turn_button">上下反転</button>
                     <button id="h_turn_button">左右反転</button>
                     <button id="break_to_mask_button">マスク化</button>
@@ -961,6 +962,14 @@ class RectangleTargetPixels {
             }
         }
     }
+    Fill() {
+        const current_color_index = data.selected_color_index;
+        for (let h = this.top; h <= this.bottom; h++) {
+            for (let w = this.left; w <= this.right; w++) {
+                data.WriteMap(w, h, current_color_index);
+            }
+        }
+    }
     CopyToClipboard() {
         data.CopyToClipBoard(this.left, this.top, this.right, this.bottom);
     }
@@ -1278,6 +1287,7 @@ class Dom {
         this.color_palette = new Array(256);
         this.undo_button = GetHtmlElement('undo_button');
         this.redo_button = GetHtmlElement('redo_button');
+        this.rectangle_fill_button = GetHtmlElement('rectangle_fill_button');
         this.h_turn_button = GetHtmlElement('h_turn_button');
         this.v_turn_button = GetHtmlElement('v_turn_button');
         this.break_to_mask_button = GetHtmlElement('break_to_mask_button');
@@ -1699,6 +1709,12 @@ function Initialize() {
     dom.redo_button.addEventListener('click', (event) => {
         data.Redo();
         ApplyView();
+    });
+    dom.rectangle_fill_button.addEventListener('click', (event) => {
+        if (target_pixels !== null) {
+            data.PushUndoLog();
+            target_pixels.Fill();
+        }
     });
     dom.v_turn_button.addEventListener('click', (event) => {
         if (target_pixels !== null) {

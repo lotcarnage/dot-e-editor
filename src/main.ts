@@ -425,6 +425,14 @@ class RectangleTargetPixels {
 			}
 		}
 	}
+	public Fill(): void {
+		const current_color_index = data.selected_color_index;
+		for (let h = this.top; h <= this.bottom; h++) {
+			for (let w = this.left; w <= this.right; w++) {
+				data.WriteMap(w, h, current_color_index);
+			}
+		}
+	}
 	public CopyToClipboard(): void {
 		data.CopyToClipBoard(this.left, this.top, this.right, this.bottom);
 	}
@@ -749,6 +757,7 @@ class Dom {
 	color_palette: HTMLTableDataCellElement[];
 	undo_button: HTMLButtonElement;
 	redo_button: HTMLButtonElement;
+	rectangle_fill_button: HTMLButtonElement;
 	h_turn_button: HTMLButtonElement;
 	v_turn_button: HTMLButtonElement;
 	break_to_mask_button: HTMLButtonElement;
@@ -792,6 +801,7 @@ class Dom {
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
 		this.redo_button = GetHtmlElement<HTMLButtonElement>('redo_button');
+		this.rectangle_fill_button = GetHtmlElement<HTMLButtonElement>('rectangle_fill_button');
 		this.h_turn_button = GetHtmlElement<HTMLButtonElement>('h_turn_button');
 		this.v_turn_button = GetHtmlElement<HTMLButtonElement>('v_turn_button');
 		this.break_to_mask_button = GetHtmlElement<HTMLButtonElement>('break_to_mask_button');
@@ -1243,6 +1253,12 @@ function Initialize() {
 	dom.redo_button.addEventListener('click', (event) => {
 		data.Redo();
 		ApplyView();
+	});
+	dom.rectangle_fill_button.addEventListener('click', (event) => {
+		if (target_pixels !== null) {
+			data.PushUndoLog();
+			target_pixels.Fill();
+		}
 	});
 	dom.v_turn_button.addEventListener('click', (event) => {
 		if (target_pixels !== null) {
