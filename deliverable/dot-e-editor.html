@@ -86,6 +86,10 @@
             width: 128px;
             height: 384px;
         }
+
+        div#manualblock {
+            background-color: darkslategrey;
+        }
     </style>
 </head>
 
@@ -129,13 +133,13 @@
                     <button id="v_turn_button">上下反転</button>
                     <button id="h_turn_button">左右反転</button>
                     <button id="break_to_mask_button">マスク化</button>
-                    <button id="release_targetting_button">選択解除(Ctrl+d)</button>
+                    <button id="release_targetting_button">選択解除</button>
                 </div>
             </div>
             <div class="vbox">
                 <div class="hbox">
-                    <button id="undo_button">Undo(Ctrl+z)</button>
-                    <button id="redo_button">Redo(Ctrl+y)</button>
+                    <button id="undo_button">Undo</button>
+                    <button id="redo_button">Redo</button>
                 </div>
                 <div class="hbox">
                     <button id="turn_mask_button">マスク反転</button>
@@ -254,6 +258,33 @@
                 <textarea id="sprite_indices"></textarea>
             </div>
         </div>
+    </div>
+    <div id="manualblock">
+        <details>
+            <summary>操作方法など</summary>
+            <h3>ショートカット</h3>
+            <ul>
+                <li>Ctrl+s:ローカルストレージに上書き保存</li>
+                <li>Ctrl+d:選択範囲解除</li>
+                <li>Ctrl+c:選択範囲をコピー</li>
+                <li>Ctrl+v:コピー内容をペースト</li>
+                <li>Ctrl+z:元に戻す(Undo)</li>
+                <li>Ctrl+y:やり直す(Redo)</li>
+            </ul>
+            <h3>ツール類</h3>
+            <h4>ペン</h4>
+            <ul>
+                <li>右ボタンクリック：スポイト機能</li>
+            </ul>
+            <h4>塗り潰し</h4>
+            <ul>
+                <li>右ボタンクリック：スポイト機能</li>
+            </ul>
+            <h3>アニメーションプレビュー</h3>
+            <p>システムはユーザーに指定されたスプライトサイズでキャンバスを分割し、ラスタ方向へスプライトインデックスを自動で割り付ける。</p>
+            <p>テキストエリアにカンマ(,)区切りでスプライトインデックス（0〜）を指定する事で、指定した順にスプライトアニメーション表示する。</p>
+            <p>毎秒約60フレーム描画しており、1コマに何フレームかけるか設定する事で、アニメーション速度を調整できる。</p>
+        </details>
     </div>
 <script>/******/ (() => { // webpackBootstrap
 /*!***********************!*\
