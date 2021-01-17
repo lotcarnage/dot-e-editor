@@ -257,6 +257,28 @@ class Data {
 			}
 		}
 	}
+	public SwapColor(lh_index: number, rh_index: number): void {
+		if (lh_index === rh_index) {
+			return;
+		}
+		for (let h = 0; h < this.edit_height_; h++) {
+			for (let w = 0; w < this.edit_width_; w++) {
+				const color_index = this.pixels_[h][w];
+				if (color_index === lh_index) {
+					this.pixels_[h][w] = rh_index;
+					this.TouchPixel(w, h);
+				}
+				if (color_index === rh_index) {
+					this.pixels_[h][w] = lh_index;
+					this.TouchPixel(w, h);
+				}
+			}
+		}
+		const tmp_color = this.color_palette_[lh_index];
+		this.color_palette_[lh_index] = this.color_palette_[rh_index];
+		this.color_palette_[rh_index] = tmp_color;
+		return;
+	}
 	public MakeRawSaveData(): IndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
@@ -712,7 +734,7 @@ function MakeTable(table_id: string, cols: number, rows: number, parent_dom: HTM
 	for (let row_i = 0; row_i < rows; row_i++) {
 		tag_text += "<tr>";
 		for (let col_i = 0; col_i < cols; col_i++) {
-			tag_text += `<td id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
+			tag_text += `<td draggable="true" id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
 		}
 		tag_text += "<td>";
 	}
@@ -1205,6 +1227,20 @@ function Initialize() {
 	for (let i = 0; i < 256; i++) {
 		dom.color_palette[i].addEventListener('click', () => {
 			ChengeCurrentColor(i);
+		});
+		dom.color_palette[i].addEventListener('dragstart', (event) => {
+			event.dataTransfer.setData("color_index", i.toString());
+		});
+		dom.color_palette[i].addEventListener('dragover', (event) => {
+			event.preventDefault();
+		});
+		dom.color_palette[i].addEventListener('drop', (event) => {
+			event.preventDefault();
+			const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
+			data.SwapColor(i, drag_color_index);
+			const tmp_color = dom.color_palette[drag_color_index].style.backgroundColor;
+			dom.color_palette[drag_color_index].style.backgroundColor = dom.color_palette[i].style.backgroundColor;
+			dom.color_palette[i].style.backgroundColor = tmp_color;
 		});
 	}
 
