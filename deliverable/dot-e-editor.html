@@ -25,7 +25,8 @@
             grid-template-areas:
                 "a b b"
                 "c e e"
-                "d e e";
+                "d e e"
+                "f e e";
         }
 
         div.hbox {
@@ -69,6 +70,11 @@
         div#viewframe {
             width: 200px;
             height: 200px;
+        }
+
+        div#animationblock {
+            grid-area: f;
+            background-color: olive;
         }
 
         div#editblock {
@@ -215,6 +221,37 @@
             </div>
             <div class="canvasframe" id="editframe">
                 <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
+            </div>
+        </div>
+        <div id="animationblock">
+            <div class="hbox">
+                サイズ
+                <input id="sprite_width" type="number" min="1" value="16">x
+                <input id="sprite_height" type="number" min="1" value="16">
+            </div>
+            <div class="hbox">
+                <div class="vbox">
+                    <input type="number" id="animation_step_par_frame" min="1" value="12">/１コマ
+                </div>
+                <div class="rightvbox">
+                    表示倍率
+                    <select id="animation_view_scale">
+                        <option value="1">x1</option>
+                        <option value="2">x2</option>
+                        <option value="4" selected>x4</option>
+                        <option value="8">x8</option>
+                        <option value="16">x16</option>
+                        <option value="24">x24</option>
+                        <option value="32">x32</option>
+                    </select>
+                </div>
+            </div>
+            <div class="canvasframe">
+                <canvas id="animation_canvas" width="64" height="64"></canvas>
+            </div>
+            <div>
+                <button id="animation_playback_button">▶︎</button>
+                <textarea id="sprite_indices"></textarea>
             </div>
         </div>
     </div>
@@ -1217,6 +1254,13 @@ class Dom {
         this.turn_mask_button = GetHtmlElement('turn_mask_button');
         this.delete_mask_button = GetHtmlElement('delete_mask_button');
         this.delete_all_unused_colors_button = GetHtmlElement('delete_all_unused_colors_button');
+        this.sprite_width = GetHtmlElement('sprite_width');
+        this.sprite_height = GetHtmlElement('sprite_height');
+        this.animation_step_par_frame = GetHtmlElement('animation_step_par_frame');
+        this.animation_view_scale = GetHtmlElement('animation_view_scale');
+        this.animation_canvas = GetHtmlElement('animation_canvas');
+        this.animation_playback_button = GetHtmlElement('animation_playback_button');
+        this.sprite_indices = GetHtmlElement('sprite_indices');
     }
 }
 const dom = new Dom();
@@ -1392,6 +1436,65 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
     }
     data.GetWrittenPixelSet().clear();
 };
+const sprite_animation_indices = new Array(0);
+let is_animation_playing = false;
+const UpdateSpriteIndicesArray = function () {
+    const index_strings = dom.sprite_indices.value.split(',');
+    sprite_animation_indices.length = 0;
+    for (let index_string of index_strings) {
+        const parsed = parseInt(index_string);
+        if (!isNaN(parsed)) {
+            sprite_animation_indices.push(parsed);
+        }
+    }
+};
+const DrawSpriteAnimation = function (frame_count) {
+    if (is_animation_playing) {
+        return;
+    }
+    UpdateSpriteIndicesArray();
+    if (0 === sprite_animation_indices.length) {
+        return;
+    }
+    const step_par_frame = Math.max(1, dom.animation_step_par_frame.valueAsNumber);
+    const frame_number = Math.floor(frame_count / step_par_frame) % sprite_animation_indices.length;
+    const sprite_index = sprite_animation_indices[frame_number];
+    const sprite_w = Math.max(1, Math.min(data.edit_width, dom.sprite_width.valueAsNumber));
+    const sprite_h = Math.max(1, Math.min(data.edit_height, dom.sprite_height.valueAsNumber));
+    const sprite_count_in_w = Math.floor(data.edit_width / sprite_w);
+    const sprite_count_in_h = Math.floor(data.edit_height / sprite_h);
+    const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
+    if (max_sprite_index <= sprite_index) {
+        return;
+    }
+    const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
+    const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
+    const max_w = Math.min(pixel_w_offset + sprite_w, data.edit_width);
+    const max_h = Math.min(pixel_h_offset + sprite_h, data.edit_height);
+    const view_scale = Number(dom.animation_view_scale.value);
+    let is_context_reset = false;
+    if (dom.animation_canvas.width !== sprite_w * view_scale) {
+        dom.animation_canvas.width = sprite_w * view_scale;
+        is_context_reset = true;
+    }
+    if (dom.animation_canvas.height !== sprite_h * view_scale) {
+        dom.animation_canvas.height = sprite_h * view_scale;
+        is_context_reset = true;
+    }
+    const context = dom.animation_canvas.getContext('2d');
+    if (is_context_reset) {
+        context.imageSmoothingEnabled = false;
+        context.scale(view_scale, view_scale);
+    }
+    for (let h = pixel_h_offset; h < max_h; h++) {
+        for (let w = pixel_w_offset; w < max_w; w++) {
+            const mi = data.GetWrittenColorIndex(w, h);
+            context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
+            context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
+        }
+    }
+    return;
+};
 var frame_count = 0;
 let is_preview_touched = true;
 const UpdateView = function () {
@@ -1410,6 +1513,7 @@ const UpdateView = function () {
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
     }
+    DrawSpriteAnimation(frame_count);
     dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
     frame_count++;
     window.requestAnimationFrame(UpdateView);
@@ -1593,6 +1697,11 @@ function Initialize() {
         data.DeleteAllUnusedColors();
         ApplyColorPalette();
         ChengeCurrentColor(data.selected_color_index);
+    });
+    dom.animation_playback_button.addEventListener('click', (event) => {
+        const button = event.target;
+        button.innerText = is_animation_playing === true ? "▶︎" : "■";
+        is_animation_playing = !is_animation_playing;
     });
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {

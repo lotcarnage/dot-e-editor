@@ -756,6 +756,13 @@ class Dom {
 	turn_mask_button: HTMLButtonElement;
 	delete_mask_button: HTMLButtonElement;
 	delete_all_unused_colors_button: HTMLButtonElement;
+	sprite_width: HTMLInputElement;
+	sprite_height: HTMLInputElement;
+	animation_step_par_frame: HTMLInputElement;
+	animation_view_scale: HTMLSelectElement;
+	animation_canvas: HTMLCanvasElement;
+	animation_playback_button: HTMLButtonElement;
+	sprite_indices: HTMLTextAreaElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
@@ -792,6 +799,13 @@ class Dom {
 		this.turn_mask_button = GetHtmlElement<HTMLButtonElement>('turn_mask_button');
 		this.delete_mask_button = GetHtmlElement<HTMLButtonElement>('delete_mask_button');
 		this.delete_all_unused_colors_button = GetHtmlElement<HTMLButtonElement>('delete_all_unused_colors_button');
+		this.sprite_width = GetHtmlElement<HTMLInputElement>('sprite_width');
+		this.sprite_height = GetHtmlElement<HTMLInputElement>('sprite_height');
+		this.animation_step_par_frame = GetHtmlElement<HTMLInputElement>('animation_step_par_frame');
+		this.animation_view_scale = GetHtmlElement<HTMLSelectElement>('animation_view_scale');
+		this.animation_canvas = GetHtmlElement<HTMLCanvasElement>('animation_canvas');
+		this.animation_playback_button = GetHtmlElement<HTMLButtonElement>('animation_playback_button');
+		this.sprite_indices = GetHtmlElement<HTMLTextAreaElement>('sprite_indices');
 	}
 }
 
@@ -983,7 +997,67 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	data.GetWrittenPixelSet().clear();
 }
 
+const sprite_animation_indices = new Array<number>(0);
+let is_animation_playing = false
+const UpdateSpriteIndicesArray = function () {
+	const index_strings = dom.sprite_indices.value.split(',');
+	sprite_animation_indices.length = 0;
+	for (let index_string of index_strings) {
+		const parsed = parseInt(index_string);
+		if (!isNaN(parsed)) {
+			sprite_animation_indices.push(parsed);
+		}
+	}
+}
 
+const DrawSpriteAnimation = function (frame_count: number): void {
+	if (is_animation_playing) {
+		return;
+	}
+	UpdateSpriteIndicesArray();
+	if (0 === sprite_animation_indices.length) {
+		return;
+	}
+	const step_par_frame = Math.max(1, dom.animation_step_par_frame.valueAsNumber);
+	const frame_number = Math.floor(frame_count / step_par_frame) % sprite_animation_indices.length;
+	const sprite_index = sprite_animation_indices[frame_number];
+	const sprite_w = Math.max(1, Math.min(data.edit_width, dom.sprite_width.valueAsNumber));
+	const sprite_h = Math.max(1, Math.min(data.edit_height, dom.sprite_height.valueAsNumber));
+	const sprite_count_in_w = Math.floor(data.edit_width / sprite_w);
+	const sprite_count_in_h = Math.floor(data.edit_height / sprite_h);
+	const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
+	if (max_sprite_index <= sprite_index) {
+		return;
+	}
+	const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
+	const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
+	const max_w = Math.min(pixel_w_offset + sprite_w, data.edit_width);
+	const max_h = Math.min(pixel_h_offset + sprite_h, data.edit_height);
+	const view_scale = Number(dom.animation_view_scale.value);
+
+	let is_context_reset = false;
+	if (dom.animation_canvas.width !== sprite_w * view_scale) {
+		dom.animation_canvas.width = sprite_w * view_scale;
+		is_context_reset = true;
+	}
+	if (dom.animation_canvas.height !== sprite_h * view_scale) {
+		dom.animation_canvas.height = sprite_h * view_scale;
+		is_context_reset = true;
+	}
+	const context = dom.animation_canvas.getContext('2d');
+	if (is_context_reset) {
+		context.imageSmoothingEnabled = false;
+		context.scale(view_scale, view_scale);
+	}
+	for (let h = pixel_h_offset; h < max_h; h++) {
+		for (let w = pixel_w_offset; w < max_w; w++) {
+			const mi = data.GetWrittenColorIndex(w, h);
+			context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
+			context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
+		}
+	}
+	return;
+}
 
 var frame_count = 0;
 let is_preview_touched = true;
@@ -1002,6 +1076,7 @@ const UpdateView = function () {
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
 	}
+	DrawSpriteAnimation(frame_count);
 
 	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 	frame_count++;
@@ -1198,6 +1273,12 @@ function Initialize() {
 		ApplyColorPalette();
 		ChengeCurrentColor(data.selected_color_index);
 	});
+	dom.animation_playback_button.addEventListener('click', (event) => {
+		const button = (<HTMLButtonElement>event.target);
+		button.innerText = is_animation_playing === true ? "▶︎" : "■";
+		is_animation_playing = !is_animation_playing;
+	});
+
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {
