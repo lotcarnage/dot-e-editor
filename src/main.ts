@@ -1,6 +1,7 @@
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
 /// <reference path="./browser.ts" />
+/// <reference path="./ui_parts.ts" />
 
 class RgbColor {
 	r: number;
@@ -66,6 +67,7 @@ class PixelPoint {
 	}
 }
 
+const data_format_version: number = 1;
 const view_font_size: number = 8;
 const max_edit_width: number = 512;
 const max_edit_height: number = 512;
@@ -75,11 +77,11 @@ const default_edit_scale: number = 8;
 const large_grid_color = '#ffff00';
 
 class EditLogger {
-	private undo_stack_: IndexColorBitmap[];
-	private redo_stack_: IndexColorBitmap[];
+	private undo_stack_: MultiLayerIndexColorBitmap[];
+	private redo_stack_: MultiLayerIndexColorBitmap[];
 	constructor() {
-		this.undo_stack_ = new Array<IndexColorBitmap>(0);
-		this.redo_stack_ = new Array<IndexColorBitmap>(0);
+		this.undo_stack_ = new Array<MultiLayerIndexColorBitmap>(0);
+		this.redo_stack_ = new Array<MultiLayerIndexColorBitmap>(0);
 	}
 	public IsUndoLogEmpty(): boolean {
 		return (this.undo_stack_.length === 0) ? true : false;
@@ -87,16 +89,16 @@ class EditLogger {
 	public IsRedoLogEmpty(): boolean {
 		return (this.redo_stack_.length === 0) ? true : false;
 	}
-	public PushUndoLog(log_data: IndexColorBitmap): void {
+	public PushUndoLog(log_data: MultiLayerIndexColorBitmap): void {
 		this.undo_stack_.push(log_data);
 	}
-	public PushRedoLog(log_data: IndexColorBitmap): void {
+	public PushRedoLog(log_data: MultiLayerIndexColorBitmap): void {
 		this.redo_stack_.push(log_data);
 	}
-	public PopUndoLog(): IndexColorBitmap {
+	public PopUndoLog(): MultiLayerIndexColorBitmap {
 		return this.undo_stack_.pop();
 	}
-	public PopRedoLog(): IndexColorBitmap {
+	public PopRedoLog(): MultiLayerIndexColorBitmap {
 		return this.redo_stack_.pop();
 	}
 	public ClearRedoLog(): void {
@@ -117,8 +119,92 @@ class IndexColorBitmap {
 	};
 }
 
-class Data {
+class IndexColorBitmapLayer {
+	order: number;
+	name: string;
+	tag_color: string;
+	pixels: number[][];
+}
+
+class MultiLayerIndexColorBitmap {
+	format_version = data_format_version;
+	width: number;
+	height: number;
+	color_palette: RgbColor[];
+	layers: IndexColorBitmapLayer[];
+}
+
+const MargeMultiLayerIndexColorBitmapToIndexBitmap = function (mlbmp: MultiLayerIndexColorBitmap) {
+	const num_layers = mlbmp.layers.length;
+	const sorted_layers = new Array<IndexColorBitmapLayer>(num_layers);
+	for (let layer of mlbmp.layers) {
+		sorted_layers[num_layers - layer.order - 1] = layer;
+	}
+	const default_bg_color = 0;
+	const max_w = mlbmp.width;
+	const max_h = mlbmp.height;
+	const bg_ci = default_bg_color;
+	const marged_pixels = Misc.Make2dArray<number>(max_w, max_h, 0);
+	for (let h = 0; h < max_h; h++) {
+		for (let w = 0; w < max_w; w++) {
+			for (let i = 0; i < sorted_layers.length; i++) {
+				const source_layer = sorted_layers[i];
+				const src_ci = source_layer.pixels[h][w];
+				if (src_ci !== bg_ci) {
+					marged_pixels[h][w] = src_ci;
+					break;
+				}
+			}
+		}
+	}
+	const color_palette = new Array<string>(256);
+	for (let i = 0; i < 256; i++) {
+		color_palette[i] = mlbmp.color_palette[i].ToRgbString();
+	}
+	return new IndexColorBitmap(max_w, max_h, color_palette, marged_pixels);
+}
+
+
+class PixelLayer {
 	private pixels_: number[][];
+	private order_: number;
+	private name_: string;
+	is_visible: boolean;
+	is_locked: boolean;
+	tag_color: string;
+	constructor(order: number, name: string, tag_color: string, max_width: number, max_height: number) {
+		this.pixels_ = Misc.Make2dArray<number>(max_width, max_height, 0);
+		this.order_ = order;
+		this.name_ = name;
+		this.tag_color = tag_color;
+		this.is_locked = false;
+		this.is_locked = true;
+	}
+	public WritePixel(x: number, y: number, color_index: number) {
+		this.pixels_[y][x] = color_index;
+	}
+	public GetPixel(x: number, y: number): number {
+		return this.pixels_[y][x];
+	}
+	public get order(): number {
+		return this.order_;
+	}
+	public set order(new_order: number) {
+		this.order_ = new_order;
+	}
+	public get name(): string {
+		return this.name_;
+	}
+	public set name(new_name: string) {
+		this.name_ = new_name;
+	}
+	public get pixels(): number[][] {
+		return this.pixels_;
+	}
+}
+
+class Data {
+	private pixel_layer_: PixelLayer | null;
 	private pixels_written_set_: Set<number>;
 	private pixels_mask_: boolean[][];
 	private edit_scale_: number;
@@ -135,7 +221,7 @@ class Data {
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
-		this.pixels_ = Misc.Make2dArray<number>(max_width, max_height, 0);
+		this.pixel_layer_ = null;
 		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
 		this.clipboard_stored_width_ = 0;
 		this.clipboard_stored_height_ = 0;
@@ -149,17 +235,8 @@ class Data {
 		}
 		this.logger_ = new EditLogger();
 	}
-	public CopyFrom(other_data: Data): void {
-		this.pixels_ = other_data.pixels_;
-		this.edit_width_ = other_data.edit_width_;
-		this.edit_height_ = other_data.edit_height_;
-		this.selected_color_index_ = other_data.selected_color_index_;
-		for (let i = 0; i < 256; i++) {
-			this.color_palette_[i].r = other_data.color_palette_[i].r;
-			this.color_palette_[i].g = other_data.color_palette_[i].g;
-			this.color_palette_[i].b = other_data.color_palette_[i].b;
-		}
-		this.selected_bg_color_index_ = other_data.selected_bg_color_index_;
+	public SetCurrentPixelLayer(pixel_layer: PixelLayer): void {
+		this.pixel_layer_ = pixel_layer;
 	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
@@ -191,6 +268,9 @@ class Data {
 	public get is_edit_view_touched(): boolean {
 		return this.is_edit_view_touched_;
 	}
+	public get selected_bg_color_index(): number {
+		return this.selected_bg_color_index_;
+	}
 	public TouchEditView(): void {
 		this.is_edit_view_touched_ = true;
 	}
@@ -214,13 +294,16 @@ class Data {
 		}
 	}
 	public IsMasked(w: number, h: number): boolean {
+		if (this.pixel_layer_.is_locked === true) {
+			return true;
+		}
 		return this.pixels_mask_[h][w];
 	}
 	public WriteMap(w: number, h: number, color_index: number) {
-		if (this.pixels_mask_[h][w]) {
+		if (this.IsMasked(w, h)) {
 			return;
 		}
-		this.pixels_[h][w] = color_index;
+		this.pixel_layer_.WritePixel(w, h, color_index);
 		const pixel_index = this.edit_width_ * h + w;
 		this.pixels_written_set_.add(pixel_index);
 	}
@@ -229,7 +312,7 @@ class Data {
 		this.pixels_written_set_.add(pixel_index);
 	}
 	public GetWrittenColorIndex(w: number, h: number): number {
-		return this.pixels_[h][w];
+		return this.pixel_layer_.GetPixel(w, h);
 	}
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
@@ -246,7 +329,7 @@ class Data {
 		const histogram = new Array<number>(256).fill(0);
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				histogram[this.pixels_[h][w]]++;
+				histogram[this.pixel_layer_.GetPixel(w, h)]++;
 			}
 		}
 		for (let i = 0; i < 256; i++) {
@@ -263,13 +346,13 @@ class Data {
 		}
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				const color_index = this.pixels_[h][w];
+				const color_index = this.pixel_layer_.GetPixel(w, h);
 				if (color_index === lh_index) {
-					this.pixels_[h][w] = rh_index;
+					this.pixel_layer_.WritePixel(w, h, rh_index);
 					this.TouchPixel(w, h);
 				}
 				if (color_index === rh_index) {
-					this.pixels_[h][w] = lh_index;
+					this.pixel_layer_.WritePixel(w, h, lh_index);
 					this.TouchPixel(w, h);
 				}
 			}
@@ -279,30 +362,79 @@ class Data {
 		this.color_palette_[rh_index] = tmp_color;
 		return;
 	}
-	public MakeRawSaveData(): IndexColorBitmap {
+	public MakeSaveData(): MultiLayerIndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
 		const save_pixels = new Array<number[]>(edit_h_count);
 		for (var h = 0; h < edit_h_count; h++) {
-			save_pixels[h] = this.pixels_[h].slice(0, edit_w_count);
+			save_pixels[h] = this.pixel_layer_.pixels[h].slice(0, edit_w_count);
 		}
-		const color_palette = new Array(256);
+		const color_palette = new Array<RgbColor>(256);
 		for (var i = 0; i < 256; i++) {
-			color_palette[i] = this.color_palette_[i].ToRgbString();
+			color_palette[i] = this.color_palette_[i];
 		}
-		return new IndexColorBitmap(edit_w_count, edit_h_count, color_palette, save_pixels);
+		const save_data = new MultiLayerIndexColorBitmap();
+		save_data.width = edit_w_count;
+		save_data.height = edit_h_count;
+		save_data.color_palette = color_palette;
+		save_data.layers = new Array<IndexColorBitmapLayer>(0);
+		for (let layer of pixel_layers.values()) {
+			const save_layer = new IndexColorBitmapLayer();
+			save_layer.order = layer.order;
+			save_layer.name = layer.name;
+			save_layer.tag_color = layer.tag_color;
+			save_layer.pixels = Misc.Make2dArray<number>(edit_w_count, edit_h_count, 0);
+			for (let h = 0; h < edit_h_count; h++) {
+				for (let w = 0; w < edit_w_count; w++) {
+					save_layer.pixels[h][w] = layer.pixels[h][w];
+				}
+			}
+			save_data.layers.push(save_layer);
+		}
+		return save_data;
 	}
-	public ApplyRawData(raw_data: IndexColorBitmap): void {
-		this.edit_width_ = raw_data.width;
-		this.edit_height_ = raw_data.height;
-		for (let h = 0; h < raw_data.height; h++) {
-			for (let w = 0; w < raw_data.width; w++) {
-				this.pixels_[h][w] = raw_data.pixels[h][w];
+	public CopyFromIndexColorBitmap(bmp_data: IndexColorBitmap, name: string): void {
+		const edit_w = bmp_data.width;
+		const edit_h = bmp_data.height;
+		this.edit_width_ = edit_w;
+		this.edit_height_ = edit_h;
+		for (let i = 0; i < 256; i++) {
+			this.color_palette_[i].SetRgbString(bmp_data.color_palette[i]);
+		}
+		pixel_layers.clear();
+		const layer = new PixelLayer(0, name, '#202020', max_edit_width, max_edit_height);
+		for (let h = 0; h < edit_h; h++) {
+			for (let w = 0; w < edit_w; w++) {
+				layer.pixels[h][w] = bmp_data.pixels[h][w];
 			}
 		}
+		pixel_layers.set(layer, layer);
+		return;
+	}
+	public CopyFromMultiLayerIndexColorBitmap(raw_data: MultiLayerIndexColorBitmap) {
+		const edit_w = raw_data.width;
+		const edit_h = raw_data.height;
+		this.edit_width_ = edit_w;
+		this.edit_height_ = edit_h;
 		for (let i = 0; i < 256; i++) {
-			data.GetRgbColorFromPalette(i).SetColorString(raw_data.color_palette[i]);
+			this.color_palette_[i].r = raw_data.color_palette[i].r;
+			this.color_palette_[i].g = raw_data.color_palette[i].g;
+			this.color_palette_[i].b = raw_data.color_palette[i].b;
 		}
+		pixel_layers.clear();
+		for (let raw_layer of raw_data.layers) {
+			const layer = new PixelLayer(raw_layer.order, raw_layer.name, raw_layer.tag_color, max_edit_width, max_edit_height);
+			for (let h = 0; h < edit_h; h++) {
+				for (let w = 0; w < edit_w; w++) {
+					layer.pixels[h][w] = raw_layer.pixels[h][w];
+				}
+			}
+			pixel_layers.set(layer, layer);
+		}
+		return;
+	}
+	public ApplyView(): void {
+		ApplyLayerUi();
 		this.TouchEditView();
 	}
 
@@ -313,7 +445,7 @@ class Data {
 			const src_h = top + dst_h;
 			for (let dst_w = 0; dst_w < copy_w; dst_w++) {
 				const src_w = left + dst_w;
-				this.pixels_clipboard_[dst_h][dst_w] = this.pixels_[src_h][src_w];
+				this.pixels_clipboard_[dst_h][dst_w] = this.pixel_layer_.GetPixel(src_w, src_h);
 			}
 		}
 		this.clipboard_stored_width_ = copy_w;
@@ -335,7 +467,7 @@ class Data {
 	}
 
 	public PushUndoLog(): void {
-		const current_data = data.MakeRawSaveData();
+		const current_data = data.MakeSaveData();
 		this.logger_.PushUndoLog(current_data);
 		this.logger_.ClearRedoLog();
 		AutoSave();
@@ -344,19 +476,21 @@ class Data {
 		if (this.logger_.IsUndoLogEmpty()) {
 			return;
 		}
-		const current_data = data.MakeRawSaveData();
+		const current_data = data.MakeSaveData();
 		this.logger_.PushRedoLog(current_data);
 		const undo_data = this.logger_.PopUndoLog();
-		this.ApplyRawData(undo_data);
+		this.CopyFromMultiLayerIndexColorBitmap(undo_data);
+		this.ApplyView();
 	}
 	public Redo() {
 		if (this.logger_.IsRedoLogEmpty()) {
 			return;
 		}
-		const current_data = data.MakeRawSaveData();
+		const current_data = data.MakeSaveData();
 		this.logger_.PushUndoLog(current_data);
 		const redo_data = this.logger_.PopRedoLog();
-		this.ApplyRawData(redo_data);
+		this.CopyFromMultiLayerIndexColorBitmap(redo_data);
+		this.ApplyView();
 	}
 }
 
@@ -614,11 +748,55 @@ class RectangleSelectTool extends Tool {
 }
 
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
+const pixel_layers = new Map<PixelLayer, PixelLayer>();
+const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
 const pen_tool: PenTool = new PenTool();
 const paint_tool: PaintTool = new PaintTool();
 const rentangle_select_tool: RectangleSelectTool = new RectangleSelectTool();
+let layer_pane_ui: UiParts.LayerPaneUi<PixelLayer> | null = null;
 let tool: Tool = pen_tool;
 let target_pixels: RectangleTargetPixels | null = null;
+
+const MargeLayers = function (): void {
+	const num_layers = pixel_layers.size;
+	const sorted_layers = new Array<PixelLayer>(num_layers);
+	for (let layer of pixel_layers.values()) {
+		sorted_layers[num_layers - layer.order - 1] = layer;
+	}
+	const max_w = data.edit_width;
+	const max_h = data.edit_height;
+	const bg_ci = data.selected_bg_color_index;
+	const lowest_layer_index = sorted_layers.length - 1;
+	for (let h = 0; h < max_h; h++) {
+		for (let w = 0; w < max_w; w++) {
+			let is_written = false;
+			const dst_ci = marged_pixel_layer.GetPixel(w, h);
+			for (let i = 0; i < sorted_layers.length - 1; i++) {
+				const source_layer = sorted_layers[i];
+				if (source_layer.is_visible === false) {
+					continue;
+				}
+				const src_ci = source_layer.GetPixel(w, h);
+				if (src_ci !== bg_ci) {
+					if (src_ci !== dst_ci) {
+						marged_pixel_layer.WritePixel(w, h, src_ci);
+						data.TouchPixel(w, h);
+					}
+					is_written = true;
+					break;
+				}
+			}
+			if (!is_written) {
+				const src_ci = sorted_layers[lowest_layer_index].GetPixel(w, h);
+				if (src_ci !== dst_ci) {
+					marged_pixel_layer.WritePixel(w, h, src_ci);
+					data.TouchPixel(w, h);
+				}
+			}
+		}
+	}
+	return;
+}
 
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
@@ -694,8 +872,9 @@ const FitDivHeight = function (modify_div_id: string, referencet_div_id: string)
 };
 
 const TryReadEditDataByJson = function (bytes: string) {
-	const read_data = JSON.parse(bytes) as IndexColorBitmap;
-	data.ApplyRawData(read_data);
+	const read_data = JSON.parse(bytes) as MultiLayerIndexColorBitmap;
+	data.CopyFromMultiLayerIndexColorBitmap(read_data);
+	data.ApplyView();
 	ApplyView();
 	return true;
 }
@@ -705,7 +884,8 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	if (bmp_data !== null) {
 		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
 		const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
-		data.ApplyRawData(raw_data);
+		data.CopyFromIndexColorBitmap(raw_data, dom.edit_data_name.value);
+		data.ApplyView();
 		ApplyView();
 		return true;
 	}
@@ -910,7 +1090,7 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
 		const dst_x = w * view_scale;
 		const dst_y = h * view_scale;
-		const ci = data.GetWrittenColorIndex(w, h);
+		const ci = marged_pixel_layer.GetPixel(w, h);
 		const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
 		edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
 	});
@@ -944,7 +1124,7 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
 		update_w_grid_set.add(w);
 		update_h_grid_set.add(h);
-		const mi = data.GetWrittenColorIndex(w, h);
+		const mi = marged_pixel_layer.GetPixel(w, h);
 		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillStyle = color;
 		edit_context.fillRect(w, h, 1, 1);
@@ -984,7 +1164,7 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 	view_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = data.GetWrittenColorIndex(w, h);
+			const mi = marged_pixel_layer.GetPixel(w, h);
 			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
 			view_context.fillRect(w, h, 1, 1);
 		}
@@ -998,7 +1178,7 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	edit_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = data.GetWrittenColorIndex(w, h);
+			const mi = marged_pixel_layer.GetPixel(w, h);
 			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			edit_context.fillRect(w, h, 1, 1);
 		}
@@ -1083,7 +1263,7 @@ const DrawSpriteAnimation = function (frame_count: number): void {
 	}
 	for (let h = pixel_h_offset; h < max_h; h++) {
 		for (let w = pixel_w_offset; w < max_w; w++) {
-			const mi = data.GetWrittenColorIndex(w, h);
+			const mi = marged_pixel_layer.GetPixel(w, h);
 			context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
 		}
@@ -1094,6 +1274,7 @@ const DrawSpriteAnimation = function (frame_count: number): void {
 var frame_count = 0;
 let is_preview_touched = true;
 const UpdateView = function () {
+	MargeLayers();
 	if (is_preview_touched || data.is_edit_view_touched) {
 		UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
 		is_preview_touched = false;
@@ -1109,6 +1290,7 @@ const UpdateView = function () {
 		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
 	}
 	DrawSpriteAnimation(frame_count);
+	layer_pane_ui.Draw();
 
 	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 	frame_count++;
@@ -1127,21 +1309,39 @@ const ChengeCurrentColor = function (new_color_index: number): void {
 
 const AutoSave = function () {
 	if (Browser.isStorageAvailable('localStorage')) {
-		window.localStorage.setItem('data', JSON.stringify(data));
+		window.localStorage.setItem('data', JSON.stringify(data.MakeSaveData()));
 	}
 }
 const AutoLoad = function (): boolean {
-	if (Browser.isStorageAvailable('localStorage')) {
-		const data_json = window.localStorage.getItem('data') as string | null;
-		if (data_json !== null) {
-			const load_data = JSON.parse(data_json) as Data;
-			data.CopyFrom(load_data);
-			return true;
-		}
+	if (Browser.isStorageAvailable('localStorage') == false) {
+		return false;
 	}
-	return false;
+	const data_json = window.localStorage.getItem('data') as string | null;
+	if (data_json === null) {
+		return false;
+	}
+	const load_data = JSON.parse(data_json) as MultiLayerIndexColorBitmap;
+	if (('format_version' in load_data) == false) {
+		window.localStorage.removeItem('data');
+		return false;
+	}
+	if (load_data.format_version !== data_format_version) {
+		window.localStorage.removeItem('data');
+		return false;
+	}
+	data.CopyFromMultiLayerIndexColorBitmap(load_data);
+	return true;
 }
 
+const ApplyLayerUi = function (): void {
+	layer_pane_ui.DeleteAll();
+	const creation_parameters = new Array<[number, string, string, PixelLayer]>(0);
+	for (let pixel_layer of pixel_layers.values()) {
+		creation_parameters.push([pixel_layer.order, pixel_layer.name, pixel_layer.tag_color, pixel_layer]);
+	}
+	layer_pane_ui.CreateNewLayers(creation_parameters);
+	return;
+}
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -1217,9 +1417,9 @@ function Initialize() {
 	dom.save_picture_button.addEventListener('click', DownloadEditData);
 
 	edit_reader.addEventListener('load', (event) => {
-		LoadEditData((<FileReader>event.target).result);
 		const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
 		dom.edit_data_name.value = basename;
+		LoadEditData((<FileReader>event.target).result);
 		data.TouchEditView();
 	});
 
@@ -1266,10 +1466,22 @@ function Initialize() {
 		ResetColorPalette(Number(dom.default_palette_selector.value));
 		dom.default_palette_selector.value = "0";
 	});
+
+	let creation_count = 0;
+	const MakeLayerDefaultName = function (): [string, string] {
+		const hue = (creation_count * 79) % 360;
+		const color = new RgbColor(...Misc.HsvToRgb(hue, 0.375, 0.75))
+		const name = `new layer #${creation_count}`;
+		creation_count++;
+		return [name, color.ToHexColor()];
+	}
 	if (AutoLoad()) {
 		ApplyColorPalette();
 	} else {
 		ResetColorPalette(1);
+		pixel_layers.clear();
+		const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
+		pixel_layers.set(pixel_layer, pixel_layer);
 	}
 	dom.editwidth.value = data.edit_width.toString();
 	dom.editheight.value = data.edit_height.toString();
@@ -1330,6 +1542,41 @@ function Initialize() {
 		button.innerText = is_animation_playing === true ? "▶︎" : "■";
 		is_animation_playing = !is_animation_playing;
 	});
+	const layers = document.getElementById("layerblock");
+	layer_pane_ui = new UiParts.LayerPaneUi<PixelLayer>(
+		layers,
+		(order) => {
+			const param = MakeLayerDefaultName();
+			const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
+			pixel_layers.set(new_pixel_layer, new_pixel_layer);
+			return [...param, new_pixel_layer];
+		},
+		(pixel_layer, order) => {
+			pixel_layers.delete(pixel_layer);
+		},
+		(lh_order, rh_order) => { /* swaped callback */ },
+		(pixel_layer, order, name, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
+			pixel_layer.order = order;
+			pixel_layer.name = name;
+			pixel_layer.is_locked = is_locked;
+			pixel_layer.is_visible = is_visible;
+			if (is_focusin === true) {
+				data.SetCurrentPixelLayer(pixel_layer);
+			}
+		},
+		(value, order, is_locked, is_visible, thumbnail_context) => {
+			thumbnail_context.scale(1, 1);
+			thumbnail_context.fillStyle = '#000000';
+			thumbnail_context.fillRect(0, 0, 16, 16);
+			if (is_locked) {
+				thumbnail_context.moveTo(0.5, 0.5);
+				thumbnail_context.lineTo(15.5, 15.5);
+				thumbnail_context.lineWidth = 3;
+				thumbnail_context.strokeStyle = '#ff0000';
+				thumbnail_context.stroke();
+			}
+		});
+	ApplyLayerUi();
 
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
@@ -1359,14 +1606,15 @@ function Initialize() {
 }
 
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
-	const save_data = data.MakeRawSaveData();
-	const bmp_bytes = WindowsIndexColorBitmap.Serialize(save_data.color_palette, save_data.pixels, save_data.width, save_data.height);
+	const save_data = data.MakeSaveData();
+	const index_bmp = MargeMultiLayerIndexColorBitmapToIndexBitmap(save_data);
+	const bmp_bytes = WindowsIndexColorBitmap.Serialize(index_bmp.color_palette, index_bmp.pixels, index_bmp.width, index_bmp.height);
 	const save_data_blob = new Blob([bmp_bytes]);
 	return save_data_blob;
 };
 
 const MakeSaveDataBlobAsJson = function () {
-	const save_data = data.MakeRawSaveData();
+	const save_data = data.MakeSaveData();
 	const save_data_json = JSON.stringify(save_data);
 	const save_data_blob = new Blob([save_data_json], {
 		type: 'application/json'

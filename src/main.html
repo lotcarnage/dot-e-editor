@@ -23,10 +23,10 @@
             grid-auto-columns: max-content;
             grid-auto-rows: max-content;
             grid-template-areas:
-                "a b b"
-                "c e e"
-                "d e e"
-                "f e e";
+                "a b b b"
+                "c e e g"
+                "d e e g"
+                "f e e g";
         }
 
         div.hbox {
@@ -85,6 +85,11 @@
         div#editframe {
             width: 128px;
             height: 384px;
+        }
+
+        div#layerblock {
+            grid-area: g;
+            background-color: yellowgreen;
         }
 
         div#manualblock {
@@ -258,6 +263,8 @@
                 <button id="animation_playback_button">▶︎</button>
                 <textarea id="sprite_indices"></textarea>
             </div>
+        </div>
+        <div id="layerblock">
         </div>
     </div>
     <div id="manualblock">
