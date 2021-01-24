@@ -117,10 +117,6 @@
                 <label for="grid_color">グリッド／番号色</label>
                 <input type="color" id="grid_color" value="#333333">
             </div>
-            <div class="hbox">
-                <label for="canvas_bg_color">キャンバス背景色</label>
-                <input type="color" id="canvas_bg_color" value="#ff00ff">
-            </div>
         </div>
         <div id="toolsblock">
             <div class="vbox">
@@ -631,7 +627,7 @@ var UiParts;
             this.Update(this.update_state_callback_, false, true);
         }
         Update(callback, is_focusin, is_focusout) {
-            callback(this.user_value_, this.order_, this.layer_name_.value, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
+            callback(this.user_value_, this.order_, this.layer_name_.value, this.tab_.style.backgroundColor, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
         }
         DrawThumbnail(callback) {
             callback(this.user_value_, this.order_, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, this.thumbnail_.getContext('2d'));
@@ -1715,6 +1711,7 @@ class Dom {
         this.edit_canvas = GetHtmlElement('edit');
         this.view_canvas = GetHtmlElement('view');
         this.blank_frame = GetHtmlElement('blank_frame');
+        this.edit_block = GetHtmlElement('editblock');
         this.edit_frame = GetHtmlElement('editframe');
         this.default_palette_selector = GetHtmlElement('default_palette_selector');
         this.reset_color_palette_button = GetHtmlElement('reset_color_palette_button');
@@ -1734,7 +1731,6 @@ class Dom {
         this.dom_paint_tool = GetHtmlElement('paint_tool');
         this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
         this.grid_color = GetHtmlElement('grid_color');
-        this.canvas_bg_color = GetHtmlElement('canvas_bg_color');
         this.save_picture_button = GetHtmlElement('download_edit_data');
         this.edit_data_name = GetHtmlElement('edit_data_name');
         this.color_palette = new Array(256);
@@ -2010,7 +2006,6 @@ const UpdateView = function () {
     }
     DrawSpriteAnimation(frame_count);
     layer_pane_ui.Draw();
-    dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
     frame_count++;
     window.requestAnimationFrame(UpdateView);
 };
@@ -2113,9 +2108,6 @@ function Initialize() {
     });
     dom.grid_color.addEventListener('input', (event) => {
         data.TouchEditView();
-    });
-    dom.canvas_bg_color.addEventListener('input', (event) => {
-        dom.edit_frame.style.backgroundColor = event.target.value;
     });
     dom.dom_pen_tool.addEventListener('change', (event) => {
         tool = pen_tool;
@@ -2256,13 +2248,15 @@ function Initialize() {
         return [...param, new_pixel_layer];
     }, (pixel_layer, order) => {
         pixel_layers.delete(pixel_layer);
-    }, (lh_order, rh_order) => { }, (pixel_layer, order, name, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
+    }, (lh_order, rh_order) => { }, (pixel_layer, order, name, tag_color, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
         pixel_layer.order = order;
         pixel_layer.name = name;
         pixel_layer.is_locked = is_locked;
         pixel_layer.is_visible = is_visible;
         if (is_focusin === true) {
             data.SetCurrentPixelLayer(pixel_layer);
+            dom.edit_block.style.backgroundColor = tag_color;
+            dom.edit_frame.style.backgroundColor = tag_color;
         }
     }, (value, order, is_locked, is_visible, thumbnail_context) => {
         thumbnail_context.scale(1, 1);

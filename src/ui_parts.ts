@@ -3,7 +3,7 @@ namespace UiParts {
 	export type RegisterUserValueCallback<UserType> = (registration_order: number) => [string, string, UserType];
 	export type RemovedCallback<UserType> = (target: UserType, order: number) => void;
 	export type UpdatedStateCallback<UserType> = (
-		target: UserType, order: number, name: string,
+		target: UserType, order: number, name: string, tag_color: string,
 		is_locked: boolean, is_visible: boolean,
 		is_focusin: boolean, is_focusout: boolean,
 		thumbnail_context: CanvasRenderingContext2D) => void;
@@ -68,7 +68,7 @@ namespace UiParts {
 		public Update(callback: UpdatedStateCallback<UserType>, is_focusin: boolean, is_focusout: boolean) {
 			callback(
 				this.user_value_,
-				this.order_, this.layer_name_.value,
+				this.order_, this.layer_name_.value, this.tab_.style.backgroundColor,
 				this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked,
 				is_focusin, is_focusout,
 				this.thumbnail_.getContext('2d'));

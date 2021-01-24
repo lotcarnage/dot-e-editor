@@ -934,6 +934,7 @@ class Dom {
 	edit_canvas: HTMLCanvasElement;
 	view_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
+	edit_block: HTMLDivElement;
 	edit_frame: HTMLDivElement;
 	default_palette_selector: HTMLSelectElement;
 	reset_color_palette_button: HTMLButtonElement;
@@ -953,7 +954,6 @@ class Dom {
 	dom_paint_tool: HTMLInputElement;
 	dom_rectangle_select_tool: HTMLInputElement;
 	grid_color: HTMLInputElement;
-	canvas_bg_color: HTMLInputElement;
 	save_picture_button: HTMLLinkElement;
 	edit_data_name: HTMLInputElement;
 	color_palette: HTMLTableDataCellElement[];
@@ -978,6 +978,7 @@ class Dom {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
+		this.edit_block = GetHtmlElement<HTMLDivElement>('editblock');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
 		this.default_palette_selector = GetHtmlElement<HTMLSelectElement>('default_palette_selector');
 		this.reset_color_palette_button = GetHtmlElement<HTMLButtonElement>('reset_color_palette_button');
@@ -997,7 +998,6 @@ class Dom {
 		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
 		this.dom_rectangle_select_tool = GetHtmlElement<HTMLInputElement>('rectangle_select_tool');
 		this.grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
-		this.canvas_bg_color = GetHtmlElement<HTMLInputElement>('canvas_bg_color');
 		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
@@ -1292,7 +1292,6 @@ const UpdateView = function () {
 	DrawSpriteAnimation(frame_count);
 	layer_pane_ui.Draw();
 
-	dom.edit_frame.style.backgroundColor = dom.canvas_bg_color.value;
 	frame_count++;
 	window.requestAnimationFrame(UpdateView);
 }
@@ -1401,9 +1400,6 @@ function Initialize() {
 	});
 	dom.grid_color.addEventListener('input', (event) => {
 		data.TouchEditView();
-	});
-	dom.canvas_bg_color.addEventListener('input', (event) => {
-		dom.edit_frame.style.backgroundColor = (<HTMLInputElement>event.target).value;
 	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
 		tool = pen_tool;
@@ -1555,13 +1551,15 @@ function Initialize() {
 			pixel_layers.delete(pixel_layer);
 		},
 		(lh_order, rh_order) => { /* swaped callback */ },
-		(pixel_layer, order, name, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
+		(pixel_layer, order, name, tag_color, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
 			pixel_layer.order = order;
 			pixel_layer.name = name;
 			pixel_layer.is_locked = is_locked;
 			pixel_layer.is_visible = is_visible;
 			if (is_focusin === true) {
 				data.SetCurrentPixelLayer(pixel_layer);
+				dom.edit_block.style.backgroundColor = tag_color;
+				dom.edit_frame.style.backgroundColor = tag_color;
 			}
 		},
 		(value, order, is_locked, is_visible, thumbnail_context) => {
