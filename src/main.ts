@@ -954,7 +954,6 @@ class Dom {
 	dom_paint_tool: HTMLInputElement;
 	dom_rectangle_select_tool: HTMLInputElement;
 	grid_color: HTMLInputElement;
-	save_picture_button: HTMLLinkElement;
 	edit_data_name: HTMLInputElement;
 	color_palette: HTMLTableDataCellElement[];
 	undo_button: HTMLButtonElement;
@@ -998,7 +997,6 @@ class Dom {
 		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
 		this.dom_rectangle_select_tool = GetHtmlElement<HTMLInputElement>('rectangle_select_tool');
 		this.grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
-		this.save_picture_button = GetHtmlElement<HTMLLinkElement>('download_edit_data');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.color_palette = new Array<HTMLTableDataCellElement>(256);
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
@@ -1406,8 +1404,12 @@ function Initialize() {
 	dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
 		tool = rentangle_select_tool;
 	});
-	dom.save_picture_button.addEventListener('click', DownloadEditData);
-
+	const dl_button = new UiParts.DonwloadButton(
+		GetHtmlElement<HTMLDivElement>("edit_command"), "保存（ダウンロード）", () => {
+			const basename = dom.edit_data_name.value;
+			const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
+			return MakeSaveData(basename, save_format)
+		});
 	edit_reader.addEventListener('load', (event) => {
 		const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
 		dom.edit_data_name.value = basename;
@@ -1556,6 +1558,9 @@ function Initialize() {
 				data.SetCurrentPixelLayer(pixel_layer);
 				dom.edit_block.style.backgroundColor = tag_color;
 				dom.edit_frame.style.backgroundColor = tag_color;
+				if (is_locked) {
+					dom.edit_canvas.style.cursor = 'not-allowed';
+				}
 			}
 		},
 		(value, order, is_locked, is_visible, thumbnail_context) => {
@@ -1571,6 +1576,7 @@ function Initialize() {
 			}
 		});
 	ApplyLayerUi();
+
 
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
@@ -1625,15 +1631,5 @@ const MakeSaveData = function (basename: string, save_format: string): [string, 
 			return [`${basename}.json`, MakeSaveDataBlobAsJson()];
 	}
 };
-
-function DownloadEditData() {
-	const basename = dom.edit_data_name.value;
-	const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
-	const [savefilename, savedata_blob] = MakeSaveData(basename, save_format)
-	const object_url = window.URL.createObjectURL(savedata_blob);
-	const download_link = GetHtmlElement<HTMLLinkElement>('download_edit_data');
-	download_link.setAttribute('href', object_url);
-	download_link.setAttribute('download', savefilename);
-}
 
 Initialize();

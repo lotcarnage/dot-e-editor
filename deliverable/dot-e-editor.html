@@ -198,14 +198,13 @@
             <div class="hbox">
                 読み込み<input type="file" id="edit_filepath">
             </div>
-            <div class="hbox">
+            <div class="hbox" id="edit_command">
                 保存形式
                 <select id="edit_save_format">
                     <option value="JSON" selected>JSON</option>
                     <option value="WindowsIndexColorBitmap">BMP</option>
                 </select>
                 <input type="text" id="edit_data_name" value="new_picture">
-                <a id="download_edit_data" href="#"><button>保存(ダウンロード)</button></a>
             </div>
             <div class="hbox">
                 <div class="vbox">
@@ -851,6 +850,23 @@ var UiParts;
         }
     }
     UiParts.LayerPaneUi = LayerPaneUi;
+    class DonwloadButton {
+        constructor(parent, caption, dldata_request_callback) {
+            this.link_ = document.createElement("a");
+            this.button_ = document.createElement("button");
+            this.link_.href = "#";
+            this.button_.innerText = caption;
+            this.button_.addEventListener('click', () => {
+                const [dldata_filename, dldata_blob] = dldata_request_callback();
+                const object_url = window.URL.createObjectURL(dldata_blob);
+                this.link_.href = object_url;
+                this.link_.download = dldata_filename;
+            });
+            this.link_.appendChild(this.button_);
+            parent.appendChild(this.link_);
+        }
+    }
+    UiParts.DonwloadButton = DonwloadButton;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
@@ -1742,7 +1758,6 @@ class Dom {
         this.dom_paint_tool = GetHtmlElement('paint_tool');
         this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
         this.grid_color = GetHtmlElement('grid_color');
-        this.save_picture_button = GetHtmlElement('download_edit_data');
         this.edit_data_name = GetHtmlElement('edit_data_name');
         this.color_palette = new Array(256);
         this.undo_button = GetHtmlElement('undo_button');
@@ -2125,7 +2140,11 @@ function Initialize() {
     dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
         tool = rentangle_select_tool;
     });
-    dom.save_picture_button.addEventListener('click', DownloadEditData);
+    const dl_button = new UiParts.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
+        const basename = dom.edit_data_name.value;
+        const save_format = GetHtmlElement('edit_save_format').value;
+        return MakeSaveData(basename, save_format);
+    });
     edit_reader.addEventListener('load', (event) => {
         const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
         dom.edit_data_name.value = basename;
@@ -2264,6 +2283,9 @@ function Initialize() {
             data.SetCurrentPixelLayer(pixel_layer);
             dom.edit_block.style.backgroundColor = tag_color;
             dom.edit_frame.style.backgroundColor = tag_color;
+            if (is_locked) {
+                dom.edit_canvas.style.cursor = 'not-allowed';
+            }
         }
     }, (value, order, is_locked, is_visible, thumbnail_context) => {
         thumbnail_context.scale(1, 1);
@@ -2338,15 +2360,6 @@ const MakeSaveData = function (basename, save_format) {
             return [`${basename}.json`, MakeSaveDataBlobAsJson()];
     }
 };
-function DownloadEditData() {
-    const basename = dom.edit_data_name.value;
-    const save_format = GetHtmlElement('edit_save_format').value;
-    const [savefilename, savedata_blob] = MakeSaveData(basename, save_format);
-    const object_url = window.URL.createObjectURL(savedata_blob);
-    const download_link = GetHtmlElement('download_edit_data');
-    download_link.setAttribute('href', object_url);
-    download_link.setAttribute('download', savefilename);
-}
 Initialize();
 
 /******/ })()
