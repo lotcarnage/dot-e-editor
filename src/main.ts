@@ -294,13 +294,13 @@ class Data {
 		}
 	}
 	public IsMasked(w: number, h: number): boolean {
-		if (this.pixel_layer_.is_locked === true) {
-			return true;
-		}
 		return this.pixels_mask_[h][w];
 	}
 	public WriteMap(w: number, h: number, color_index: number) {
 		if (this.IsMasked(w, h)) {
+			return;
+		}
+		if (this.pixel_layer_.is_locked === true) {
 			return;
 		}
 		this.pixel_layer_.WritePixel(w, h, color_index);
