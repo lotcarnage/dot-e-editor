@@ -1223,7 +1223,7 @@ const UpdateSpriteIndicesArray = function () {
 }
 
 const DrawSpriteAnimation = function (frame_count: number): void {
-	if (is_animation_playing) {
+	if (!is_animation_playing) {
 		return;
 	}
 	UpdateSpriteIndicesArray();
