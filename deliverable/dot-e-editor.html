@@ -1962,20 +1962,16 @@ const DrawSpriteAnimation = function (frame_count) {
     const max_w = Math.min(pixel_w_offset + sprite_w, data.edit_width);
     const max_h = Math.min(pixel_h_offset + sprite_h, data.edit_height);
     const view_scale = Number(dom.animation_view_scale.value);
-    let is_context_reset = false;
     if (dom.animation_canvas.width !== sprite_w * view_scale) {
         dom.animation_canvas.width = sprite_w * view_scale;
-        is_context_reset = true;
     }
     if (dom.animation_canvas.height !== sprite_h * view_scale) {
         dom.animation_canvas.height = sprite_h * view_scale;
-        is_context_reset = true;
     }
     const context = dom.animation_canvas.getContext('2d');
-    if (is_context_reset) {
-        context.imageSmoothingEnabled = false;
-        context.scale(view_scale, view_scale);
-    }
+    context.imageSmoothingEnabled = false;
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.scale(view_scale, view_scale);
     for (let h = pixel_h_offset; h < max_h; h++) {
         for (let w = pixel_w_offset; w < max_w; w++) {
             const mi = marged_pixel_layer.GetPixel(w, h);
