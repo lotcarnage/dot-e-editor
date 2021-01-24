@@ -26,10 +26,14 @@ namespace UiParts {
 			this.user_value_ = user_value;
 			this.layer_frame_ = document.createElement("div");
 			this.layer_frame_.style.display = "flex";
+			this.layer_frame_.style.alignItems = "center";
 			this.tab_ = document.createElement("div");
-			this.tab_.style.width = (24).toString();
-			this.tab_.style.height = (24).toString();
+			this.tab_.style.width = (40).toString();
+			this.tab_.style.height = (32).toString();
 			this.tab_.style.backgroundColor = color;
+			this.tab_.style.display = "flex";
+			this.tab_.style.justifyContent = "center";
+			this.tab_.style.alignItems = "center";
 			this.thumbnail_ = document.createElement("canvas");
 			this.layer_lock_checkbox_ = document.createElement("input");
 			this.layer_view_checkbox_ = document.createElement("input");
@@ -42,6 +46,9 @@ namespace UiParts {
 			this.layer_view_checkbox_.checked = true;
 			this.layer_name_.type = "text";
 			this.layer_name_.value = name;
+			this.layer_name_.style.height = '1em';
+			this.layer_name_.style.paddingTop = (8).toString();
+			this.layer_name_.style.paddingBottom = (8).toString();
 			this.tab_.appendChild(this.thumbnail_);
 			this.layer_frame_.appendChild(this.tab_);
 			this.layer_frame_.appendChild(this.layer_lock_checkbox_);
@@ -59,10 +66,14 @@ namespace UiParts {
 		}
 		public FocusIn() {
 			this.layer_frame_.style.backgroundColor = 'rgb(0, 0, 255)';
+			this.layer_frame_.style.boxShadow = "0px 0px 0px 0px";
+			this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
 			this.Update(this.update_state_callback_, true, false);
 		}
 		public FocusOut() {
 			this.layer_frame_.style.backgroundColor = 'rgb(255, 255, 255)';
+			this.layer_frame_.style.boxShadow = "0px 8px 16px -2px rgba(10,10,10,0.1), 2px 2px 3px 0px rgba(0,0,0,0.48) inset";
+			this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
 			this.Update(this.update_state_callback_, false, true);
 		}
 		public Update(callback: UpdatedStateCallback<UserType>, is_focusin: boolean, is_focusout: boolean) {
@@ -140,7 +151,7 @@ namespace UiParts {
 			this.current_layer_ = null;
 
 			this.command_holder_.style.display = "flex";
-			this.command_holder_.style.backgroundColor = "rgb(192, 192, 192)";
+			this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
 			this.layer_holder_.style.display = "flex";
 			this.layer_holder_.style.flexDirection = "column-reverse";
 			this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
