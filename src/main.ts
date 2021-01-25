@@ -238,6 +238,9 @@ class Data {
 	public SetCurrentPixelLayer(pixel_layer: PixelLayer): void {
 		this.pixel_layer_ = pixel_layer;
 	}
+	public IsCurrentPixelLayer(pixel_layer: PixelLayer): boolean {
+		return (this.pixel_layer_ === pixel_layer);
+	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
 	}
@@ -1565,8 +1568,12 @@ function Initialize() {
 				data.SetCurrentPixelLayer(pixel_layer);
 				dom.edit_block.style.backgroundColor = tag_color;
 				dom.edit_frame.style.backgroundColor = tag_color;
+			}
+			if (data.IsCurrentPixelLayer(pixel_layer)) {
 				if (is_locked) {
 					dom.edit_canvas.style.cursor = 'not-allowed';
+				} else {
+					dom.edit_canvas.style.cursor = 'auto';
 				}
 			}
 		},
