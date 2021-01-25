@@ -787,10 +787,17 @@ const MargeLayers = function (): void {
 				}
 			}
 			if (!is_written) {
-				const src_ci = sorted_layers[lowest_layer_index].GetPixel(w, h);
-				if (src_ci !== dst_ci) {
-					marged_pixel_layer.WritePixel(w, h, src_ci);
-					data.TouchPixel(w, h);
+				if (sorted_layers[lowest_layer_index].is_visible) {
+					const src_ci = sorted_layers[lowest_layer_index].GetPixel(w, h);
+					if (src_ci !== dst_ci) {
+						marged_pixel_layer.WritePixel(w, h, src_ci);
+						data.TouchPixel(w, h);
+					}
+				} else {
+					if (bg_ci !== dst_ci) {
+						marged_pixel_layer.WritePixel(w, h, bg_ci);
+						data.TouchPixel(w, h);
+					}
 				}
 			}
 		}
