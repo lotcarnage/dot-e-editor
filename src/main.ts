@@ -184,6 +184,7 @@ class PixelLayer {
 
 class Data {
 	private current_pixel_layer_: PixelLayer | null;
+	private pixel_layers_: Map<PixelLayer, PixelLayer>;
 	private pixels_written_set_: Set<number>;
 	private pixels_mask_: boolean[][];
 	private edit_scale_: number;
@@ -201,6 +202,7 @@ class Data {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
 		this.current_pixel_layer_ = null;
+		this.pixel_layers_ = new Map<PixelLayer, PixelLayer>();
 		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
 		this.clipboard_stored_width_ = 0;
 		this.clipboard_stored_height_ = 0;
@@ -252,6 +254,15 @@ class Data {
 	}
 	public get selected_bg_color_index(): number {
 		return this.selected_bg_color_index_;
+	}
+	public AppendLayer(pixel_layer: PixelLayer): void {
+		this.pixel_layers_.set(pixel_layer, pixel_layer);
+	}
+	public RemoveLayer(pixel_layer: PixelLayer): void {
+		this.pixel_layers_.delete(pixel_layer);
+	}
+	public RemoveAllLayers(): void {
+		this.pixel_layers_.clear();
 	}
 	public TouchEditView(): void {
 		this.is_edit_view_touched_ = true;
@@ -344,6 +355,18 @@ class Data {
 		this.color_palette_[rh_index] = tmp_color;
 		return;
 	}
+	public GetDescendingOrderedLayers(): PixelLayer[] {
+		const num_layers = this.pixel_layers_.size;
+		const sorted_layers = new Array<PixelLayer>(num_layers);
+		for (let layer of this.pixel_layers_.values()) {
+			sorted_layers[num_layers - layer.order - 1] = layer;
+		}
+		return sorted_layers;
+	}
+	public GetUnorderedLayersIterator(): IterableIterator<PixelLayer> {
+		return this.pixel_layers_.values();
+	}
+
 	public MakeSaveData(): MultiLayerIndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
@@ -360,7 +383,7 @@ class Data {
 		save_data.height = edit_h_count;
 		save_data.color_palette = color_palette;
 		save_data.layers = new Array<IndexColorBitmapLayer>(0);
-		for (let layer of pixel_layers.values()) {
+		for (let layer of this.pixel_layers_.values()) {
 			const save_layer = new IndexColorBitmapLayer();
 			save_layer.order = layer.order;
 			save_layer.name = layer.name;
@@ -383,14 +406,14 @@ class Data {
 		for (let i = 0; i < 256; i++) {
 			this.color_palette_[i].SetRgbString(bmp_data.color_palette[i]);
 		}
-		pixel_layers.clear();
+		this.pixel_layers_.clear();
 		const layer = new PixelLayer(0, name, '#202020', max_edit_width, max_edit_height);
 		for (let h = 0; h < edit_h; h++) {
 			for (let w = 0; w < edit_w; w++) {
 				layer.pixels[h][w] = bmp_data.pixels[h][w];
 			}
 		}
-		pixel_layers.set(layer, layer);
+		this.pixel_layers_.set(layer, layer);
 		return;
 	}
 	public CopyFromMultiLayerIndexColorBitmap(raw_data: MultiLayerIndexColorBitmap) {
@@ -403,7 +426,7 @@ class Data {
 			this.color_palette_[i].g = raw_data.color_palette[i].g;
 			this.color_palette_[i].b = raw_data.color_palette[i].b;
 		}
-		pixel_layers.clear();
+		this.pixel_layers_.clear();
 		for (let raw_layer of raw_data.layers) {
 			const layer = new PixelLayer(raw_layer.order, raw_layer.name, raw_layer.tag_color, max_edit_width, max_edit_height);
 			for (let h = 0; h < edit_h; h++) {
@@ -411,7 +434,7 @@ class Data {
 					layer.pixels[h][w] = raw_layer.pixels[h][w];
 				}
 			}
-			pixel_layers.set(layer, layer);
+			this.pixel_layers_.set(layer, layer);
 		}
 		return;
 	}
@@ -730,7 +753,6 @@ class RectangleSelectTool extends Tool {
 }
 
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
-const pixel_layers = new Map<PixelLayer, PixelLayer>();
 const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
 const pen_tool: PenTool = new PenTool();
 const paint_tool: PaintTool = new PaintTool();
@@ -740,11 +762,7 @@ let tool: Tool = pen_tool;
 let target_pixels: RectangleTargetPixels | null = null;
 
 const MargeLayers = function (): void {
-	const num_layers = pixel_layers.size;
-	const sorted_layers = new Array<PixelLayer>(num_layers);
-	for (let layer of pixel_layers.values()) {
-		sorted_layers[num_layers - layer.order - 1] = layer;
-	}
+	const sorted_layers = data.GetDescendingOrderedLayers();
 	const max_w = data.edit_width;
 	const max_h = data.edit_height;
 	const bg_ci = data.selected_bg_color_index;
@@ -1318,7 +1336,7 @@ const AutoLoad = function (): boolean {
 const ApplyLayerUi = function (): void {
 	layer_pane_ui.DeleteAll();
 	const creation_parameters = new Array<[number, string, string, PixelLayer]>(0);
-	for (let pixel_layer of pixel_layers.values()) {
+	for (let pixel_layer of data.GetUnorderedLayersIterator()) {
 		creation_parameters.push([pixel_layer.order, pixel_layer.name, pixel_layer.tag_color, pixel_layer]);
 	}
 	layer_pane_ui.CreateNewLayers(creation_parameters);
@@ -1462,9 +1480,9 @@ function Initialize() {
 		ApplyColorPalette();
 	} else {
 		ResetColorPalette(1);
-		pixel_layers.clear();
+		data.RemoveAllLayers();
 		const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
-		pixel_layers.set(pixel_layer, pixel_layer);
+		data.AppendLayer(pixel_layer);
 	}
 	dom.editwidth.value = data.edit_width.toString();
 	dom.editheight.value = data.edit_height.toString();
@@ -1531,11 +1549,11 @@ function Initialize() {
 		(order) => {
 			const param = MakeLayerDefaultName();
 			const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
-			pixel_layers.set(new_pixel_layer, new_pixel_layer);
+			data.AppendLayer(new_pixel_layer);
 			return [...param, new_pixel_layer];
 		},
 		(pixel_layer, order) => {
-			pixel_layers.delete(pixel_layer);
+			data.RemoveLayer(pixel_layer);
 		},
 		(lh_order, rh_order) => { /* swaped callback */ },
 		(pixel_layer, order, name, tag_color, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
