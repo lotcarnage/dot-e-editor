@@ -183,7 +183,7 @@ class PixelLayer {
 }
 
 class Data {
-	private pixel_layer_: PixelLayer | null;
+	private current_pixel_layer_: PixelLayer | null;
 	private pixels_written_set_: Set<number>;
 	private pixels_mask_: boolean[][];
 	private edit_scale_: number;
@@ -200,7 +200,7 @@ class Data {
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
-		this.pixel_layer_ = null;
+		this.current_pixel_layer_ = null;
 		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
 		this.clipboard_stored_width_ = 0;
 		this.clipboard_stored_height_ = 0;
@@ -215,10 +215,10 @@ class Data {
 		this.logger_ = new EditLogger();
 	}
 	public SetCurrentPixelLayer(pixel_layer: PixelLayer): void {
-		this.pixel_layer_ = pixel_layer;
+		this.current_pixel_layer_ = pixel_layer;
 	}
 	public IsCurrentPixelLayer(pixel_layer: PixelLayer): boolean {
-		return (this.pixel_layer_ === pixel_layer);
+		return (this.current_pixel_layer_ === pixel_layer);
 	}
 	public get edit_scale(): number {
 		return this.edit_scale_;
@@ -282,10 +282,10 @@ class Data {
 		if (this.IsMasked(w, h)) {
 			return;
 		}
-		if (this.pixel_layer_.is_locked === true) {
+		if (this.current_pixel_layer_.is_locked === true) {
 			return;
 		}
-		this.pixel_layer_.pixels[h][w] = color_index;
+		this.current_pixel_layer_.pixels[h][w] = color_index;
 		const pixel_index = this.edit_width_ * h + w;
 		this.pixels_written_set_.add(pixel_index);
 	}
@@ -294,7 +294,7 @@ class Data {
 		this.pixels_written_set_.add(pixel_index);
 	}
 	public GetWrittenColorIndex(w: number, h: number): number {
-		return this.pixel_layer_.pixels[h][w];
+		return this.current_pixel_layer_.pixels[h][w];
 	}
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
@@ -311,7 +311,7 @@ class Data {
 		const histogram = new Array<number>(256).fill(0);
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				histogram[this.pixel_layer_.pixels[h][w]]++;
+				histogram[this.current_pixel_layer_.pixels[h][w]]++;
 			}
 		}
 		for (let i = 0; i < 256; i++) {
@@ -328,13 +328,13 @@ class Data {
 		}
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				const color_index = this.pixel_layer_.pixels[h][w];
+				const color_index = this.current_pixel_layer_.pixels[h][w];
 				if (color_index === lh_index) {
-					this.pixel_layer_.pixels[h][w] = rh_index;
+					this.current_pixel_layer_.pixels[h][w] = rh_index;
 					this.TouchPixel(w, h);
 				}
 				if (color_index === rh_index) {
-					this.pixel_layer_.pixels[h][w] = lh_index;
+					this.current_pixel_layer_.pixels[h][w] = lh_index;
 					this.TouchPixel(w, h);
 				}
 			}
@@ -349,7 +349,7 @@ class Data {
 		const edit_h_count = this.edit_height_;
 		const save_pixels = new Array<number[]>(edit_h_count);
 		for (var h = 0; h < edit_h_count; h++) {
-			save_pixels[h] = this.pixel_layer_.pixels[h].slice(0, edit_w_count);
+			save_pixels[h] = this.current_pixel_layer_.pixels[h].slice(0, edit_w_count);
 		}
 		const color_palette = new Array<RgbColor>(256);
 		for (var i = 0; i < 256; i++) {
@@ -427,7 +427,7 @@ class Data {
 			const src_h = top + dst_h;
 			for (let dst_w = 0; dst_w < copy_w; dst_w++) {
 				const src_w = left + dst_w;
-				this.pixels_clipboard_[dst_h][dst_w] = this.pixel_layer_.pixels[src_h][src_w];
+				this.pixels_clipboard_[dst_h][dst_w] = this.current_pixel_layer_.pixels[src_h][src_w];
 			}
 		}
 		this.clipboard_stored_width_ = copy_w;
