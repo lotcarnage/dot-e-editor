@@ -47,6 +47,12 @@
             clear: both;
         }
 
+        div.overflow_frame {
+            padding: 24px;
+            width: max-content;
+            height: max-content;
+        }
+
         div#settingsblock {
             grid-area: a;
             background-color: darkgrey;
@@ -225,7 +231,9 @@
                 </div>
             </div>
             <div class="canvasframe" id="editframe">
-                <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
+                <div class="overflow_frame">
+                    <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
+                </div>
             </div>
         </div>
         <div id="animationblock">
