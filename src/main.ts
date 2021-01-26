@@ -260,9 +260,13 @@ class Data {
 	}
 	public RemoveLayer(pixel_layer: PixelLayer): void {
 		this.pixel_layers_.delete(pixel_layer);
+		if (this.current_pixel_layer_ === pixel_layer) {
+			this.current_pixel_layer_ = null;
+		}
 	}
 	public RemoveAllLayers(): void {
 		this.pixel_layers_.clear();
+		this.current_pixel_layer_ = null;
 	}
 	public TouchEditView(): void {
 		this.is_edit_view_touched_ = true;
