@@ -166,40 +166,19 @@ const MargeMultiLayerIndexColorBitmapToIndexBitmap = function (mlbmp: MultiLayer
 
 
 class PixelLayer {
-	private pixels_: number[][];
-	private order_: number;
-	private name_: string;
+	pixels: number[][];
+	order: number;
+	name: string;
 	is_visible: boolean;
 	is_locked: boolean;
 	tag_color: string;
 	constructor(order: number, name: string, tag_color: string, max_width: number, max_height: number) {
-		this.pixels_ = Misc.Make2dArray<number>(max_width, max_height, 0);
-		this.order_ = order;
-		this.name_ = name;
+		this.pixels = Misc.Make2dArray<number>(max_width, max_height, 0);
+		this.order = order;
+		this.name = name;
 		this.tag_color = tag_color;
 		this.is_locked = false;
 		this.is_locked = true;
-	}
-	public WritePixel(x: number, y: number, color_index: number) {
-		this.pixels_[y][x] = color_index;
-	}
-	public GetPixel(x: number, y: number): number {
-		return this.pixels_[y][x];
-	}
-	public get order(): number {
-		return this.order_;
-	}
-	public set order(new_order: number) {
-		this.order_ = new_order;
-	}
-	public get name(): string {
-		return this.name_;
-	}
-	public set name(new_name: string) {
-		this.name_ = new_name;
-	}
-	public get pixels(): number[][] {
-		return this.pixels_;
 	}
 }
 
@@ -306,7 +285,7 @@ class Data {
 		if (this.pixel_layer_.is_locked === true) {
 			return;
 		}
-		this.pixel_layer_.WritePixel(w, h, color_index);
+		this.pixel_layer_.pixels[h][w] = color_index;
 		const pixel_index = this.edit_width_ * h + w;
 		this.pixels_written_set_.add(pixel_index);
 	}
@@ -315,7 +294,7 @@ class Data {
 		this.pixels_written_set_.add(pixel_index);
 	}
 	public GetWrittenColorIndex(w: number, h: number): number {
-		return this.pixel_layer_.GetPixel(w, h);
+		return this.pixel_layer_.pixels[h][w];
 	}
 	public GetWrittenPixelSet(): Set<number> {
 		return this.pixels_written_set_;
@@ -332,7 +311,7 @@ class Data {
 		const histogram = new Array<number>(256).fill(0);
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				histogram[this.pixel_layer_.GetPixel(w, h)]++;
+				histogram[this.pixel_layer_.pixels[h][w]]++;
 			}
 		}
 		for (let i = 0; i < 256; i++) {
@@ -349,13 +328,13 @@ class Data {
 		}
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
-				const color_index = this.pixel_layer_.GetPixel(w, h);
+				const color_index = this.pixel_layer_.pixels[h][w];
 				if (color_index === lh_index) {
-					this.pixel_layer_.WritePixel(w, h, rh_index);
+					this.pixel_layer_.pixels[h][w] = rh_index;
 					this.TouchPixel(w, h);
 				}
 				if (color_index === rh_index) {
-					this.pixel_layer_.WritePixel(w, h, lh_index);
+					this.pixel_layer_.pixels[h][w] = lh_index;
 					this.TouchPixel(w, h);
 				}
 			}
@@ -448,7 +427,7 @@ class Data {
 			const src_h = top + dst_h;
 			for (let dst_w = 0; dst_w < copy_w; dst_w++) {
 				const src_w = left + dst_w;
-				this.pixels_clipboard_[dst_h][dst_w] = this.pixel_layer_.GetPixel(src_w, src_h);
+				this.pixels_clipboard_[dst_h][dst_w] = this.pixel_layer_.pixels[src_h][src_w];
 			}
 		}
 		this.clipboard_stored_width_ = copy_w;
@@ -773,16 +752,16 @@ const MargeLayers = function (): void {
 	for (let h = 0; h < max_h; h++) {
 		for (let w = 0; w < max_w; w++) {
 			let is_written = false;
-			const dst_ci = marged_pixel_layer.GetPixel(w, h);
+			const dst_ci = marged_pixel_layer.pixels[h][w];
 			for (let i = 0; i < sorted_layers.length - 1; i++) {
 				const source_layer = sorted_layers[i];
 				if (source_layer.is_visible === false) {
 					continue;
 				}
-				const src_ci = source_layer.GetPixel(w, h);
+				const src_ci = source_layer.pixels[h][w];
 				if (src_ci !== bg_ci) {
 					if (src_ci !== dst_ci) {
-						marged_pixel_layer.WritePixel(w, h, src_ci);
+						marged_pixel_layer.pixels[h][w] = src_ci;
 						data.TouchPixel(w, h);
 					}
 					is_written = true;
@@ -791,14 +770,14 @@ const MargeLayers = function (): void {
 			}
 			if (!is_written) {
 				if (sorted_layers[lowest_layer_index].is_visible) {
-					const src_ci = sorted_layers[lowest_layer_index].GetPixel(w, h);
+					const src_ci = sorted_layers[lowest_layer_index].pixels[h][w];
 					if (src_ci !== dst_ci) {
-						marged_pixel_layer.WritePixel(w, h, src_ci);
+						marged_pixel_layer.pixels[h][w] = src_ci;
 						data.TouchPixel(w, h);
 					}
 				} else {
 					if (bg_ci !== dst_ci) {
-						marged_pixel_layer.WritePixel(w, h, bg_ci);
+						marged_pixel_layer.pixels[h][w] = bg_ci;
 						data.TouchPixel(w, h);
 					}
 				}
@@ -1098,7 +1077,7 @@ const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
 		const dst_x = w * view_scale;
 		const dst_y = h * view_scale;
-		const ci = marged_pixel_layer.GetPixel(w, h);
+		const ci = marged_pixel_layer.pixels[h][w];
 		const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
 		edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
 	});
@@ -1132,7 +1111,7 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
 		update_w_grid_set.add(w);
 		update_h_grid_set.add(h);
-		const mi = marged_pixel_layer.GetPixel(w, h);
+		const mi = marged_pixel_layer.pixels[h][w];
 		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillStyle = color;
 		edit_context.fillRect(w, h, 1, 1);
@@ -1172,7 +1151,7 @@ const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
 	view_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = marged_pixel_layer.GetPixel(w, h);
+			const mi = marged_pixel_layer.pixels[h][w];
 			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
 			view_context.fillRect(w, h, 1, 1);
 		}
@@ -1186,7 +1165,7 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	edit_context.scale(view_scale, view_scale);
 	for (var h = 0; h < edit_h_count; h++) {
 		for (var w = 0; w < edit_w_count; w++) {
-			const mi = marged_pixel_layer.GetPixel(w, h);
+			const mi = marged_pixel_layer.pixels[h][w];
 			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			edit_context.fillRect(w, h, 1, 1);
 		}
@@ -1267,7 +1246,7 @@ const DrawSpriteAnimation = function (frame_count: number): void {
 	context.scale(view_scale, view_scale);
 	for (let h = pixel_h_offset; h < max_h; h++) {
 		for (let w = pixel_w_offset; w < max_w; w++) {
-			const mi = marged_pixel_layer.GetPixel(w, h);
+			const mi = marged_pixel_layer.pixels[h][w];
 			context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
 			context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
 		}
