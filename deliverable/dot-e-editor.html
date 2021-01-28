@@ -157,23 +157,7 @@
         </div>
 
         <div id="paletteblock">
-            <div class="hbox">
-                <select id="default_palette_selector">
-                    <option value="0" selected>変更しない</option>
-                    <option value="1">HSV 16色</option>
-                    <option value="2">HSV 16色2彩度</option>
-                    <option value="3">HSV 16色4彩度</option>
-                    <option value="4">Webセーフカラー</option>
-                </select>
-                <button id="reset_color_palette_button">リセット</button>
-            </div>
-            <div id="blank_frame">
-            </div>
-            <div class="hbox">
-                <label for="palette_color">色変更</label>
-                <input type="color" id="palette_color" value="#000000">
-                <div class="rightvbox" id="color_caption">
-                </div>
+            <div class="hbox" id="colorpalette">
             </div>
             <div class="hbox">
                 <button id="delete_all_unused_colors_button">未使用色を全削除</button>
@@ -875,6 +859,187 @@ var UiParts;
         }
     }
     UiParts.DonwloadButton = DonwloadButton;
+    class ColorPaletteTableUi {
+        constructor(parent, num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
+            this.selected_index_ = 0;
+            this.preset_color_palettes_ = preset_color_palettes;
+            /* for color table UI */
+            this.dummy_canvas_array_ = new Array(256);
+            for (let i = 0; i < 256; i++) {
+                const dummy_canvas = document.createElement("canvas");
+                dummy_canvas.width = cell_width - 2;
+                dummy_canvas.height = cell_height - 2;
+                this.dummy_canvas_array_[i] = dummy_canvas;
+            }
+            this.color_cells_ = new Array(256);
+            const initiali_color_palette = preset_color_palettes[initial_color_palette_index].colors;
+            for (let i = 0; i < 256; i++) {
+                const color_cell = document.createElement("td");
+                color_cell.draggable = true;
+                color_cell.style.backgroundColor = initiali_color_palette[i];
+                color_cell.appendChild(this.dummy_canvas_array_[i]);
+                ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
+                this.color_cells_[i] = color_cell;
+            }
+            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[this.selected_index_]);
+            this.tr_array_ = new Array(16);
+            for (let i = 0; i < 16; i++) {
+                const tr = document.createElement("tr");
+                for (let j = 0; j < 16; j++) {
+                    const td_index = 16 * i + j;
+                    tr.appendChild(this.color_cells_[td_index]);
+                }
+                this.tr_array_[i] = tr;
+            }
+            this.table_ = document.createElement("table");
+            this.table_.style.borderSpacing = "0";
+            for (let i = 0; i < 16; i++) {
+                this.table_.appendChild(this.tr_array_[i]);
+            }
+            for (let i = 0; i < 256; i++) {
+                this.color_cells_[i].addEventListener('click', () => {
+                    select_color_callback(i);
+                    ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+                    ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[i]);
+                    this.selected_index_ = i;
+                    this.UpdateColorEditView();
+                });
+                this.color_cells_[i].addEventListener('dragstart', (event) => {
+                    event.dataTransfer.setData("color_index", i.toString());
+                });
+                this.color_cells_[i].addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                });
+                this.color_cells_[i].addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
+                    dad_color_cell_callback(drag_color_index, this.color_cells_[drag_color_index], i, this.color_cells_[i]);
+                    const tmp_color = this.color_cells_[drag_color_index].style.backgroundColor;
+                    this.color_cells_[drag_color_index].style.backgroundColor = this.color_cells_[i].style.backgroundColor;
+                    this.color_cells_[i].style.backgroundColor = tmp_color;
+                });
+            }
+            /* for preset color palette UI */
+            this.preset_palette_selector_ = document.createElement("select");
+            const none_option = document.createElement("option");
+            none_option.value = "0";
+            none_option.innerText = "変更しない";
+            this.preset_palette_selector_.append(none_option);
+            for (let i = 0; i < preset_color_palettes.length; i++) {
+                const preset_option = document.createElement("option");
+                preset_option.value = (i + 1).toString();
+                preset_option.innerText = preset_color_palettes[i].caption;
+                this.preset_palette_selector_.append(preset_option);
+            }
+            this.preset_palette_selector_.selectedIndex = 0;
+            this.reset_color_palette_button_ = document.createElement("button");
+            this.reset_color_palette_button_.innerText = "リセット";
+            this.reset_color_palette_button_.addEventListener('click', (event) => {
+                const preset_command_index = parseInt(this.preset_palette_selector_.value);
+                if (preset_command_index === 0) {
+                    return;
+                }
+                const preset_index = preset_command_index - 1;
+                const preset_color_palette = this.preset_color_palettes_[preset_index].colors;
+                for (let i = 0; i < 256; i++) {
+                    const color_cell = this.color_cells_[i];
+                    const color_string = preset_color_palette[i];
+                    color_cell.style.backgroundColor = color_string;
+                    change_color_callback(i, color_string);
+                }
+                this.UpdateColorEditView();
+                this.preset_palette_selector_.value = "0";
+            });
+            /* for color edit UI */
+            this.color_input_ = document.createElement("input");
+            this.color_caption_ = document.createElement("div");
+            this.color_caption_.style.float = "right";
+            this.UpdateColorEditView();
+            this.color_input_.type = "color";
+            this.color_input_.addEventListener('input', (event) => {
+                const i = this.selected_index_;
+                const new_color_string = event.target.value;
+                this.color_cells_[i].style.backgroundColor = new_color_string;
+                this.UpdateColorEditCaption();
+                change_color_callback(i, new_color_string);
+            });
+            this.preset_command_holder_ = document.createElement("div");
+            this.color_table_holder_ = document.createElement("div");
+            this.color_edit_holder_ = document.createElement("div");
+            this.holder_ = document.createElement("div");
+            this.preset_command_holder_.style.clear = "both";
+            this.color_table_holder_.style.clear = "both";
+            this.color_edit_holder_.style.clear = "both";
+            this.holder_.style.clear = "both";
+            this.preset_command_holder_.appendChild(this.preset_palette_selector_);
+            this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
+            this.color_table_holder_.appendChild(this.table_);
+            this.color_edit_holder_.appendChild(this.color_input_);
+            this.color_edit_holder_.appendChild(this.color_caption_);
+            this.holder_.appendChild(this.preset_command_holder_);
+            this.holder_.appendChild(this.color_table_holder_);
+            this.holder_.appendChild(this.color_edit_holder_);
+            parent.appendChild(this.holder_);
+            return;
+        }
+        static SetUnselectedColorCellStyle(color_cell) {
+            color_cell.style.borderStyle = "solid";
+            color_cell.style.borderColor = "#000000";
+            color_cell.style.borderWidth = "1";
+        }
+        static SetSelectedColorCellStyle(color_cell) {
+            color_cell.style.borderStyle = "solid";
+            color_cell.style.borderColor = "#00ff00";
+            color_cell.style.borderWidth = "1";
+        }
+        static RgbStringToHexColor(rgb_string) {
+            const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+            const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
+            const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
+            const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
+            return `#${r_hex}${g_hex}${b_hex}`;
+        }
+        UpdateColorEditCaption() {
+            const i = this.selected_index_;
+            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+            this.color_caption_.innerText = `${i}:${color}`;
+        }
+        UpdateColorEditView() {
+            const i = this.selected_index_;
+            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+            this.color_input_.value = color;
+            this.color_caption_.innerText = `${i}:${color}`;
+        }
+        GetColor(index) {
+            return this.color_cells_[index].style.backgroundColor;
+        }
+        GetColorTable() {
+            const color_table = new Array(256);
+            for (let i = 0; i < 256; i++) {
+                color_table[i] = this.color_cells_[i].style.backgroundColor;
+            }
+            return color_table;
+        }
+        SetColor(index, color_string) {
+            this.color_cells_[index].style.backgroundColor = color_string;
+            if (this.selected_index_ === index) {
+                this.UpdateColorEditView();
+            }
+        }
+        SetColorTable(color_table) {
+            for (let i = 0; i < 256; i++) {
+                this.color_cells_[i].style.backgroundColor = color_table[i];
+            }
+            this.UpdateColorEditView();
+        }
+        SelectColorCell(color_index) {
+            ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[color_index]);
+            this.selected_index_ = color_index;
+            this.UpdateColorEditView();
+        }
+    }
+    UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
@@ -1330,7 +1495,7 @@ class Data {
 }
 const ApplyColorPalette = function () {
     for (let i = 0; i < 256; i++) {
-        dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
+        color_table.SetColor(i, data.GetRgbColorFromPalette(i).ToHexColor());
     }
 };
 const ApplyView = function () {
@@ -1590,6 +1755,7 @@ const rentangle_select_tool = new RectangleSelectTool();
 let layer_pane_ui = null;
 let tool = pen_tool;
 let target_pixels = null;
+let color_table = null;
 const MargeLayers = function () {
     const sorted_layers = data.GetDescendingOrderedLayers();
     const max_w = data.edit_width;
@@ -1722,35 +1888,6 @@ const LoadEditData = function (bytes) {
     }
     return false;
 };
-const SetUnselectedColorCellStyle = function (color_cell) {
-    color_cell.style.borderStyle = 'solid';
-    color_cell.style.borderColor = '#000000';
-    color_cell.style.borderWidth = '1';
-};
-const SetSelectedColorCellStyle = function (color_cell) {
-    color_cell.style.borderStyle = 'solid';
-    color_cell.style.borderColor = '#00ff00';
-    color_cell.style.borderWidth = '1';
-};
-function MakeTable(table_id, cols, rows, parent_dom) {
-    let tag_text = `<table id="${table_id}" cellspacing="0">`;
-    for (let row_i = 0; row_i < rows; row_i++) {
-        tag_text += "<tr>";
-        for (let col_i = 0; col_i < cols; col_i++) {
-            tag_text += `<td draggable="true" id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
-        }
-        tag_text += "<td>";
-    }
-    tag_text += "</table>";
-    parent_dom.innerHTML += tag_text;
-    const num_cells = cols * rows;
-    const cells = Array(num_cells);
-    for (let i = 0; i < 256; i++) {
-        cells[i] = GetHtmlElement(`${table_id}#${i}`);
-        SetUnselectedColorCellStyle(cells[i]);
-    }
-    return cells;
-}
 class Dom {
     Initialize() {
         this.edit_canvas = GetHtmlElement('edit');
@@ -1758,10 +1895,6 @@ class Dom {
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_block = GetHtmlElement('editblock');
         this.edit_frame = GetHtmlElement('editframe');
-        this.default_palette_selector = GetHtmlElement('default_palette_selector');
-        this.reset_color_palette_button = GetHtmlElement('reset_color_palette_button');
-        this.palette_color = GetHtmlElement('palette_color');
-        this.color_caption = GetHtmlElement('color_caption');
         this.editwidth = GetHtmlElement('editwidth');
         this.editheight = GetHtmlElement('editheight');
         this.edit_scale = GetHtmlElement('edit_scale');
@@ -1777,7 +1910,6 @@ class Dom {
         this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
         this.grid_color = GetHtmlElement('grid_color');
         this.edit_data_name = GetHtmlElement('edit_data_name');
-        this.color_palette = new Array(256);
         this.undo_button = GetHtmlElement('undo_button');
         this.redo_button = GetHtmlElement('redo_button');
         this.rectangle_fill_button = GetHtmlElement('rectangle_fill_button');
@@ -2050,13 +2182,8 @@ const UpdateView = function () {
     window.requestAnimationFrame(UpdateView);
 };
 const ChengeCurrentColor = function (new_color_index) {
-    const last_index = data.selected_color_index;
-    const color = data.GetRgbColorFromPalette(new_color_index).ToHexColor();
-    dom.palette_color.value = color;
-    SetUnselectedColorCellStyle(dom.color_palette[last_index]);
-    SetSelectedColorCellStyle(dom.color_palette[new_color_index]);
     data.selected_color_index = new_color_index;
-    dom.color_caption.innerText = `${new_color_index}:${color}`;
+    color_table.SelectColorCell(new_color_index);
 };
 const AutoSave = function () {
     if (Browser.isStorageAvailable('localStorage')) {
@@ -2169,47 +2296,6 @@ function Initialize() {
         LoadEditData(event.target.result);
         data.TouchEditView();
     });
-    dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
-    for (let i = 0; i < 256; i++) {
-        dom.color_palette[i].addEventListener('click', () => {
-            ChengeCurrentColor(i);
-        });
-        dom.color_palette[i].addEventListener('dragstart', (event) => {
-            event.dataTransfer.setData("color_index", i.toString());
-        });
-        dom.color_palette[i].addEventListener('dragover', (event) => {
-            event.preventDefault();
-        });
-        dom.color_palette[i].addEventListener('drop', (event) => {
-            event.preventDefault();
-            const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
-            data.SwapColor(i, drag_color_index);
-            const tmp_color = dom.color_palette[drag_color_index].style.backgroundColor;
-            dom.color_palette[drag_color_index].style.backgroundColor = dom.color_palette[i].style.backgroundColor;
-            dom.color_palette[i].style.backgroundColor = tmp_color;
-        });
-    }
-    const ResetColorPalette = function (palette_type) {
-        if (palette_type === 0) {
-            return;
-        }
-        const hex_color_string_array = palette_type === 1 ? Misc.MakeHSVBalancedColorList(1)
-            : palette_type === 2 ? Misc.MakeHSVBalancedColorList(2)
-                : palette_type === 3 ? Misc.MakeHSVBalancedColorList(4)
-                    : palette_type === 4 ? Misc.MakeWebSafeColorList()
-                        : Misc.MakeWebSafeColorList();
-        for (let i = 0; i < 256; i++) {
-            const color_cell = dom.color_palette[i];
-            const hex_color = hex_color_string_array[i];
-            data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
-            color_cell.style.backgroundColor = hex_color;
-        }
-        ChengeCurrentColor(data.selected_color_index);
-    };
-    dom.reset_color_palette_button.addEventListener('click', (event) => {
-        ResetColorPalette(Number(dom.default_palette_selector.value));
-        dom.default_palette_selector.value = "0";
-    });
     let creation_count = 0;
     const MakeLayerDefaultName = function () {
         const hue = (creation_count * 79) % 360;
@@ -2218,24 +2304,25 @@ function Initialize() {
         creation_count++;
         return [name, color.ToHexColor()];
     };
-    if (AutoLoad()) {
-        ApplyColorPalette();
-    }
-    else {
-        ResetColorPalette(1);
+    color_table = new UiParts.ColorPaletteTableUi(document.getElementById("colorpalette"), 16, 16, 16, 0, [
+        { caption: "HSV 16色", colors: Misc.MakeHSVBalancedColorList(1) },
+        { caption: "HSV 16色2彩度", colors: Misc.MakeHSVBalancedColorList(2) },
+        { caption: "HSV 16色4彩度", colors: Misc.MakeHSVBalancedColorList(4) },
+        { caption: "Webセーフカラー", colors: Misc.MakeWebSafeColorList() },
+    ], (color_index) => {
+        data.selected_color_index = color_index;
+    }, (src_i, src_cc, dst_i, dst_cc) => {
+        data.SwapColor(src_i, dst_i);
+    }, (color_index, color_string) => {
+        data.GetRgbColorFromPalette(color_index).SetHexColor(color_string);
+        data.TouchEditView();
+    });
+    if (!AutoLoad()) {
         data.RemoveAllLayers();
         const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
         data.AppendLayer(pixel_layer);
     }
-    dom.editwidth.value = data.edit_width.toString();
-    dom.editheight.value = data.edit_height.toString();
-    dom.palette_color.addEventListener('input', (event) => {
-        const i = data.selected_color_index;
-        const rgb_color = data.GetRgbColorFromPalette(i);
-        data.GetRgbColorFromPalette(i).SetHexColor(event.target.value);
-        dom.color_palette[i].style.backgroundColor = rgb_color.ToRgbString();
-        data.TouchEditView();
-    });
+    ApplyView();
     dom.undo_button.addEventListener('click', (event) => {
         data.Undo();
         ApplyView();
@@ -2277,7 +2364,6 @@ function Initialize() {
     dom.delete_all_unused_colors_button.addEventListener('click', (event) => {
         data.DeleteAllUnusedColors();
         ApplyColorPalette();
-        ChengeCurrentColor(data.selected_color_index);
     });
     dom.animation_playback_button.addEventListener('click', (event) => {
         const button = event.target;

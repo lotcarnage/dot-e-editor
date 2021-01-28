@@ -505,7 +505,7 @@ class Data {
 
 const ApplyColorPalette = function (): void {
 	for (let i = 0; i < 256; i++) {
-		dom.color_palette[i].style.backgroundColor = data.GetRgbColorFromPalette(i).ToRgbString();
+		color_table.SetColor(i, data.GetRgbColorFromPalette(i).ToHexColor());
 	}
 }
 
@@ -764,6 +764,7 @@ const rentangle_select_tool: RectangleSelectTool = new RectangleSelectTool();
 let layer_pane_ui: UiParts.LayerPaneUi<PixelLayer> | null = null;
 let tool: Tool = pen_tool;
 let target_pixels: RectangleTargetPixels | null = null;
+let color_table: UiParts.ColorPaletteTableUi | null = null;
 
 const MargeLayers = function (): void {
 	const sorted_layers = data.GetDescendingOrderedLayers();
@@ -907,50 +908,12 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	return false;
 }
 
-const SetUnselectedColorCellStyle = function (color_cell: HTMLTableDataCellElement): void {
-	color_cell.style.borderStyle = 'solid';
-	color_cell.style.borderColor = '#000000';
-	color_cell.style.borderWidth = '1';
-}
-
-const SetSelectedColorCellStyle = function (color_cell: HTMLTableDataCellElement): void {
-	color_cell.style.borderStyle = 'solid';
-	color_cell.style.borderColor = '#00ff00';
-	color_cell.style.borderWidth = '1';
-}
-
-function MakeTable(table_id: string, cols: number, rows: number, parent_dom: HTMLElement)
-	: HTMLTableDataCellElement[] {
-	let tag_text = `<table id="${table_id}" cellspacing="0">`;
-	for (let row_i = 0; row_i < rows; row_i++) {
-		tag_text += "<tr>";
-		for (let col_i = 0; col_i < cols; col_i++) {
-			tag_text += `<td draggable="true" id \="${table_id}#${row_i * cols + col_i}"><canvas width="14" height="14"></canvas></td>`;
-		}
-		tag_text += "<td>";
-	}
-	tag_text += "</table>";
-	parent_dom.innerHTML += tag_text;
-	const num_cells = cols * rows;
-	const cells = Array<HTMLTableDataCellElement>(num_cells);
-	for (let i = 0; i < 256; i++) {
-		cells[i] = GetHtmlElement<HTMLTableDataCellElement>(`${table_id}#${i}`);
-		SetUnselectedColorCellStyle(cells[i]);
-	}
-	return cells;
-}
-
-
 class Dom {
 	edit_canvas: HTMLCanvasElement;
 	view_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
 	edit_block: HTMLDivElement;
 	edit_frame: HTMLDivElement;
-	default_palette_selector: HTMLSelectElement;
-	reset_color_palette_button: HTMLButtonElement;
-	palette_color: HTMLInputElement;
-	color_caption: HTMLDivElement;
 	editwidth: HTMLInputElement;
 	editheight: HTMLInputElement;
 	edit_scale: HTMLSelectElement;
@@ -966,7 +929,6 @@ class Dom {
 	dom_rectangle_select_tool: HTMLInputElement;
 	grid_color: HTMLInputElement;
 	edit_data_name: HTMLInputElement;
-	color_palette: HTMLTableDataCellElement[];
 	undo_button: HTMLButtonElement;
 	redo_button: HTMLButtonElement;
 	rectangle_fill_button: HTMLButtonElement;
@@ -990,10 +952,6 @@ class Dom {
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_block = GetHtmlElement<HTMLDivElement>('editblock');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
-		this.default_palette_selector = GetHtmlElement<HTMLSelectElement>('default_palette_selector');
-		this.reset_color_palette_button = GetHtmlElement<HTMLButtonElement>('reset_color_palette_button');
-		this.palette_color = GetHtmlElement<HTMLInputElement>('palette_color');
-		this.color_caption = GetHtmlElement<HTMLInputElement>('color_caption');
 		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
 		this.editheight = GetHtmlElement<HTMLInputElement>('editheight');
 		this.edit_scale = GetHtmlElement<HTMLSelectElement>('edit_scale');
@@ -1009,7 +967,6 @@ class Dom {
 		this.dom_rectangle_select_tool = GetHtmlElement<HTMLInputElement>('rectangle_select_tool');
 		this.grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
-		this.color_palette = new Array<HTMLTableDataCellElement>(256);
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
 		this.redo_button = GetHtmlElement<HTMLButtonElement>('redo_button');
 		this.rectangle_fill_button = GetHtmlElement<HTMLButtonElement>('rectangle_fill_button');
@@ -1302,13 +1259,8 @@ const UpdateView = function () {
 }
 
 const ChengeCurrentColor = function (new_color_index: number): void {
-	const last_index = data.selected_color_index;
-	const color = data.GetRgbColorFromPalette(new_color_index).ToHexColor();
-	dom.palette_color.value = color;
-	SetUnselectedColorCellStyle(dom.color_palette[last_index]);
-	SetSelectedColorCellStyle(dom.color_palette[new_color_index]);
 	data.selected_color_index = new_color_index;
-	dom.color_caption.innerText = `${new_color_index}:${color}`;
+	color_table.SelectColorCell(new_color_index);
 }
 
 const AutoSave = function () {
@@ -1428,50 +1380,6 @@ function Initialize() {
 		data.TouchEditView();
 	});
 
-	dom.color_palette = MakeTable('color_palette', 16, 16, dom.blank_frame);
-	for (let i = 0; i < 256; i++) {
-		dom.color_palette[i].addEventListener('click', () => {
-			ChengeCurrentColor(i);
-		});
-		dom.color_palette[i].addEventListener('dragstart', (event) => {
-			event.dataTransfer.setData("color_index", i.toString());
-		});
-		dom.color_palette[i].addEventListener('dragover', (event) => {
-			event.preventDefault();
-		});
-		dom.color_palette[i].addEventListener('drop', (event) => {
-			event.preventDefault();
-			const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
-			data.SwapColor(i, drag_color_index);
-			const tmp_color = dom.color_palette[drag_color_index].style.backgroundColor;
-			dom.color_palette[drag_color_index].style.backgroundColor = dom.color_palette[i].style.backgroundColor;
-			dom.color_palette[i].style.backgroundColor = tmp_color;
-		});
-	}
-
-	const ResetColorPalette = function (palette_type: number) {
-		if (palette_type === 0) {
-			return;
-		}
-		const hex_color_string_array
-			= palette_type === 1 ? Misc.MakeHSVBalancedColorList(1)
-				: palette_type === 2 ? Misc.MakeHSVBalancedColorList(2)
-					: palette_type === 3 ? Misc.MakeHSVBalancedColorList(4)
-						: palette_type === 4 ? Misc.MakeWebSafeColorList()
-							: Misc.MakeWebSafeColorList();
-		for (let i = 0; i < 256; i++) {
-			const color_cell = dom.color_palette[i];
-			const hex_color = hex_color_string_array[i];
-			data.GetRgbColorFromPalette(i).SetHexColor(hex_color);
-			color_cell.style.backgroundColor = hex_color;
-		}
-		ChengeCurrentColor(data.selected_color_index);
-	};
-	dom.reset_color_palette_button.addEventListener('click', (event) => {
-		ResetColorPalette(Number(dom.default_palette_selector.value));
-		dom.default_palette_selector.value = "0";
-	});
-
 	let creation_count = 0;
 	const MakeLayerDefaultName = function (): [string, string] {
 		const hue = (creation_count * 79) % 360;
@@ -1480,24 +1388,32 @@ function Initialize() {
 		creation_count++;
 		return [name, color.ToHexColor()];
 	}
-	if (AutoLoad()) {
-		ApplyColorPalette();
-	} else {
-		ResetColorPalette(1);
+	color_table = new UiParts.ColorPaletteTableUi(
+		document.getElementById("colorpalette"), 16, 16, 16,
+		0,
+		[
+			{ caption: "HSV 16色", colors: Misc.MakeHSVBalancedColorList(1) },
+			{ caption: "HSV 16色2彩度", colors: Misc.MakeHSVBalancedColorList(2) },
+			{ caption: "HSV 16色4彩度", colors: Misc.MakeHSVBalancedColorList(4) },
+			{ caption: "Webセーフカラー", colors: Misc.MakeWebSafeColorList() },
+		],
+		(color_index) => {
+			data.selected_color_index = color_index;
+		},
+		(src_i, src_cc, dst_i, dst_cc) => {
+			data.SwapColor(src_i, dst_i);
+		},
+		(color_index, color_string) => {
+			data.GetRgbColorFromPalette(color_index).SetHexColor(color_string);
+			data.TouchEditView();
+		}
+	);
+	if (!AutoLoad()) {
 		data.RemoveAllLayers();
 		const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
 		data.AppendLayer(pixel_layer);
 	}
-	dom.editwidth.value = data.edit_width.toString();
-	dom.editheight.value = data.edit_height.toString();
-
-	dom.palette_color.addEventListener('input', (event) => {
-		const i = data.selected_color_index;
-		const rgb_color = data.GetRgbColorFromPalette(i);
-		data.GetRgbColorFromPalette(i).SetHexColor((<HTMLInputElement>event.target).value);
-		dom.color_palette[i].style.backgroundColor = rgb_color.ToRgbString();
-		data.TouchEditView();
-	});
+	ApplyView();
 
 	dom.undo_button.addEventListener('click', (event) => {
 		data.Undo();
@@ -1540,7 +1456,6 @@ function Initialize() {
 	dom.delete_all_unused_colors_button.addEventListener('click', (event) => {
 		data.DeleteAllUnusedColors();
 		ApplyColorPalette();
-		ChengeCurrentColor(data.selected_color_index);
 	});
 	dom.animation_playback_button.addEventListener('click', (event) => {
 		const button = (<HTMLButtonElement>event.target);
