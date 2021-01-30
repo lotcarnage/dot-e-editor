@@ -164,25 +164,6 @@
             </div>
         </div>
         <div id="viewblock">
-            <div class="hbox">
-                <div class="rightvbox">
-                    表示倍率
-                    <select id="view_scale">
-                        <option value="1">x1</option>
-                        <option value="2">x2</option>
-                        <option value="3">x3</option>
-                        <option value="4" selected>x4</option>
-                        <option value="6">x6</option>
-                        <option value="8">x8</option>
-                        <option value="12">x12</option>
-                        <option value="16">x16</option>
-                        <option value="24">x24</option>
-                    </select>
-                </div>
-            </div>
-            <div class="canvasframe" id="viewframe">
-                <canvas id="view" width="32" height="32"></canvas>
-            </div>
         </div>
         <div id="editblock">
             <div class="hbox">
@@ -1040,6 +1021,54 @@ var UiParts;
         }
     }
     UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
+    class PreviewWindowUi {
+        constructor(parent, width, height) {
+            this.canvas_ = document.createElement("canvas");
+            this.canvas_.width = width;
+            this.canvas_.height = height;
+            this.canvas_frame_ = document.createElement("div");
+            this.canvas_frame_.style.overflow = "scroll";
+            this.canvas_frame_.style.resize = "both";
+            this.canvas_frame_.appendChild(this.canvas_);
+            this.scale_selector_ = document.createElement("select");
+            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+            for (let scale of scale_array) {
+                const scale_option = document.createElement("option");
+                scale_option.value = scale.toString();
+                scale_option.innerText = `x${scale}`;
+                this.scale_selector_.appendChild(scale_option);
+            }
+            this.command_frame_ = document.createElement("div");
+            this.command_frame_.style.textAlign = "right";
+            this.command_frame_.innerText = "表示倍率";
+            this.command_frame_.appendChild(this.scale_selector_);
+            this.holder_ = document.createElement("div");
+            this.holder_.appendChild(this.command_frame_);
+            this.holder_.appendChild(this.canvas_frame_);
+            parent.appendChild(this.holder_);
+        }
+        Draw(pixels, color_table, width, height) {
+            const view_scale = parseInt(this.scale_selector_.value);
+            if (this.canvas_.width !== width * view_scale) {
+                this.canvas_.width = width * view_scale;
+            }
+            if (this.canvas_.height !== height * view_scale) {
+                this.canvas_.height = height * view_scale;
+            }
+            const context = this.canvas_.getContext("2d");
+            context.imageSmoothingEnabled = false;
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.scale(view_scale, view_scale);
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    const color_index = pixels[h][w];
+                    context.fillStyle = color_table[color_index];
+                    context.fillRect(w, h, 1, 1);
+                }
+            }
+        }
+    }
+    UiParts.PreviewWindowUi = PreviewWindowUi;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
@@ -1756,6 +1785,7 @@ let layer_pane_ui = null;
 let tool = pen_tool;
 let target_pixels = null;
 let color_table = null;
+let preview_window = null;
 const MargeLayers = function () {
     const sorted_layers = data.GetDescendingOrderedLayers();
     const max_w = data.edit_width;
@@ -1891,14 +1921,12 @@ const LoadEditData = function (bytes) {
 class Dom {
     Initialize() {
         this.edit_canvas = GetHtmlElement('edit');
-        this.view_canvas = GetHtmlElement('view');
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_block = GetHtmlElement('editblock');
         this.edit_frame = GetHtmlElement('editframe');
         this.editwidth = GetHtmlElement('editwidth');
         this.editheight = GetHtmlElement('editheight');
         this.edit_scale = GetHtmlElement('edit_scale');
-        this.view_scale = GetHtmlElement('view_scale');
         this.edit_filepath = GetHtmlElement('edit_filepath');
         this.view_index = GetHtmlElement('view_index');
         this.view_grid = GetHtmlElement('view_grid');
@@ -2011,8 +2039,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
     const written_pixel_set = data.GetWrittenPixelSet();
     const edit_context = dom.edit_canvas.getContext("2d");
     edit_context.imageSmoothingEnabled = false;
-    const view_context = dom.view_canvas.getContext('2d');
-    view_context.imageSmoothingEnabled = false;
     const update_w_grid_set = new Set();
     const update_h_grid_set = new Set();
     const pi = written_pixel_set.values[0];
@@ -2025,8 +2051,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
         const color = data.GetRgbColorFromPalette(mi).ToHexColor();
         edit_context.fillStyle = color;
         edit_context.fillRect(w, h, 1, 1);
-        view_context.fillStyle = color;
-        view_context.fillRect(w, h, 1, 1);
     });
     /* マスク表示 */
     edit_context.fillStyle = '#ff0000';
@@ -2050,21 +2074,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
         DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
     }
     written_pixel_set.clear();
-};
-const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
-    const view_context = dom.view_canvas.getContext('2d');
-    dom.view_canvas.width = edit_w_count * view_scale;
-    dom.view_canvas.height = edit_h_count * view_scale;
-    view_context.imageSmoothingEnabled = false;
-    view_context.scale(view_scale, view_scale);
-    for (var h = 0; h < edit_h_count; h++) {
-        for (var w = 0; w < edit_w_count; w++) {
-            const mi = marged_pixel_layer.pixels[h][w];
-            view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
-            ;
-            view_context.fillRect(w, h, 1, 1);
-        }
-    }
 };
 const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
     const edit_context = dom.edit_canvas.getContext("2d");
@@ -2158,13 +2167,8 @@ const DrawSpriteAnimation = function (frame_count) {
     return;
 };
 var frame_count = 0;
-let is_preview_touched = true;
 const UpdateView = function () {
     MargeLayers();
-    if (is_preview_touched || data.is_edit_view_touched) {
-        UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
-        is_preview_touched = false;
-    }
     if (data.is_edit_view_touched) {
         DrawCanvasPixelsAll(data.edit_width, data.edit_height, data.edit_scale);
         data.ClearEditViewTouchedFlag();
@@ -2178,6 +2182,13 @@ const UpdateView = function () {
     }
     DrawSpriteAnimation(frame_count);
     layer_pane_ui.Draw();
+    if (preview_window !== null) {
+        const color_table = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
+        }
+        preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
+    }
     frame_count++;
     window.requestAnimationFrame(UpdateView);
 };
@@ -2225,8 +2236,6 @@ function Initialize() {
     dom.edit_canvas.width = 256;
     dom.edit_canvas.height = 192;
     FitDivWidth('editframe', 'editblock');
-    FitDivWidth('viewframe', 'viewblock');
-    FitDivHeight('viewframe', 'viewblock');
     dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
     dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
     dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
@@ -2254,9 +2263,6 @@ function Initialize() {
     });
     dom.edit_filepath.addEventListener('change', (event) => {
         edit_reader.readAsArrayBuffer(event.target.files[0]);
-    });
-    dom.view_scale.addEventListener('change', (event) => {
-        is_preview_touched = true;
     });
     dom.view_index.addEventListener('change', (event) => {
         data.TouchEditView();
@@ -2409,6 +2415,7 @@ function Initialize() {
         }
     });
     ApplyLayerUi();
+    preview_window = new UiParts.PreviewWindowUi(document.getElementById("viewblock"), data.edit_width, data.edit_height);
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             switch (event.key) {

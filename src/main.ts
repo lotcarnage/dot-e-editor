@@ -765,6 +765,7 @@ let layer_pane_ui: UiParts.LayerPaneUi<PixelLayer> | null = null;
 let tool: Tool = pen_tool;
 let target_pixels: RectangleTargetPixels | null = null;
 let color_table: UiParts.ColorPaletteTableUi | null = null;
+let preview_window: UiParts.PreviewWindowUi | null = null;
 
 const MargeLayers = function (): void {
 	const sorted_layers = data.GetDescendingOrderedLayers();
@@ -910,14 +911,12 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 
 class Dom {
 	edit_canvas: HTMLCanvasElement;
-	view_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
 	edit_block: HTMLDivElement;
 	edit_frame: HTMLDivElement;
 	editwidth: HTMLInputElement;
 	editheight: HTMLInputElement;
 	edit_scale: HTMLSelectElement;
-	view_scale: HTMLSelectElement;
 	edit_filepath: HTMLInputElement;
 	view_index: HTMLInputElement;
 	view_grid: HTMLInputElement;
@@ -948,14 +947,12 @@ class Dom {
 	sprite_indices: HTMLTextAreaElement;
 	Initialize() {
 		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
-		this.view_canvas = GetHtmlElement<HTMLCanvasElement>('view');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_block = GetHtmlElement<HTMLDivElement>('editblock');
 		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
 		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
 		this.editheight = GetHtmlElement<HTMLInputElement>('editheight');
 		this.edit_scale = GetHtmlElement<HTMLSelectElement>('edit_scale');
-		this.view_scale = GetHtmlElement<HTMLSelectElement>('view_scale');
 		this.edit_filepath = GetHtmlElement<HTMLInputElement>('edit_filepath');
 		this.view_index = GetHtmlElement<HTMLInputElement>('view_index');
 		this.view_grid = GetHtmlElement<HTMLInputElement>('view_grid');
@@ -1079,9 +1076,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 	const edit_context = dom.edit_canvas.getContext("2d");
 	edit_context.imageSmoothingEnabled = false;
 
-	const view_context = dom.view_canvas.getContext('2d');
-	view_context.imageSmoothingEnabled = false;
-
 	const update_w_grid_set = new Set<number>();
 	const update_h_grid_set = new Set<number>();
 	const pi = written_pixel_set.values[0];
@@ -1094,8 +1088,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
 		edit_context.fillStyle = color;
 		edit_context.fillRect(w, h, 1, 1);
-		view_context.fillStyle = color;
-		view_context.fillRect(w, h, 1, 1);
 	});
 
 	/* マスク表示 */
@@ -1121,20 +1113,6 @@ const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale
 		DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
 	}
 	written_pixel_set.clear();
-}
-const UpdatePreview = function (edit_w_count, edit_h_count, view_scale) {
-	const view_context = dom.view_canvas.getContext('2d');
-	dom.view_canvas.width = edit_w_count * view_scale;
-	dom.view_canvas.height = edit_h_count * view_scale;
-	view_context.imageSmoothingEnabled = false;
-	view_context.scale(view_scale, view_scale);
-	for (var h = 0; h < edit_h_count; h++) {
-		for (var w = 0; w < edit_w_count; w++) {
-			const mi = marged_pixel_layer.pixels[h][w];
-			view_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();;
-			view_context.fillRect(w, h, 1, 1);
-		}
-	}
 }
 const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
 	const edit_context = dom.edit_canvas.getContext("2d");
@@ -1234,13 +1212,8 @@ const DrawSpriteAnimation = function (frame_count: number): void {
 }
 
 var frame_count = 0;
-let is_preview_touched = true;
 const UpdateView = function () {
 	MargeLayers();
-	if (is_preview_touched || data.is_edit_view_touched) {
-		UpdatePreview(data.edit_width, data.edit_height, dom.view_scale.value);
-		is_preview_touched = false;
-	}
 	if (data.is_edit_view_touched) {
 		DrawCanvasPixelsAll(data.edit_width, data.edit_height, data.edit_scale);
 		data.ClearEditViewTouchedFlag();
@@ -1253,6 +1226,13 @@ const UpdateView = function () {
 	}
 	DrawSpriteAnimation(frame_count);
 	layer_pane_ui.Draw();
+	if (preview_window !== null) {
+		const color_table = new Array<string>(256);
+		for (let i = 0; i < 256; i++) {
+			color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
+		}
+		preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
+	}
 
 	frame_count++;
 	window.requestAnimationFrame(UpdateView);
@@ -1304,8 +1284,6 @@ function Initialize() {
 	dom.edit_canvas.width = 256;
 	dom.edit_canvas.height = 192;
 	FitDivWidth('editframe', 'editblock');
-	FitDivWidth('viewframe', 'viewblock');
-	FitDivHeight('viewframe', 'viewblock');
 	dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
 	dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
 	dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
@@ -1337,9 +1315,6 @@ function Initialize() {
 	dom.edit_filepath.addEventListener('change', (event) => {
 		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
-	dom.view_scale.addEventListener('change', (event) => {
-		is_preview_touched = true;
-	});
 	dom.view_index.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
@@ -1506,7 +1481,7 @@ function Initialize() {
 			}
 		});
 	ApplyLayerUi();
-
+	preview_window = new UiParts.PreviewWindowUi(document.getElementById("viewblock"), data.edit_width, data.edit_height);
 
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
