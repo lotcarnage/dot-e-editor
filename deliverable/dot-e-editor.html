@@ -202,35 +202,6 @@
             </div>
         </div>
         <div id="animationblock">
-            <div class="hbox">
-                サイズ
-                <input id="sprite_width" type="number" min="1" value="16">x
-                <input id="sprite_height" type="number" min="1" value="16">
-            </div>
-            <div class="hbox">
-                <div class="vbox">
-                    <input type="number" id="animation_step_par_frame" min="1" value="12">/１コマ
-                </div>
-                <div class="rightvbox">
-                    表示倍率
-                    <select id="animation_view_scale">
-                        <option value="1">x1</option>
-                        <option value="2">x2</option>
-                        <option value="4" selected>x4</option>
-                        <option value="8">x8</option>
-                        <option value="16">x16</option>
-                        <option value="24">x24</option>
-                        <option value="32">x32</option>
-                    </select>
-                </div>
-            </div>
-            <div class="canvasframe">
-                <canvas id="animation_canvas" width="64" height="64"></canvas>
-            </div>
-            <div>
-                <button id="animation_playback_button">▶︎</button>
-                <textarea id="sprite_indices"></textarea>
-            </div>
         </div>
         <div id="layerblock">
         </div>
@@ -1069,6 +1040,143 @@ var UiParts;
         }
     }
     UiParts.PreviewWindowUi = PreviewWindowUi;
+    const CreateLeftBox = function () {
+        const div = document.createElement("div");
+        div.style.float = "left";
+        return div;
+    };
+    const CreateRightBox = function () {
+        const div = document.createElement("div");
+        div.style.float = "right";
+        return div;
+    };
+    const CreateText = function (text) {
+        const span = document.createElement("span");
+        span.innerText = text;
+        return span;
+    };
+    class SpriteAnimationPreviewWindowUi {
+        constructor(parent, width, height) {
+            this.sprite_width_ = document.createElement("input");
+            this.sprite_height_ = document.createElement("input");
+            this.sprite_width_.type = "number";
+            this.sprite_height_.type = "number";
+            this.sprite_width_.min = "1";
+            this.sprite_height_.min = "1";
+            this.sprite_width_.value = width.toString();
+            this.sprite_height_.value = height.toString();
+            this.size_frame_ = document.createElement("div");
+            this.size_frame_.appendChild(CreateText("サイズ"));
+            this.size_frame_.appendChild(this.sprite_width_);
+            this.size_frame_.appendChild(CreateText("x"));
+            this.size_frame_.appendChild(this.sprite_height_);
+            this.animation_step_par_frame_ = document.createElement("input");
+            this.animation_step_par_frame_.type = "number";
+            this.animation_step_par_frame_.min = "1";
+            this.animation_step_par_frame_.value = "1";
+            this.animation_step_par_frame_holder_ = CreateLeftBox();
+            this.animation_step_par_frame_holder_.appendChild(this.animation_step_par_frame_);
+            this.animation_step_par_frame_holder_.appendChild(CreateText("/１コマ"));
+            this.scale_selector_ = document.createElement("select");
+            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+            for (let scale of scale_array) {
+                const scale_option = document.createElement("option");
+                scale_option.value = scale.toString();
+                scale_option.innerText = `x${scale}`;
+                this.scale_selector_.appendChild(scale_option);
+            }
+            this.scale_selector_holder_ = CreateRightBox();
+            this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
+            this.scale_selector_holder_.appendChild(this.scale_selector_);
+            this.command_frame_ = document.createElement("div");
+            this.command_frame_.appendChild(this.animation_step_par_frame_holder_);
+            this.command_frame_.appendChild(this.scale_selector_holder_);
+            this.canvas_ = document.createElement("canvas");
+            this.canvas_.width = width;
+            this.canvas_.height = height;
+            this.canvas_frame_ = document.createElement("div");
+            this.canvas_frame_.style.overflow = "scroll";
+            this.canvas_frame_.style.resize = "both";
+            this.canvas_frame_.style.clear = "both";
+            this.canvas_frame_.appendChild(this.canvas_);
+            this.animation_playback_button_ = document.createElement("button");
+            this.animation_playback_button_.innerText = "▶︎";
+            this.is_playing_ = false;
+            this.animation_playback_button_.addEventListener('click', (event) => {
+                const button = event.target;
+                button.innerText = this.is_playing_ === true ? "▶︎" : "■";
+                this.is_playing_ = !this.is_playing_;
+            });
+            this.sprite_animation_indices_ = new Array(0);
+            this.sprite_indices_ = document.createElement("textarea");
+            this.sprite_indices_.style.height = "1.4em";
+            this.sprite_indices_.innerText = "0";
+            this.settings_frame_ = document.createElement("div");
+            this.settings_frame_.appendChild(this.animation_playback_button_);
+            this.settings_frame_.appendChild(this.sprite_indices_);
+            this.holder_ = document.createElement("div");
+            this.holder_.appendChild(this.size_frame_);
+            this.holder_.appendChild(this.command_frame_);
+            this.holder_.appendChild(this.canvas_frame_);
+            this.holder_.appendChild(this.settings_frame_);
+            parent.appendChild(this.holder_);
+        }
+        UpdateSpriteIndicesArray() {
+            const index_strings = this.sprite_indices_.value.split(',');
+            this.sprite_animation_indices_.length = 0;
+            for (let index_string of index_strings) {
+                const parsed = parseInt(index_string);
+                if (!isNaN(parsed)) {
+                    this.sprite_animation_indices_.push(parsed);
+                }
+            }
+        }
+        Draw(pixels, color_table, width, height, frame_count) {
+            if (!this.is_playing_) {
+                return;
+            }
+            this.UpdateSpriteIndicesArray();
+            const num_indeices = this.sprite_animation_indices_.length;
+            if (0 === num_indeices) {
+                return;
+            }
+            const step_par_frame = Math.max(1, this.animation_step_par_frame_.valueAsNumber);
+            const frame_number = Math.floor(frame_count / step_par_frame) % num_indeices;
+            const sprite_index = this.sprite_animation_indices_[frame_number];
+            const sprite_w = Math.max(1, Math.min(width, this.sprite_width_.valueAsNumber));
+            const sprite_h = Math.max(1, Math.min(height, this.sprite_height_.valueAsNumber));
+            const sprite_count_in_w = Math.floor(width / sprite_w);
+            const sprite_count_in_h = Math.floor(height / sprite_h);
+            const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
+            if (max_sprite_index <= sprite_index) {
+                return;
+            }
+            const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
+            const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
+            const max_w = Math.min(pixel_w_offset + sprite_w, width);
+            const max_h = Math.min(pixel_h_offset + sprite_h, height);
+            const view_scale = parseInt(this.scale_selector_.value);
+            if (this.canvas_.width !== sprite_w * view_scale) {
+                this.canvas_.width = sprite_w * view_scale;
+            }
+            if (this.canvas_.height !== sprite_h * view_scale) {
+                this.canvas_.height = sprite_h * view_scale;
+            }
+            const context = this.canvas_.getContext('2d');
+            context.imageSmoothingEnabled = false;
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.scale(view_scale, view_scale);
+            for (let h = pixel_h_offset; h < max_h; h++) {
+                for (let w = pixel_w_offset; w < max_w; w++) {
+                    const color_index = pixels[h][w];
+                    context.fillStyle = color_table[color_index];
+                    context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
+                }
+            }
+            return;
+        }
+    }
+    UiParts.SpriteAnimationPreviewWindowUi = SpriteAnimationPreviewWindowUi;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
@@ -1786,6 +1894,7 @@ let tool = pen_tool;
 let target_pixels = null;
 let color_table = null;
 let preview_window = null;
+let animation_window = null;
 const MargeLayers = function () {
     const sorted_layers = data.GetDescendingOrderedLayers();
     const max_w = data.edit_width;
@@ -1948,13 +2057,6 @@ class Dom {
         this.turn_mask_button = GetHtmlElement('turn_mask_button');
         this.delete_mask_button = GetHtmlElement('delete_mask_button');
         this.delete_all_unused_colors_button = GetHtmlElement('delete_all_unused_colors_button');
-        this.sprite_width = GetHtmlElement('sprite_width');
-        this.sprite_height = GetHtmlElement('sprite_height');
-        this.animation_step_par_frame = GetHtmlElement('animation_step_par_frame');
-        this.animation_view_scale = GetHtmlElement('animation_view_scale');
-        this.animation_canvas = GetHtmlElement('animation_canvas');
-        this.animation_playback_button = GetHtmlElement('animation_playback_button');
-        this.sprite_indices = GetHtmlElement('sprite_indices');
     }
 }
 const dom = new Dom();
@@ -2111,61 +2213,6 @@ const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
     }
     data.GetWrittenPixelSet().clear();
 };
-const sprite_animation_indices = new Array(0);
-let is_animation_playing = false;
-const UpdateSpriteIndicesArray = function () {
-    const index_strings = dom.sprite_indices.value.split(',');
-    sprite_animation_indices.length = 0;
-    for (let index_string of index_strings) {
-        const parsed = parseInt(index_string);
-        if (!isNaN(parsed)) {
-            sprite_animation_indices.push(parsed);
-        }
-    }
-};
-const DrawSpriteAnimation = function (frame_count) {
-    if (!is_animation_playing) {
-        return;
-    }
-    UpdateSpriteIndicesArray();
-    if (0 === sprite_animation_indices.length) {
-        return;
-    }
-    const step_par_frame = Math.max(1, dom.animation_step_par_frame.valueAsNumber);
-    const frame_number = Math.floor(frame_count / step_par_frame) % sprite_animation_indices.length;
-    const sprite_index = sprite_animation_indices[frame_number];
-    const sprite_w = Math.max(1, Math.min(data.edit_width, dom.sprite_width.valueAsNumber));
-    const sprite_h = Math.max(1, Math.min(data.edit_height, dom.sprite_height.valueAsNumber));
-    const sprite_count_in_w = Math.floor(data.edit_width / sprite_w);
-    const sprite_count_in_h = Math.floor(data.edit_height / sprite_h);
-    const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
-    if (max_sprite_index <= sprite_index) {
-        return;
-    }
-    const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
-    const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
-    const max_w = Math.min(pixel_w_offset + sprite_w, data.edit_width);
-    const max_h = Math.min(pixel_h_offset + sprite_h, data.edit_height);
-    const view_scale = Number(dom.animation_view_scale.value);
-    if (dom.animation_canvas.width !== sprite_w * view_scale) {
-        dom.animation_canvas.width = sprite_w * view_scale;
-    }
-    if (dom.animation_canvas.height !== sprite_h * view_scale) {
-        dom.animation_canvas.height = sprite_h * view_scale;
-    }
-    const context = dom.animation_canvas.getContext('2d');
-    context.imageSmoothingEnabled = false;
-    context.setTransform(1, 0, 0, 1, 0, 0);
-    context.scale(view_scale, view_scale);
-    for (let h = pixel_h_offset; h < max_h; h++) {
-        for (let w = pixel_w_offset; w < max_w; w++) {
-            const mi = marged_pixel_layer.pixels[h][w];
-            context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
-            context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
-        }
-    }
-    return;
-};
 var frame_count = 0;
 const UpdateView = function () {
     MargeLayers();
@@ -2180,14 +2227,16 @@ const UpdateView = function () {
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
         target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
     }
-    DrawSpriteAnimation(frame_count);
     layer_pane_ui.Draw();
+    const color_table = new Array(256);
+    for (let i = 0; i < 256; i++) {
+        color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
+    }
     if (preview_window !== null) {
-        const color_table = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
-        }
         preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
+    }
+    if (animation_window !== null) {
+        animation_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height, frame_count);
     }
     frame_count++;
     window.requestAnimationFrame(UpdateView);
@@ -2371,11 +2420,6 @@ function Initialize() {
         data.DeleteAllUnusedColors();
         ApplyColorPalette();
     });
-    dom.animation_playback_button.addEventListener('click', (event) => {
-        const button = event.target;
-        button.innerText = is_animation_playing === true ? "▶︎" : "■";
-        is_animation_playing = !is_animation_playing;
-    });
     const layers = document.getElementById("layerblock");
     layer_pane_ui = new UiParts.LayerPaneUi(layers, (order) => {
         const param = MakeLayerDefaultName();
@@ -2416,6 +2460,7 @@ function Initialize() {
     });
     ApplyLayerUi();
     preview_window = new UiParts.PreviewWindowUi(document.getElementById("viewblock"), data.edit_width, data.edit_height);
+    animation_window = new UiParts.SpriteAnimationPreviewWindowUi(document.getElementById("animationblock"), 16, 16);
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             switch (event.key) {
