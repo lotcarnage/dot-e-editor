@@ -106,6 +106,9 @@
 
 <body>
     <div class="layout">
+        <div id="viewblock"></div>
+        <div id="animationblock"></div>
+        <div id="layerblock"></div>
         <div class="vbox" id="settingsblock">
             <div class="hbox">
                 <input type="checkbox" id="view_grid" checked>
@@ -163,8 +166,6 @@
                 <button id="delete_all_unused_colors_button">未使用色を全削除</button>
             </div>
         </div>
-        <div id="viewblock">
-        </div>
         <div id="editblock">
             <div class="hbox">
                 読み込み<input type="file" id="edit_filepath">
@@ -200,10 +201,6 @@
                     <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
                 </div>
             </div>
-        </div>
-        <div id="animationblock">
-        </div>
-        <div id="layerblock">
         </div>
     </div>
     <div id="manualblock">
