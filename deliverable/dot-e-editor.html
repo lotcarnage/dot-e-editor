@@ -1174,6 +1174,65 @@ var UiParts;
         }
     }
     UiParts.SpriteAnimationPreviewWindowUi = SpriteAnimationPreviewWindowUi;
+    class TabPaneUi {
+        constructor() {
+            if (TabPaneUi.tab_content_class_style_ === null) {
+                const style = document.createElement("style");
+                style.innerText
+                    = `.tab_content {`
+                        + `display: none;`
+                        + `width:100%;`
+                        + `}`
+                        + `input[name="tab_tags"] {`
+                        + `display: none;`
+                        + `}`
+                        + `.tab_tag {`
+                        + `text-align: center;`
+                        + `display: block;`
+                        + `float: left;`
+                        + `order: -1;`
+                        + `margin: 0px 1px 0px;`
+                        + `}`
+                        + `input:checked + .tab_tag + .tab_content {`
+                        + `display: block;`
+                        + `}`;
+                document.getElementsByTagName("head").item(0).appendChild(style);
+                TabPaneUi.tab_content_class_style_ = style;
+            }
+            this.tab_frame_ = document.createElement("div");
+            this.tab_frame_.style.display = "flex";
+            this.tab_frame_.style.flexWrap = "wrap";
+        }
+        AddTab(content, tab_title) {
+            const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
+            const tab_radio = document.createElement("input");
+            tab_radio.type = "radio";
+            tab_radio.id = tag_id;
+            tab_radio.name = "tab_tags";
+            const tab_label = document.createElement("label");
+            tab_label.htmlFor = tag_id;
+            tab_label.innerText = tab_title;
+            tab_label.className = "tab_tag";
+            tab_label.style.backgroundColor = content.style.backgroundColor;
+            const content_frame = document.createElement("div");
+            content_frame.appendChild(content);
+            content_frame.className = "tab_content";
+            content_frame.style.backgroundColor = content.style.backgroundColor;
+            if (this.tab_frame_.childElementCount === 0) {
+                tab_radio.checked = true;
+            }
+            this.tab_frame_.appendChild(tab_radio);
+            this.tab_frame_.appendChild(tab_label);
+            this.tab_frame_.appendChild(content_frame);
+            TabPaneUi.global_tab_count_++;
+        }
+        get node() {
+            return this.tab_frame_;
+        }
+    }
+    TabPaneUi.tab_content_class_style_ = null;
+    TabPaneUi.global_tab_count_ = 0;
+    UiParts.TabPaneUi = TabPaneUi;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
