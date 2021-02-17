@@ -577,7 +577,7 @@ namespace UiParts {
 		private scale_selector_: HTMLSelectElement;
 		private command_frame_: HTMLDivElement;
 		private holder_: HTMLDivElement;
-		constructor(parent: HTMLElement, width: number, height: number) {
+		constructor(width: number, height: number) {
 			this.canvas_ = document.createElement("canvas");
 			this.canvas_.width = width;
 			this.canvas_.height = height;
@@ -601,7 +601,9 @@ namespace UiParts {
 			this.holder_ = document.createElement("div");
 			this.holder_.appendChild(this.command_frame_);
 			this.holder_.appendChild(this.canvas_frame_);
-			parent.appendChild(this.holder_);
+		}
+		public get node(): HTMLDivElement {
+			return this.holder_;
 		}
 		public Draw(pixels: number[][], color_table: string[], width: number, height: number) {
 			const view_scale = parseInt(this.scale_selector_.value);
@@ -658,7 +660,7 @@ namespace UiParts {
 		private is_playing_: boolean;
 		private sprite_animation_indices_: number[];
 		private holder_: HTMLDivElement;
-		constructor(parent: HTMLElement, width: number, height: number) {
+		constructor(width: number, height: number) {
 			this.sprite_width_ = document.createElement("input");
 			this.sprite_height_ = document.createElement("input");
 			this.sprite_width_.type = "number";
@@ -726,7 +728,6 @@ namespace UiParts {
 			this.holder_.appendChild(this.command_frame_);
 			this.holder_.appendChild(this.canvas_frame_);
 			this.holder_.appendChild(this.settings_frame_);
-			parent.appendChild(this.holder_);
 		}
 		private UpdateSpriteIndicesArray() {
 			const index_strings = this.sprite_indices_.value.split(',');
@@ -737,6 +738,9 @@ namespace UiParts {
 					this.sprite_animation_indices_.push(parsed);
 				}
 			}
+		}
+		public get node(): HTMLDivElement {
+			return this.holder_;
 		}
 		public Draw(pixels: number[][], color_table: string[], width: number, height: number, frame_count: number) {
 			if (!this.is_playing_) {

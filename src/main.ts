@@ -1407,8 +1407,10 @@ function Initialize() {
 			}
 		});
 	ApplyLayerUi();
-	preview_window = new UiParts.PreviewWindowUi(document.getElementById("viewblock"), data.edit_width, data.edit_height);
-	animation_window = new UiParts.SpriteAnimationPreviewWindowUi(document.getElementById("animationblock"), 16, 16);
+	preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
+	animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
+	document.getElementById("viewblock").appendChild(preview_window.node);
+	document.getElementById("animationblock").appendChild(animation_window.node);
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {

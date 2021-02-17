@@ -990,7 +990,7 @@ var UiParts;
     }
     UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
     class PreviewWindowUi {
-        constructor(parent, width, height) {
+        constructor(width, height) {
             this.canvas_ = document.createElement("canvas");
             this.canvas_.width = width;
             this.canvas_.height = height;
@@ -1013,7 +1013,9 @@ var UiParts;
             this.holder_ = document.createElement("div");
             this.holder_.appendChild(this.command_frame_);
             this.holder_.appendChild(this.canvas_frame_);
-            parent.appendChild(this.holder_);
+        }
+        get node() {
+            return this.holder_;
         }
         Draw(pixels, color_table, width, height) {
             const view_scale = parseInt(this.scale_selector_.value);
@@ -1053,7 +1055,7 @@ var UiParts;
         return span;
     };
     class SpriteAnimationPreviewWindowUi {
-        constructor(parent, width, height) {
+        constructor(width, height) {
             this.sprite_width_ = document.createElement("input");
             this.sprite_height_ = document.createElement("input");
             this.sprite_width_.type = "number";
@@ -1116,7 +1118,6 @@ var UiParts;
             this.holder_.appendChild(this.command_frame_);
             this.holder_.appendChild(this.canvas_frame_);
             this.holder_.appendChild(this.settings_frame_);
-            parent.appendChild(this.holder_);
         }
         UpdateSpriteIndicesArray() {
             const index_strings = this.sprite_indices_.value.split(',');
@@ -1127,6 +1128,9 @@ var UiParts;
                     this.sprite_animation_indices_.push(parsed);
                 }
             }
+        }
+        get node() {
+            return this.holder_;
         }
         Draw(pixels, color_table, width, height, frame_count) {
             if (!this.is_playing_) {
@@ -2515,8 +2519,10 @@ function Initialize() {
         }
     });
     ApplyLayerUi();
-    preview_window = new UiParts.PreviewWindowUi(document.getElementById("viewblock"), data.edit_width, data.edit_height);
-    animation_window = new UiParts.SpriteAnimationPreviewWindowUi(document.getElementById("animationblock"), 16, 16);
+    preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
+    animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
+    document.getElementById("viewblock").appendChild(preview_window.node);
+    document.getElementById("animationblock").appendChild(animation_window.node);
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             switch (event.key) {
