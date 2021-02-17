@@ -767,6 +767,7 @@ let target_pixels: RectangleTargetPixels | null = null;
 let color_table: UiParts.ColorPaletteTableUi | null = null;
 let preview_window: UiParts.PreviewWindowUi | null = null;
 let animation_window: UiParts.SpriteAnimationPreviewWindowUi | null = null;
+let preview_tab_pane: UiParts.TabPaneUi | null = null;
 
 const MargeLayers = function (): void {
 	const sorted_layers = data.GetDescendingOrderedLayers();
@@ -1407,10 +1408,14 @@ function Initialize() {
 			}
 		});
 	ApplyLayerUi();
+	preview_tab_pane = new UiParts.TabPaneUi();
 	preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
 	animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
-	document.getElementById("viewblock").appendChild(preview_window.node);
-	document.getElementById("animationblock").appendChild(animation_window.node);
+	preview_window.node.style.backgroundColor = "darkgoldenrod";
+	animation_window.node.style.backgroundColor = "olive";
+	preview_tab_pane.AddTab(preview_window.node, "プレビュー");
+	preview_tab_pane.AddTab(animation_window.node, "アニメ");
+	document.getElementById("viewblock").appendChild(preview_tab_pane.node);
 	window.addEventListener('keydown', (event: KeyboardEvent) => {
 		if (event.ctrlKey) {
 			switch (event.key) {

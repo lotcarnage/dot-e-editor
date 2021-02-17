@@ -26,7 +26,7 @@
                 "a b b b"
                 "c e e g"
                 "d e e g"
-                "f e e g";
+                "d e e g";
         }
 
         div.hbox {
@@ -70,17 +70,11 @@
 
         div#viewblock {
             grid-area: d;
-            background-color: darkgoldenrod;
         }
 
         div#viewframe {
             width: 200px;
             height: 200px;
-        }
-
-        div#animationblock {
-            grid-area: f;
-            background-color: olive;
         }
 
         div#editblock {
@@ -107,7 +101,6 @@
 <body>
     <div class="layout">
         <div id="viewblock"></div>
-        <div id="animationblock"></div>
         <div id="layerblock"></div>
         <div class="vbox" id="settingsblock">
             <div class="hbox">
@@ -1185,7 +1178,9 @@ var UiParts;
                 style.innerText
                     = `.tab_content {`
                         + `display: none;`
-                        + `width:100%;`
+                        + `clear: both;`
+                        + `overflow: scroll;`
+                        + `resize: both;`
                         + `}`
                         + `input[name="tab_tags"] {`
                         + `display: none;`
@@ -1195,7 +1190,7 @@ var UiParts;
                         + `display: block;`
                         + `float: left;`
                         + `order: -1;`
-                        + `margin: 0px 1px 0px;`
+                        + `margin: 2px 2px 0px;`
                         + `}`
                         + `input:checked + .tab_tag + .tab_content {`
                         + `display: block;`
@@ -1204,8 +1199,25 @@ var UiParts;
                 TabPaneUi.tab_content_class_style_ = style;
             }
             this.tab_frame_ = document.createElement("div");
-            this.tab_frame_.style.display = "flex";
-            this.tab_frame_.style.flexWrap = "wrap";
+            this.tab_frame_.style.display = "grid";
+            //this.tab_frame_.style.gridAutoColumns = "max-content";
+            this.tab_frame_.style.gridAutoColumns = "1fr";
+            this.tab_frame_.style.gridAutoRows = "max-content";
+            this.tab_frame_.style.gridTemplateAreas = `"t0" "c"`;
+            this.current_tab_ = null;
+            this.local_tab_count_ = 0;
+        }
+        FitSize() {
+            if (!("width" in this.current_tab_.style)) {
+                return;
+            }
+            const contents = this.tab_frame_.getElementsByClassName("tab_content");
+            const length = contents.length;
+            for (let i = 0; i < length; i++) {
+                contents[i].style.width = this.current_tab_.style.width;
+                contents[i].style.height = this.current_tab_.style.height;
+            }
+            return;
         }
         AddTab(content, tab_title) {
             const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
@@ -1218,17 +1230,34 @@ var UiParts;
             tab_label.innerText = tab_title;
             tab_label.className = "tab_tag";
             tab_label.style.backgroundColor = content.style.backgroundColor;
+            tab_label.style.gridArea = `t${this.local_tab_count_}`;
             const content_frame = document.createElement("div");
             content_frame.appendChild(content);
             content_frame.className = "tab_content";
             content_frame.style.backgroundColor = content.style.backgroundColor;
+            content_frame.style.order = "1";
+            content_frame.style.gridArea = "c";
             if (this.tab_frame_.childElementCount === 0) {
                 tab_radio.checked = true;
+                this.current_tab_ = content_frame;
             }
+            tab_radio.addEventListener("change", (event) => {
+                this.FitSize();
+                this.current_tab_ = content_frame;
+            });
+            this.local_tab_count_++;
+            const tag_grids = new Array(this.local_tab_count_);
+            const content_grids = new Array(this.local_tab_count_);
+            for (let i = 0; i < this.local_tab_count_; i++) {
+                tag_grids[i] = `t${i}`;
+                content_grids[i] = "c";
+            }
+            this.tab_frame_.style.gridTemplateAreas = `"${tag_grids.join(" ")}" "${content_grids.join(" ")}"`;
             this.tab_frame_.appendChild(tab_radio);
             this.tab_frame_.appendChild(tab_label);
             this.tab_frame_.appendChild(content_frame);
             TabPaneUi.global_tab_count_++;
+            return;
         }
         get node() {
             return this.tab_frame_;
@@ -1955,6 +1984,7 @@ let target_pixels = null;
 let color_table = null;
 let preview_window = null;
 let animation_window = null;
+let preview_tab_pane = null;
 const MargeLayers = function () {
     const sorted_layers = data.GetDescendingOrderedLayers();
     const max_w = data.edit_width;
@@ -2519,10 +2549,14 @@ function Initialize() {
         }
     });
     ApplyLayerUi();
+    preview_tab_pane = new UiParts.TabPaneUi();
     preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
     animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
-    document.getElementById("viewblock").appendChild(preview_window.node);
-    document.getElementById("animationblock").appendChild(animation_window.node);
+    preview_window.node.style.backgroundColor = "darkgoldenrod";
+    animation_window.node.style.backgroundColor = "olive";
+    preview_tab_pane.AddTab(preview_window.node, "プレビュー");
+    preview_tab_pane.AddTab(animation_window.node, "アニメ");
+    document.getElementById("viewblock").appendChild(preview_tab_pane.node);
     window.addEventListener('keydown', (event) => {
         if (event.ctrlKey) {
             switch (event.key) {
