@@ -100,11 +100,6 @@ namespace WindowsIndexColorBitmap {
 		const width = Load32LE(bytes, 18);
 		const height = Load32LE(bytes, 22);
 		const bmp_width = Math.ceil(width / 4) * 4;
-		const pixels_size = bmp_width * height;
-		if (Load32LE(bytes, 34) !== pixels_size) {
-			return null;
-		}
-
 		const color_palette: string[] = new Array<string>(256);
 		for (let i = 0; i < 256; i++) {
 			const b = bytes[54 + 4 * i + 0];
