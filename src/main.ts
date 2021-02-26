@@ -2,6 +2,7 @@
 /// <reference path="./misc.ts" />
 /// <reference path="./browser.ts" />
 /// <reference path="./ui_parts.ts" />
+/// <reference path="./canvas_tools.ts" />
 
 class RgbColor {
 	r: number;
@@ -521,14 +522,14 @@ class RectangleTargetPixels {
 	private top: number;
 	private right: number;
 	private bottom: number;
-	constructor(point1: PixelPoint, point2: PixelPoint) {
-		this.Update(point1, point2);
+	constructor(x1: number, y1: number, x2: number, y2: number) {
+		this.Update(x1, y1, x2, y2);
 	}
-	public Update(point1: PixelPoint, point2: PixelPoint) {
-		this.left = (point1.w < point2.w) ? point1.w : point2.w;
-		this.right = (point1.w < point2.w) ? point2.w : point1.w;
-		this.top = (point1.h < point2.h) ? point1.h : point2.h;
-		this.bottom = (point1.h < point2.h) ? point2.h : point1.h;
+	public Update(x1: number, y1: number, x2: number, y2: number) {
+		this.left = (x1 < x2) ? x1 : x2;
+		this.right = (x1 < x2) ? x2 : x1;
+		this.top = (y1 < y2) ? y1 : y2;
+		this.bottom = (y1 < y2) ? y2 : y1;
 	}
 	public In(point: PixelPoint): boolean {
 		const is_contain = (
@@ -607,162 +608,47 @@ class RectangleTargetPixels {
 	}
 }
 
-class Tool {
-	public LeftButtonDown(pixel_w: number, pixel_h: number) { };
-	public LeftButtonUp(pixel_w: number, pixel_h: number) { };
-	public RightButtonDown(pixel_w: number, pixel_h: number) { };
-	public RightButtonUp(pixel_w: number, pixel_h: number) { };
-	public MouseMove(pixel_w: number, pixel_h: number) { };
-	public MouseOut(pixel_w: number, pixel_h: number) { };
-}
-
-class PenTool extends Tool {
-	private is_activated: boolean = false;
-	private last_point_w: number;
-	private last_point_h: number;
-	private WritePixel = function (x: number, y: number): void {
+const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
+const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
+const canvas_tools = new CanvasTools.CanvasTools(
+	(x, y) => {
+		return !data.IsMasked(x, y);
+	},
+	(x, y) => {
 		if (x < 0 || y < 0 || data.edit_width <= x || data.edit_height <= y) {
 			return;
 		}
 		data.WriteMap(x, y, data.selected_color_index);
-	}
-	public LeftButtonDown(pixel_w: number, pixel_h: number) {
-		data.PushUndoLog();
-		data.WriteMap(pixel_w, pixel_h, data.selected_color_index);
-		this.last_point_w = pixel_w;
-		this.last_point_h = pixel_h;
-		this.is_activated = true;
-		return;
-	};
-	public LeftButtonUp(pixel_w: number, pixel_h: number) {
-		this.is_activated = false;
-	}
-	public RightButtonDown(pixel_w: number, pixel_h: number) {
-		const color_index = data.GetWrittenColorIndex(pixel_w, pixel_h);
+	},
+	(x, y) => {
+		return data.GetWrittenColorIndex(x, y);
+	},
+	() => {
+		return [data.edit_width, data.edit_height];
+	},
+	() => {
+		return data.edit_scale;
+	},
+	(x, y) => {
+		const color_index = data.GetWrittenColorIndex(x, y);
 		ChengeCurrentColor(color_index);
-		return;
-	};
-	public MouseMove(pixel_w: number, pixel_h: number) {
-		if (this.is_activated) {
-			Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.WritePixel);
+	},
+	(start_x, start_y, end_x, end_y) => {
+		if (target_pixels === null) {
+			target_pixels = new RectangleTargetPixels(start_x, start_y, end_x, end_y);
+		} else {
+			target_pixels.Update(start_x, start_y, end_x, end_y);
 		}
-		this.last_point_w = pixel_w;
-		this.last_point_h = pixel_h;
-		this.is_activated = true;
-		return;
-	};
-	public MouseOut(pixel_w: number, pixel_h: number) {
-		if (this.is_activated) {
-			Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.WritePixel);
-		}
-		this.is_activated = false;
-	};
-}
-
-
-const ExtractRegionPixelSet = function (start_point: PixelPoint): Set<number> {
-	const min_w: 0 = 0;
-	const min_h: 0 = 0;
-	const max_w: number = data.edit_width;
-	const max_h: number = data.edit_height;
-	const region_pixels = new Set<number>();
-	const next_pixel_queue: PixelPoint[] = new Array<PixelPoint>();
-	const target_color_index: number = data.GetWrittenColorIndex(start_point.w, start_point.h);
-	region_pixels.add(start_point.ToIndex(max_w));
-	next_pixel_queue.push(start_point);
-	const AddPixelToRegion = function (new_point: PixelPoint) {
-		if (data.GetWrittenColorIndex(new_point.w, new_point.h) !== target_color_index) {
-			return;
-		}
-		if (region_pixels.has(new_point.ToIndex(max_w))) {
-			return;
-		}
-		next_pixel_queue.push(new_point);
-		region_pixels.add(new_point.ToIndex(max_w));
-		return;
-	}
-	for (; ;) {
-		if (next_pixel_queue.length === 0) {
-			break;
-		}
-		let pixel = next_pixel_queue.shift();
-		if (min_h < pixel.h) {
-			if (!data.IsMasked(pixel.w + 0, pixel.h - 1)) {
-				AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h - 1));
-			}
-		}
-		if (min_w < pixel.w) {
-			if (!data.IsMasked(pixel.w - 1, pixel.h + 0)) {
-				AddPixelToRegion(new PixelPoint(pixel.w - 1, pixel.h + 0));
-			}
-		}
-		if (pixel.w < max_w - 1) {
-			if (!data.IsMasked(pixel.w + 1, pixel.h + 0)) {
-				AddPixelToRegion(new PixelPoint(pixel.w + 1, pixel.h + 0));
-			}
-		}
-		if (pixel.h < max_h - 1) {
-			if (!data.IsMasked(pixel.w + 0, pixel.h + 1)) {
-				AddPixelToRegion(new PixelPoint(pixel.w + 0, pixel.h + 1));
-			}
-		}
-	}
-	return region_pixels;
-};
-
-
-class PaintTool extends Tool {
-	public LeftButtonDown(pixel_w: number, pixel_h: number) {
+	},
+	() => { },
+	() => {
 		data.PushUndoLog();
-		const selected_pixel = new PixelPoint(pixel_w, pixel_h);
-		const new_color_index = data.selected_color_index;
-		const region_pixel_set = ExtractRegionPixelSet(selected_pixel);
-		const max_w = data.edit_width;
-		region_pixel_set.forEach((pixel_index) => {
-			const w = PixelPoint.IndexToPixelPointW(pixel_index, max_w);
-			const h = PixelPoint.IndexToPixelPointH(pixel_index, max_w);
-			data.WriteMap(w, h, new_color_index);
-		});
-	};
-	public RightButtonDown(pixel_w: number, pixel_h: number) {
-		const color_index = data.GetWrittenColorIndex(pixel_w, pixel_h);
-		ChengeCurrentColor(color_index);
-	};
-}
+	},
+	() => { },
+	() => { }
+);
 
-class RectangleSelectTool extends Tool {
-	private start_point: PixelPoint | null;
-	constructor() {
-		super();
-		this.start_point = null;
-	}
-	public LeftButtonDown(pixel_w: number, pixel_h: number) {
-		this.start_point = new PixelPoint(pixel_w, pixel_h);
-		if (target_pixels !== null) {
-			target_pixels.Update(this.start_point, this.start_point);
-		} else {
-			target_pixels = new RectangleTargetPixels(this.start_point, this.start_point);
-		}
-	};
-	public MouseMove(pixel_w: number, pixel_h: number) {
-		const point = new PixelPoint(pixel_w, pixel_h);
-		if (target_pixels !== null && this.start_point !== null) {
-			target_pixels.Update(this.start_point, point);
-		} else {
-			this.start_point = point;
-			target_pixels.Update(this.start_point, this.start_point);
-		}
-		return;
-	};
-}
-
-const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
-const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
-const pen_tool: PenTool = new PenTool();
-const paint_tool: PaintTool = new PaintTool();
-const rentangle_select_tool: RectangleSelectTool = new RectangleSelectTool();
 let layer_pane_ui: UiParts.LayerPaneUi<PixelLayer> | null = null;
-let tool: Tool = pen_tool;
 let target_pixels: RectangleTargetPixels | null = null;
 let color_table: UiParts.ColorPaletteTableUi | null = null;
 let preview_window: UiParts.PreviewWindowUi | null = null;
@@ -816,66 +702,6 @@ const MargeLayers = function (): void {
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
 }
-const GetPixelPoint = function (event: MouseEvent, block_size: number): [number, number] {
-	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
-	const w: number = Math.floor((event.clientX - rect.left) / block_size);
-	const h: number = Math.floor((event.clientY - rect.top) / block_size);
-	return [w, h];
-};
-const GetTouchPixelPoint = function (event: TouchEvent, block_size: number): [number, number] {
-	const rect: DOMRect = (<HTMLCanvasElement>event.target).getBoundingClientRect();
-	const w: number = Math.floor((event.touches[0].clientX - rect.left) / block_size);
-	const h: number = Math.floor((event.touches[0].clientY - rect.top) / block_size);
-	return [w, h];
-};
-
-const MouseDownCallback = function (event: MouseEvent) {
-	if (event.button === 0) {
-		tool.LeftButtonDown(...GetPixelPoint(event, data.edit_scale));
-	} else if (event.button === 2) {
-		tool.RightButtonDown(...GetPixelPoint(event, data.edit_scale));
-	}
-};
-
-const MouseUpCallback = function (event: MouseEvent) {
-	if (event.button === 0) {
-		tool.LeftButtonUp(...GetPixelPoint(event, data.edit_scale));
-	} else if (event.button === 2) {
-		tool.RightButtonUp(...GetPixelPoint(event, data.edit_scale));
-	}
-};
-
-const MouseMoveCallback = function (event: MouseEvent) {
-	if (event.buttons === 0x01) {
-		tool.MouseMove(...GetPixelPoint(event, data.edit_scale));
-	}
-};
-
-const MouseOutCallback = function (event: MouseEvent) {
-	if (event.buttons === 0x01) {
-		tool.MouseOut(...GetPixelPoint(event, data.edit_scale));
-	}
-};
-
-const TouchStartCallback = function (event: TouchEvent) {
-	if (event.touches.length === 1) {
-		tool.LeftButtonDown(...GetTouchPixelPoint(event, data.edit_scale));
-	}
-};
-
-const TouchEndCallback = function (event: TouchEvent) {
-	if (event.touches.length === 1) {
-		tool.LeftButtonUp(...GetTouchPixelPoint(event, data.edit_scale));
-	}
-};
-
-const TouchMoveCallback = function (event: TouchEvent) {
-	if (event.touches.length === 1) {
-		tool.MouseMove(...GetTouchPixelPoint(event, data.edit_scale));
-	}
-	event.preventDefault();
-};
-
 
 const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
 	const new_width = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientWidth;
@@ -1216,15 +1042,7 @@ function Initialize() {
 	dom.edit_canvas.width = 256;
 	dom.edit_canvas.height = 192;
 	FitDivWidth('editframe', 'editblock');
-	dom.edit_canvas.addEventListener('mousedown', MouseDownCallback);
-	dom.edit_canvas.addEventListener('mouseup', MouseUpCallback);
-	dom.edit_canvas.addEventListener('contextmenu', MouseDownCallback);
-	dom.edit_canvas.addEventListener('mousemove', MouseMoveCallback);
-	dom.edit_canvas.addEventListener('mouseout', MouseOutCallback);
-
-	dom.edit_canvas.addEventListener('touchstart', TouchStartCallback);
-	dom.edit_canvas.addEventListener('touchend', TouchEndCallback);
-	dom.edit_canvas.addEventListener('touchmove', TouchMoveCallback);
+	canvas_tools.Attach(dom.edit_canvas);
 
 	dom.editwidth.max = max_edit_width.toString();
 	dom.editheight.max = max_edit_height.toString();
@@ -1266,13 +1084,13 @@ function Initialize() {
 		data.TouchEditView();
 	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
-		tool = pen_tool;
+		canvas_tools.tool_kind = "pen";
 	});
 	dom.dom_paint_tool.addEventListener('change', (event) => {
-		tool = paint_tool;
+		canvas_tools.tool_kind = "paint";
 	});
 	dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
-		tool = rentangle_select_tool;
+		canvas_tools.tool_kind = "rectangle_select";
 	});
 	const dl_button = new UiParts.DonwloadButton(
 		GetHtmlElement<HTMLDivElement>("edit_command"), "保存（ダウンロード）", () => {
