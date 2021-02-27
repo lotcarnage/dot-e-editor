@@ -318,6 +318,10 @@ var CanvasTools;
             if (this.is_activated) {
                 Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.cb_table_.write_pixel_cb_);
             }
+            else {
+                this.cb_table_.begin_cb_();
+                this.cb_table_.prechange_cb_();
+            }
             this.last_point_w = pixel_w;
             this.last_point_h = pixel_h;
             this.is_activated = true;
