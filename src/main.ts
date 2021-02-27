@@ -1114,7 +1114,7 @@ function Initialize() {
 		return [name, color.ToHexColor()];
 	}
 	color_table = new UiParts.ColorPaletteTableUi(
-		document.getElementById("colorpalette"), 16, 16, 16,
+		16, 16, 16,
 		0,
 		[
 			{ caption: "HSV 16色", colors: Misc.MakeHSVBalancedColorList(1) },
@@ -1133,6 +1133,7 @@ function Initialize() {
 			data.TouchEditView();
 		}
 	);
+	document.getElementById("colorpalette").appendChild(color_table.node);
 	if (!AutoLoad()) {
 		data.RemoveAllLayers();
 		const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
@@ -1184,7 +1185,6 @@ function Initialize() {
 	});
 	const layers = document.getElementById("layerblock");
 	layer_pane_ui = new UiParts.LayerPaneUi<PixelLayer>(
-		layers,
 		(order) => {
 			const param = MakeLayerDefaultName();
 			const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
@@ -1225,6 +1225,7 @@ function Initialize() {
 				thumbnail_context.stroke();
 			}
 		});
+	layers.appendChild(layer_pane_ui.node);
 	ApplyLayerUi();
 	preview_tab_pane = new UiParts.TabPaneUi();
 	preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);

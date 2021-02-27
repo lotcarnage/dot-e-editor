@@ -876,7 +876,7 @@ var UiParts;
     }
     UiParts.LayerUi = LayerUi;
     class LayerPaneUi {
-        constructor(parent, register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
+        constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
             this.layers_ = new Array(0);
             this.frame_ = document.createElement("div");
             this.command_holder_ = document.createElement("div");
@@ -922,7 +922,6 @@ var UiParts;
             this.command_holder_.appendChild(this.delete_layer_button_);
             this.frame_.appendChild(this.command_holder_);
             this.frame_.appendChild(this.layer_holder_);
-            parent.appendChild(this.frame_);
             return;
         }
         ChangeFocus(focus_in_layer) {
@@ -1051,6 +1050,9 @@ var UiParts;
                 layer.DrawThumbnail(this.draw_thumbnail_callback_);
             }
         }
+        get node() {
+            return this.frame_;
+        }
     }
     UiParts.LayerPaneUi = LayerPaneUi;
     class DonwloadButton {
@@ -1071,7 +1073,7 @@ var UiParts;
     }
     UiParts.DonwloadButton = DonwloadButton;
     class ColorPaletteTableUi {
-        constructor(parent, num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
+        constructor(num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
             this.selected_index_ = 0;
             this.preset_color_palettes_ = preset_color_palettes;
             /* for color table UI */
@@ -1190,7 +1192,6 @@ var UiParts;
             this.holder_.appendChild(this.preset_command_holder_);
             this.holder_.appendChild(this.color_table_holder_);
             this.holder_.appendChild(this.color_edit_holder_);
-            parent.appendChild(this.holder_);
             return;
         }
         static SetUnselectedColorCellStyle(color_cell) {
@@ -1220,6 +1221,9 @@ var UiParts;
             const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
             this.color_input_.value = color;
             this.color_caption_.innerText = `${i}:${color}`;
+        }
+        get node() {
+            return this.holder_;
         }
         GetColor(index) {
             return this.color_cells_[index].style.backgroundColor;
@@ -2522,7 +2526,7 @@ function Initialize() {
         creation_count++;
         return [name, color.ToHexColor()];
     };
-    color_table = new UiParts.ColorPaletteTableUi(document.getElementById("colorpalette"), 16, 16, 16, 0, [
+    color_table = new UiParts.ColorPaletteTableUi(16, 16, 16, 0, [
         { caption: "HSV 16色", colors: Misc.MakeHSVBalancedColorList(1) },
         { caption: "HSV 16色2彩度", colors: Misc.MakeHSVBalancedColorList(2) },
         { caption: "HSV 16色4彩度", colors: Misc.MakeHSVBalancedColorList(4) },
@@ -2535,6 +2539,7 @@ function Initialize() {
         data.GetRgbColorFromPalette(color_index).SetHexColor(color_string);
         data.TouchEditView();
     });
+    document.getElementById("colorpalette").appendChild(color_table.node);
     if (!AutoLoad()) {
         data.RemoveAllLayers();
         const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
@@ -2584,7 +2589,7 @@ function Initialize() {
         ApplyColorPalette();
     });
     const layers = document.getElementById("layerblock");
-    layer_pane_ui = new UiParts.LayerPaneUi(layers, (order) => {
+    layer_pane_ui = new UiParts.LayerPaneUi((order) => {
         const param = MakeLayerDefaultName();
         const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
         data.AppendLayer(new_pixel_layer);
@@ -2621,6 +2626,7 @@ function Initialize() {
             thumbnail_context.stroke();
         }
     });
+    layers.appendChild(layer_pane_ui.node);
     ApplyLayerUi();
     preview_tab_pane = new UiParts.TabPaneUi();
     preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);

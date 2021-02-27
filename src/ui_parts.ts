@@ -134,7 +134,6 @@ namespace UiParts {
 		private draw_thumbnail_callback_: DrawThumbnailCallback<UserType>;
 		private current_layer_: LayerUi<UserType> | null;
 		constructor(
-			parent: HTMLElement,
 			register_callback: RegisterUserValueCallback<UserType>,
 			destructed_callback: RemovedCallback<UserType>,
 			swap_callback: SwapCallback,
@@ -189,7 +188,6 @@ namespace UiParts {
 			this.command_holder_.appendChild(this.delete_layer_button_);
 			this.frame_.appendChild(this.command_holder_);
 			this.frame_.appendChild(this.layer_holder_);
-			parent.appendChild(this.frame_);
 			return;
 		}
 		private ChangeFocus(focus_in_layer: LayerUi<UserType>): void {
@@ -320,6 +318,9 @@ namespace UiParts {
 				layer.DrawThumbnail(this.draw_thumbnail_callback_);
 			}
 		}
+		public get node(): HTMLDivElement {
+			return this.frame_;
+		}
 	}
 	export type DonwloadDataRequestCallback = () => [string, Blob];
 	export class DonwloadButton {
@@ -403,7 +404,7 @@ namespace UiParts {
 			this.color_caption_.innerText = `${i}:${color}`
 		}
 		constructor(
-			parent: HTMLElement, num_cols: 16, cell_width: number, cell_height: number,
+			num_cols: 16, cell_width: number, cell_height: number,
 			initial_color_palette_index: number,
 			preset_color_palettes: PresetColorPalette[],
 			select_color_callback: SelectColorCellCallback,
@@ -536,10 +537,11 @@ namespace UiParts {
 			this.holder_.appendChild(this.preset_command_holder_);
 			this.holder_.appendChild(this.color_table_holder_);
 			this.holder_.appendChild(this.color_edit_holder_);
-			parent.appendChild(this.holder_);
 			return;
 		}
-
+		public get node(): HTMLDivElement {
+			return this.holder_;
+		}
 		public GetColor(index: number) {
 			return this.color_cells_[index].style.backgroundColor;
 		}
