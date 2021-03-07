@@ -932,13 +932,13 @@ namespace UiParts {
 			element.max = maximum.toString();
 			return element;
 		}
-		private static CreateCheckBox(checkbox_id: string, label_text: string): [HTMLInputElement, HTMLLabelElement] {
+		private static CreateCheckBox(checkbox_id: string, label_content: HTMLElement): [HTMLInputElement, HTMLLabelElement] {
 			const checkbox = document.createElement("input");
 			checkbox.type = "checkbox";
 			checkbox.id = checkbox_id;
 			const label = document.createElement("label");
 			label.htmlFor = checkbox.id;
-			label.innerText = label_text;
+			label.appendChild(label_content);
 			return [checkbox, label];
 		}
 		private static DrawLine(canvas_context: CanvasRenderingContext2D, start_x: number, start_y: number, end_x: number, end_y: number) {
@@ -946,6 +946,42 @@ namespace UiParts {
 			canvas_context.lineTo(end_x, end_y);
 			return;
 		}
+		private static CreateSmallGridIcon(icon_size: number) {
+			const icon = document.createElement("canvas");
+			icon.width = icon_size;
+			icon.height = icon_size;
+			const icon_context = icon.getContext("2d");
+			icon_context.fillStyle = "#101010";
+			icon_context.fillRect(0, 0, icon_size, icon_size);
+			icon_context.beginPath();
+			icon_context.lineWidth = 1;
+			icon_context.strokeStyle = "#909090";
+			for (let i = -0.5; i < icon_size; i += 4) {
+				CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
+				CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
+			}
+			icon_context.stroke();
+			return icon;
+		}
+		private static CreateLargeGridIcon(icon_size: number) {
+			const icon = CanvasUi.CreateSmallGridIcon(icon_size);
+			const icon_context = icon.getContext("2d");
+			icon_context.beginPath();
+			icon_context.lineWidth = 1;
+			icon_context.strokeStyle = "#ffff00";
+			for (let i = -0.5; i < icon_size; i += 8) {
+				CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
+				CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
+			}
+			icon_context.stroke();
+			return icon;
+		}
+		private static CreateText(text: string): HTMLSpanElement {
+			const span = document.createElement("span");
+			span.innerText = text;
+			return span;
+		}
+
 		constructor(width: number, height: number, resize_cb: ResizeCanvasCallback) {
 			/* for Canvas Size */
 			this.canvas_width_spin_ = CanvasUi.CreateNumberInput(1, 512);
@@ -957,9 +993,9 @@ namespace UiParts {
 			this.last_height_ = 0;
 
 			/* view grid checkbox */
-			[this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, "小グリッド");
-			[this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, "大グリッド");
-			[this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, "色番号");
+			[this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, CanvasUi.CreateSmallGridIcon(24));
+			[this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, CanvasUi.CreateLargeGridIcon(24));
+			[this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, CanvasUi.CreateText("色番号"));
 			this.last_small_grid_view_ = false;
 			this.last_large_grid_view_ = false;
 			this.last_color_index_view_ = false;
@@ -991,6 +1027,8 @@ namespace UiParts {
 			this.settings_holder_.appendChild(this.color_index_label_);
 			this.settings_holder_.appendChild(this.scale_selector_);
 			this.settings_holder_.style.backgroundColor = "gray";
+			this.settings_holder_.style.display = "flex";
+			this.settings_holder_.style.padding = "2px 0px 2px 2px";
 
 			/* for Canvas */
 			this.canvas_ = document.createElement("canvas");
