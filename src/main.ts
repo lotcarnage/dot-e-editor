@@ -186,11 +186,9 @@ class PixelLayer {
 class Data {
 	private current_pixel_layer_: PixelLayer | null;
 	private pixel_layers_: Map<PixelLayer, PixelLayer>;
-	private pixels_written_set_: Set<number>;
 	private pixels_mask_: boolean[][];
 	private edit_width_: number;
 	private edit_height_: number;
-	private is_edit_view_touched_: boolean;
 	private selected_color_index_: number;
 	private color_palette_: RgbColor[];
 	private logger_: EditLogger;
@@ -206,7 +204,6 @@ class Data {
 		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
 		this.clipboard_stored_width_ = 0;
 		this.clipboard_stored_height_ = 0;
-		this.pixels_written_set_ = new Set<number>();
 		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_width, max_height, false);
 		this.selected_color_index_ = 0;
 		this.selected_bg_color_index_ = 0;
@@ -227,23 +224,18 @@ class Data {
 	}
 	public set edit_width(new_width: number) {
 		this.edit_width_ = new_width;
-		this.is_edit_view_touched_ = true;
 	}
 	public get edit_height(): number {
 		return this.edit_height_;
 	}
 	public set edit_height(new_height: number) {
 		this.edit_height_ = new_height;
-		this.is_edit_view_touched_ = true;
 	}
 	public get selected_color_index(): number {
 		return this.selected_color_index_;
 	}
 	public set selected_color_index(new_index: number) {
 		this.selected_color_index_ = new_index;
-	}
-	public get is_edit_view_touched(): boolean {
-		return this.is_edit_view_touched_;
 	}
 	public get selected_bg_color_index(): number {
 		return this.selected_bg_color_index_;
@@ -261,17 +253,10 @@ class Data {
 		this.pixel_layers_.clear();
 		this.current_pixel_layer_ = null;
 	}
-	public TouchEditView(): void {
-		this.is_edit_view_touched_ = true;
-	}
-	public ClearEditViewTouchedFlag(): void {
-		this.is_edit_view_touched_ = false;
-	}
 	public SetMaskFlagsByRectangle(left: number, top: number, right: number, bottom: number, flag: boolean): void {
 		for (let h = top; h <= bottom; h++) {
 			for (let w = left; w <= right; w++) {
 				this.pixels_mask_[h][w] = flag;
-				this.TouchPixel(w, h);
 			}
 		}
 	}
@@ -279,7 +264,6 @@ class Data {
 		for (let h = 0; h < this.edit_height_; h++) {
 			for (let w = 0; w < this.edit_width_; w++) {
 				this.pixels_mask_[h][w] = !this.pixels_mask_[h][w];
-				this.TouchPixel(w, h);
 			}
 		}
 	}
@@ -297,18 +281,9 @@ class Data {
 			return;
 		}
 		this.current_pixel_layer_.pixels[h][w] = color_index;
-		const pixel_index = this.edit_width_ * h + w;
-		this.pixels_written_set_.add(pixel_index);
-	}
-	public TouchPixel(w: number, h: number): void {
-		const pixel_index = this.edit_width_ * h + w;
-		this.pixels_written_set_.add(pixel_index);
 	}
 	public GetWrittenColorIndex(w: number, h: number): number {
 		return this.current_pixel_layer_.pixels[h][w];
-	}
-	public GetWrittenPixelSet(): Set<number> {
-		return this.pixels_written_set_;
 	}
 	public SetRgbColorToPalette(index: number, color: RgbColor) {
 		this.color_palette_[index].r = color.r;
@@ -342,11 +317,9 @@ class Data {
 				const color_index = this.current_pixel_layer_.pixels[h][w];
 				if (color_index === lh_index) {
 					this.current_pixel_layer_.pixels[h][w] = rh_index;
-					this.TouchPixel(w, h);
 				}
 				if (color_index === rh_index) {
 					this.current_pixel_layer_.pixels[h][w] = lh_index;
-					this.TouchPixel(w, h);
 				}
 			}
 		}
@@ -440,7 +413,6 @@ class Data {
 	}
 	public ApplyView(): void {
 		ApplyLayerUi();
-		this.TouchEditView();
 	}
 
 	public CopyToClipBoard(left: number, top: number, right: number, bottom: number): void {
@@ -646,26 +618,16 @@ const MargeLayers = function (): void {
 				}
 				const src_ci = source_layer.pixels[h][w];
 				if (src_ci !== bg_ci) {
-					if (src_ci !== dst_ci) {
-						marged_pixel_layer.pixels[h][w] = src_ci;
-						data.TouchPixel(w, h);
-					}
+					marged_pixel_layer.pixels[h][w] = src_ci;
 					is_written = true;
 					break;
 				}
 			}
 			if (!is_written) {
 				if (sorted_layers[lowest_layer_index].is_visible) {
-					const src_ci = sorted_layers[lowest_layer_index].pixels[h][w];
-					if (src_ci !== dst_ci) {
-						marged_pixel_layer.pixels[h][w] = src_ci;
-						data.TouchPixel(w, h);
-					}
+					marged_pixel_layer.pixels[h][w] = sorted_layers[lowest_layer_index].pixels[h][w];
 				} else {
-					if (bg_ci !== dst_ci) {
-						marged_pixel_layer.pixels[h][w] = bg_ci;
-						data.TouchPixel(w, h);
-					}
+					marged_pixel_layer.pixels[h][w] = bg_ci;
 				}
 			}
 		}
@@ -830,15 +792,6 @@ function Initialize() {
 	dom.edit_filepath.addEventListener('change', (event) => {
 		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
-	dom.large_grid_width.addEventListener('change', (event) => {
-		data.TouchEditView();
-	});
-	dom.large_grid_height.addEventListener('change', (event) => {
-		data.TouchEditView();
-	});
-	dom.grid_color.addEventListener('input', (event) => {
-		data.TouchEditView();
-	});
 	dom.dom_pen_tool.addEventListener('change', (event) => {
 		canvas_tools.tool_kind = "pen";
 	});
@@ -858,7 +811,6 @@ function Initialize() {
 		const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
 		dom.edit_data_name.value = basename;
 		LoadEditData((<FileReader>event.target).result);
-		data.TouchEditView();
 	});
 
 	let creation_count = 0;
@@ -886,7 +838,6 @@ function Initialize() {
 		},
 		(color_index, color_string) => {
 			data.GetRgbColorFromPalette(color_index).SetHexColor(color_string);
-			data.TouchEditView();
 		}
 	);
 	document.getElementById("colorpalette").appendChild(color_table.node);
