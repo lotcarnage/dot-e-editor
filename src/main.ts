@@ -188,7 +188,6 @@ class Data {
 	private pixel_layers_: Map<PixelLayer, PixelLayer>;
 	private pixels_written_set_: Set<number>;
 	private pixels_mask_: boolean[][];
-	private edit_scale_: number;
 	private edit_width_: number;
 	private edit_height_: number;
 	private is_edit_view_touched_: boolean;
@@ -222,13 +221,6 @@ class Data {
 	}
 	public IsCurrentPixelLayer(pixel_layer: PixelLayer): boolean {
 		return (this.current_pixel_layer_ === pixel_layer);
-	}
-	public get edit_scale(): number {
-		return this.edit_scale_;
-	}
-	public set edit_scale(new_scale: number) {
-		this.edit_scale_ = new_scale;
-		this.is_edit_view_touched_ = true;
 	}
 	public get edit_width(): number {
 		return this.edit_width_;
@@ -293,6 +285,9 @@ class Data {
 	}
 	public IsMasked(w: number, h: number): boolean {
 		return this.pixels_mask_[h][w];
+	}
+	public get pixels_mask(): boolean[][] {
+		return this.pixels_mask_;
 	}
 	public WriteMap(w: number, h: number, color_index: number) {
 		if (this.IsMasked(w, h)) {
@@ -512,8 +507,10 @@ const ApplyColorPalette = function (): void {
 
 const ApplyView = function (): void {
 	ApplyColorPalette();
-	dom.editwidth.value = data.edit_width.toString();
-	dom.editheight.value = data.edit_height.toString();
+	if (canvas_ui !== null) {
+		canvas_ui.canvas_width = data.edit_width;
+		canvas_ui.canvas_height = data.edit_height;
+	}
 	return;
 }
 
@@ -539,33 +536,6 @@ class RectangleTargetPixels {
 	}
 	public BrakedownToPixelMask(): void {
 		data.SetMaskFlagsByRectangle(this.left, this.top, this.right, this.bottom, true);
-	}
-	public Draw(canvas_context: CanvasRenderingContext2D, view_scale: number, frame_count: number, hex_color: string) {
-		const dot_span = 5;
-		const edit_context = dom.edit_canvas.getContext("2d");
-		edit_context.scale(1, 1);
-		canvas_context = edit_context;
-		let z = this.left + (frame_count % dot_span);
-		canvas_context.fillStyle = hex_color;
-		for (; z <= this.right; z += dot_span) {
-			canvas_context.fillRect(z, this.top, 1, 1);
-			data.TouchPixel(z, this.top);
-		}
-		z = z - this.right + this.top;
-		for (; z <= this.bottom; z += dot_span) {
-			canvas_context.fillRect(this.right, z, 1, 1);
-			data.TouchPixel(this.right, z);
-		}
-		z = this.right - (z - this.bottom);
-		for (; this.left <= z; z -= dot_span) {
-			canvas_context.fillRect(z, this.bottom, 1, 1);
-			data.TouchPixel(z, this.bottom);
-		}
-		z = this.bottom - (this.left - z);
-		for (; this.top <= z; z -= dot_span) {
-			canvas_context.fillRect(this.left, z, 1, 1);
-			data.TouchPixel(this.left, z);
-		}
 	}
 	public VerticalTurn(): void {
 		const half_h = Number(Math.floor((this.bottom - this.top + 1) / 2));
@@ -606,16 +576,20 @@ class RectangleTargetPixels {
 		data.PushUndoLog();
 		data.PasteToCanvas(this.left, this.top);
 	}
+	public get rectangle(): { left: number, top: number, right: number, bottom: number } {
+		return { left: this.left, top: this.top, right: this.right, bottom: this.bottom };
+	}
 }
 
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
+let canvas_ui: UiParts.CanvasUi | null = null;
 const canvas_tools = new CanvasTools.CanvasTools(
 	(x, y) => {
 		return !data.IsMasked(x, y);
 	},
 	(x, y) => {
-		if (x < 0 || y < 0 || data.edit_width <= x || data.edit_height <= y) {
+		if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
 			return;
 		}
 		data.WriteMap(x, y, data.selected_color_index);
@@ -624,10 +598,10 @@ const canvas_tools = new CanvasTools.CanvasTools(
 		return data.GetWrittenColorIndex(x, y);
 	},
 	() => {
-		return [data.edit_width, data.edit_height];
+		return [canvas_ui.canvas_width, canvas_ui.canvas_height];
 	},
 	() => {
-		return data.edit_scale;
+		return canvas_ui.edit_scale;
 	},
 	(x, y) => {
 		const color_index = data.GetWrittenColorIndex(x, y);
@@ -738,17 +712,9 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 }
 
 class Dom {
-	edit_canvas: HTMLCanvasElement;
 	blank_frame: HTMLDivElement;
 	edit_block: HTMLDivElement;
-	edit_frame: HTMLDivElement;
-	editwidth: HTMLInputElement;
-	editheight: HTMLInputElement;
-	edit_scale: HTMLSelectElement;
 	edit_filepath: HTMLInputElement;
-	view_index: HTMLInputElement;
-	view_grid: HTMLInputElement;
-	view_large_grid: HTMLInputElement;
 	large_grid_width: HTMLInputElement;
 	large_grid_height: HTMLInputElement;
 	dom_pen_tool: HTMLInputElement;
@@ -767,17 +733,9 @@ class Dom {
 	delete_mask_button: HTMLButtonElement;
 	delete_all_unused_colors_button: HTMLButtonElement;
 	Initialize() {
-		this.edit_canvas = GetHtmlElement<HTMLCanvasElement>('edit');
 		this.blank_frame = GetHtmlElement<HTMLDivElement>('blank_frame');
 		this.edit_block = GetHtmlElement<HTMLDivElement>('editblock');
-		this.edit_frame = GetHtmlElement<HTMLDivElement>('editframe');
-		this.editwidth = GetHtmlElement<HTMLInputElement>('editwidth');
-		this.editheight = GetHtmlElement<HTMLInputElement>('editheight');
-		this.edit_scale = GetHtmlElement<HTMLSelectElement>('edit_scale');
 		this.edit_filepath = GetHtmlElement<HTMLInputElement>('edit_filepath');
-		this.view_index = GetHtmlElement<HTMLInputElement>('view_index');
-		this.view_grid = GetHtmlElement<HTMLInputElement>('view_grid');
-		this.view_large_grid = GetHtmlElement<HTMLInputElement>('view_large_grid');
 		this.large_grid_width = GetHtmlElement<HTMLInputElement>('large_grid_width');
 		this.large_grid_height = GetHtmlElement<HTMLInputElement>('large_grid_height');
 		this.dom_pen_tool = GetHtmlElement<HTMLInputElement>('pen_tool');
@@ -800,186 +758,9 @@ class Dom {
 
 const dom = new Dom();
 
-const DrawLine = function (canvas_context, start_x, start_y, end_x, end_y) {
-	canvas_context.moveTo(start_x, start_y);
-	canvas_context.lineTo(end_x, end_y);
-}
-
-const PartiallyDrawGrid = function (canvas_context, w_grid_set, h_grid_set, width_count, height_count, scale, grid_size, grid_color) {
-	canvas_context.beginPath();
-	const line_height = height_count * grid_size;
-	const line_width = width_count * grid_size;
-	const adjust_e = -(1 / scale) / 2;
-	for (let w of w_grid_set) {
-		const x = (w + 1) * grid_size + adjust_e;
-		DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
-	}
-	for (let h of h_grid_set) {
-		const y = (h + 1) * grid_size + adjust_e;
-		DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
-	}
-	canvas_context.lineWidth = 1 / scale;
-	canvas_context.strokeStyle = grid_color;
-	canvas_context.stroke();
-}
-
-const DrawGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
-	const all_w_grid_set = new Set();
-	const all_h_grid_set = new Set();
-	for (var w = 0; w < width_count; w++) {
-		all_w_grid_set.add(w);
-	}
-	for (var h = 0; h < height_count; h++) {
-		all_h_grid_set.add(h);
-	}
-	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
-}
-
-const DrawLargeGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
-	const all_w_grid_set = new Set();
-	const all_h_grid_set = new Set();
-	const large_grid_width = Math.min(512, Math.max(2, dom.large_grid_width.valueAsNumber));
-	const large_grid_height = Math.min(512, Math.max(2, dom.large_grid_height.valueAsNumber));
-	for (var w = large_grid_width; w <= width_count; w += large_grid_width) {
-		all_w_grid_set.add(w - 1);
-	}
-	for (var h = large_grid_height; h <= height_count; h += large_grid_height) {
-		all_h_grid_set.add(h - 1);
-	}
-	canvas_context.setLineDash([0.5, 0.5]);
-	PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
-	canvas_context.setLineDash([]);
-}
-
-
-const PartiallyDrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, target_pixel_set: Set<number>, view_scale: number, color) {
-	const font_size = view_font_size;
-	edit_context.save();
-	edit_context.textAlign = "center";
-	edit_context.textBaseline = "middle";
-	edit_context.font = `${font_size}px gothic`;
-	edit_context.fillStyle = color;
-	edit_context.scale(1 / view_scale, 1 / view_scale);
-	const y_offset = font_size / 2;
-	const width = data.edit_width;
-	target_pixel_set.forEach((pixel_index) => {
-		const w = PixelPoint.IndexToPixelPointW(pixel_index, width);
-		const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
-		const dst_x = w * view_scale;
-		const dst_y = h * view_scale;
-		const ci = marged_pixel_layer.pixels[h][w];
-		const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
-		edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
-	});
-	edit_context.restore();
-}
-
-const DrawMapchipIndex = function (edit_context: CanvasRenderingContext2D, edit_w_count, edit_h_count, view_scale, color) {
-	const target_pixel_set = new Set<number>();
-	for (var h = 0; h < edit_h_count; h++) {
-		for (var w = 0; w < edit_w_count; w++) {
-			target_pixel_set.add((new PixelPoint(w, h)).ToIndex(edit_w_count));
-		}
-	}
-	PartiallyDrawMapchipIndex(edit_context, target_pixel_set, view_scale, color);
-}
-
-const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale) {
-	const written_pixel_set = data.GetWrittenPixelSet();
-
-	const edit_context = dom.edit_canvas.getContext("2d");
-	edit_context.imageSmoothingEnabled = false;
-
-	const update_w_grid_set = new Set<number>();
-	const update_h_grid_set = new Set<number>();
-	const pi = written_pixel_set.values[0];
-	written_pixel_set.forEach((pixel_index) => {
-		const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
-		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
-		update_w_grid_set.add(w);
-		update_h_grid_set.add(h);
-		const mi = marged_pixel_layer.pixels[h][w];
-		const color = data.GetRgbColorFromPalette(mi).ToHexColor();
-		edit_context.fillStyle = color;
-		edit_context.fillRect(w, h, 1, 1);
-	});
-
-	/* マスク表示 */
-	edit_context.fillStyle = '#ff0000';
-	edit_context.globalAlpha = 0.5;
-	written_pixel_set.forEach((pixel_index) => {
-		const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
-		const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
-		if (data.IsMasked(w, h)) {
-			edit_context.fillRect(w, h, 1, 1);
-		}
-	});
-	edit_context.globalAlpha = 1;
-
-	const grid_color = dom.grid_color.value;
-	if (dom.view_grid.checked) {
-		PartiallyDrawGrid(edit_context, update_w_grid_set, update_h_grid_set, edit_w_count, edit_h_count, view_scale, 1, grid_color);
-	}
-	if (dom.view_index.checked) {
-		PartiallyDrawMapchipIndex(edit_context, written_pixel_set, view_scale, grid_color);
-	}
-	if (dom.view_large_grid.checked) {
-		DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
-	}
-	written_pixel_set.clear();
-}
-const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
-	const edit_context = dom.edit_canvas.getContext("2d");
-	dom.edit_canvas.width = edit_w_count * view_scale;
-	dom.edit_canvas.height = edit_h_count * view_scale;
-	edit_context.imageSmoothingEnabled = false;
-	edit_context.scale(view_scale, view_scale);
-	for (var h = 0; h < edit_h_count; h++) {
-		for (var w = 0; w < edit_w_count; w++) {
-			const mi = marged_pixel_layer.pixels[h][w];
-			edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
-			edit_context.fillRect(w, h, 1, 1);
-		}
-	}
-
-	/* マスク表示 */
-	edit_context.fillStyle = '#ff0000';
-	edit_context.globalAlpha = 0.5;
-	for (var h = 0; h < edit_h_count; h++) {
-		for (var w = 0; w < edit_w_count; w++) {
-			if (data.IsMasked(w, h)) {
-				edit_context.fillRect(w, h, 1, 1);
-			}
-		}
-	}
-	edit_context.globalAlpha = 1;
-
-	const grid_color = dom.grid_color.value;
-	if (dom.view_index.checked) {
-		DrawMapchipIndex(edit_context, edit_w_count, edit_h_count, view_scale, grid_color);
-	}
-	if (dom.view_grid.checked) {
-		DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
-	}
-	if (dom.view_large_grid.checked) {
-		DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
-	}
-	data.GetWrittenPixelSet().clear();
-}
-
 var frame_count = 0;
 const UpdateView = function () {
 	MargeLayers();
-	if (data.is_edit_view_touched) {
-		DrawCanvasPixelsAll(data.edit_width, data.edit_height, data.edit_scale);
-		data.ClearEditViewTouchedFlag();
-	} else {
-		DrawCanvasPixelsPartial(data.edit_width, data.edit_height, data.edit_scale);
-	}
-	if (target_pixels !== null) {
-		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
-		target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
-	}
 	layer_pane_ui.Draw();
 	const color_table = new Array<string>(256);
 	for (let i = 0; i < 256; i++) {
@@ -991,7 +772,14 @@ const UpdateView = function () {
 	if (animation_window !== null) {
 		animation_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height, frame_count);
 	}
-
+	if (canvas_ui !== null) {
+		canvas_ui.Draw(
+			marged_pixel_layer.pixels, data.pixels_mask, color_table,
+			dom.grid_color.value,
+			dom.large_grid_width.valueAsNumber, dom.large_grid_height.valueAsNumber, large_grid_color,
+			((target_pixels !== null) ? target_pixels.rectangle : null),
+			frame_count);
+	}
 	frame_count++;
 	window.requestAnimationFrame(UpdateView);
 }
@@ -1039,41 +827,9 @@ const ApplyLayerUi = function (): void {
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
-	dom.edit_canvas.width = 256;
-	dom.edit_canvas.height = 192;
-	FitDivWidth('editframe', 'editblock');
-	canvas_tools.Attach(dom.edit_canvas);
-
-	dom.editwidth.max = max_edit_width.toString();
-	dom.editheight.max = max_edit_height.toString();
-	dom.editwidth.value = default_edit_width.toString();
-	dom.editheight.value = default_edit_height.toString();
-	dom.edit_scale.value = default_edit_scale.toString();
-	data.edit_width = dom.editwidth.valueAsNumber;
-	data.edit_height = dom.editheight.valueAsNumber;
-	data.edit_scale = Number(dom.edit_scale.value);
-
-	dom.editwidth.addEventListener('change', (event) => {
-		data.edit_width = (<HTMLInputElement>event.target).valueAsNumber;
-	});
-	dom.editheight.addEventListener('change', (event) => {
-		data.edit_height = (<HTMLInputElement>event.target).valueAsNumber;
-	});
-	dom.edit_scale.addEventListener('change', (event) => {
-		data.edit_scale = Number((<HTMLSelectElement>event.target).value);
-	});
 	dom.edit_filepath.addEventListener('change', (event) => {
 		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
-	dom.view_index.addEventListener('change', (event) => {
-		data.TouchEditView();
-	});
-	dom.view_grid.addEventListener('change', (event) => {
-		data.TouchEditView();
-	});
-	dom.view_large_grid.addEventListener('change', (event) => {
-		data.TouchEditView();
-	});
 	dom.large_grid_width.addEventListener('change', (event) => {
 		data.TouchEditView();
 	});
@@ -1140,6 +896,16 @@ function Initialize() {
 		data.AppendLayer(pixel_layer);
 	}
 	ApplyView();
+	if (canvas_ui === null) {
+		canvas_ui = new UiParts.CanvasUi(data.edit_width, data.edit_height, (width, height) => {
+			data.edit_width = width;
+			data.edit_height = height;
+		});
+		canvas_ui.edit_scale = default_edit_scale;
+	}
+	canvas_tools.Attach(canvas_ui.canvas);
+	dom.edit_block.appendChild(canvas_ui.node);
+
 
 	dom.undo_button.addEventListener('click', (event) => {
 		data.Undo();
@@ -1203,13 +969,15 @@ function Initialize() {
 			if (is_focusin === true) {
 				data.SetCurrentPixelLayer(pixel_layer);
 				dom.edit_block.style.backgroundColor = tag_color;
-				dom.edit_frame.style.backgroundColor = tag_color;
+				canvas_ui.node.style.backgroundColor = tag_color;
 			}
 			if (data.IsCurrentPixelLayer(pixel_layer)) {
-				if (is_locked) {
-					dom.edit_canvas.style.cursor = 'not-allowed';
-				} else {
-					dom.edit_canvas.style.cursor = 'auto';
+				if (canvas_ui !== null) {
+					if (is_locked) {
+						canvas_ui.canvas.style.cursor = 'not-allowed';
+					} else {
+						canvas_ui.canvas.style.cursor = 'auto';
+					}
 				}
 			}
 		},

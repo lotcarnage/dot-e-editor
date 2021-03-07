@@ -104,14 +104,9 @@
         <div id="layerblock"></div>
         <div class="vbox" id="settingsblock">
             <div class="hbox">
-                <input type="checkbox" id="view_grid" checked>
-                <label for="view_grid">小グリッド</label>
-                <input type="checkbox" id="view_index">
-                <label for="view_index">色番号表示</label>
+                <span>大グリッドサイズ</span>
             </div>
             <div class="hbox">
-                <input type="checkbox" id="view_large_grid" checked>
-                <label for="view_large_grid">大グリッド</label>
                 <input type="number" id="large_grid_width" min="2" max="512" value="16">
                 <input type="number" id="large_grid_height" min="2" max="512" value="16">
             </div>
@@ -170,29 +165,6 @@
                     <option value="WindowsIndexColorBitmap">BMP</option>
                 </select>
                 <input type="text" id="edit_data_name" value="new_picture">
-            </div>
-            <div class="hbox">
-                <div class="vbox">
-                    横x縦<input id="editwidth" type="number" min="1">x
-                    <input id="editheight" type="number" min="1">
-                </div>
-                <div class="rightvbox">
-                    表示倍率
-                    <select id="edit_scale">
-                        <option value="1">x1</option>
-                        <option value="2">x2</option>
-                        <option value="4" selected>x4</option>
-                        <option value="8">x8</option>
-                        <option value="16">x16</option>
-                        <option value="24">x24</option>
-                        <option value="32">x32</option>
-                    </select>
-                </div>
-            </div>
-            <div class="canvasframe" id="editframe">
-                <div class="overflow_frame">
-                    <canvas id="edit" width="256" height="192" onContextmenu="return false;"></canvas>
-                </div>
             </div>
         </div>
     </div>
@@ -1539,6 +1511,449 @@ var UiParts;
     TabPaneUi.tab_content_class_style_ = null;
     TabPaneUi.global_tab_count_ = 0;
     UiParts.TabPaneUi = TabPaneUi;
+    class CanvasUi {
+        constructor(width, height, resize_cb) {
+            /* for Canvas Size */
+            this.canvas_width_spin_ = CanvasUi.CreateNumberInput(1, 512);
+            this.canvas_height_spin_ = CanvasUi.CreateNumberInput(1, 512);
+            this.canvas_width_spin_.value = width.toString();
+            this.canvas_height_spin_.value = height.toString();
+            /* 最初の描画のために必ず差分が発生するように初期化しておく */
+            this.last_width_ = 0;
+            this.last_height_ = 0;
+            /* view grid checkbox */
+            [this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, "小グリッド");
+            [this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, "大グリッド");
+            [this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, "色番号");
+            this.last_small_grid_view_ = false;
+            this.last_large_grid_view_ = false;
+            this.last_color_index_view_ = false;
+            this.last_large_grid_width_ = 0;
+            this.last_large_grid_height_ = 0;
+            this.last_small_grid_color_ = '#000000';
+            /* for Scale selector */
+            this.scale_selector_ = document.createElement("select");
+            const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
+            for (let i = 0; i < scales.length; i++) {
+                const preset_option = document.createElement("option");
+                preset_option.value = scales[i].toString();
+                preset_option.innerText = `x${scales[i]}`;
+                this.scale_selector_.append(preset_option);
+            }
+            this.scale_selector_.selectedIndex = 0;
+            this.last_scale_ = 1;
+            /* settings holder */
+            this.settings_holder_ = document.createElement("div");
+            this.settings_holder_.appendChild(this.canvas_width_spin_);
+            this.settings_holder_.appendChild(this.canvas_height_spin_);
+            this.settings_holder_.appendChild(this.small_grid_view_);
+            this.settings_holder_.appendChild(this.small_grid_label_);
+            this.settings_holder_.appendChild(this.large_grid_view_);
+            this.settings_holder_.appendChild(this.large_grid_label_);
+            this.settings_holder_.appendChild(this.color_index_view_);
+            this.settings_holder_.appendChild(this.color_index_label_);
+            this.settings_holder_.appendChild(this.scale_selector_);
+            this.settings_holder_.style.backgroundColor = "gray";
+            /* for Canvas */
+            this.canvas_ = document.createElement("canvas");
+            this.canvas_.width = width;
+            this.canvas_.height = height;
+            this.canvas_.addEventListener("contextmenu", (event) => {
+                event.preventDefault();
+                return false;
+            });
+            this.canvas_box_ = document.createElement("div");
+            this.canvas_box_.style.width = "max-content";
+            this.canvas_box_.style.height = "max-content";
+            this.canvas_frame_ = document.createElement("div");
+            this.canvas_frame_.style.overflow = "scroll";
+            this.canvas_frame_.style.resize = "both";
+            this.canvas_frame_.style.clear = "both";
+            this.canvas_box_.appendChild(this.canvas_);
+            this.canvas_frame_.appendChild(this.canvas_box_);
+            this.last_pixels_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(0))));
+            this.last_pixel_mask_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(false))));
+            this.last_colors_ = JSON.parse(JSON.stringify(new Array(256).fill('#000000')));
+            this.last_selected_rectangle_area_ = null;
+            /* compose */
+            this.holder_ = document.createElement("div");
+            this.holder_.appendChild(this.settings_holder_);
+            this.holder_.appendChild(this.canvas_frame_);
+            this.resize_cb_ = resize_cb;
+            this.canvas_width_spin_.addEventListener("input", (event) => {
+                const width = event.target.valueAsNumber;
+                const height = this.canvas_height_spin_.valueAsNumber;
+                if (!isNaN(width) && !isNaN(height)) {
+                    resize_cb(width, height);
+                }
+            });
+            this.canvas_height_spin_.addEventListener("input", (event) => {
+                const height = event.target.valueAsNumber;
+                const width = this.canvas_width_spin_.valueAsNumber;
+                if (!isNaN(width) && !isNaN(height)) {
+                    resize_cb(width, height);
+                }
+            });
+        }
+        static CreateNumberInput(minimum, maximum) {
+            const element = document.createElement("input");
+            element.type = "number";
+            element.min = minimum.toString();
+            element.max = maximum.toString();
+            return element;
+        }
+        static CreateCheckBox(checkbox_id, label_text) {
+            const checkbox = document.createElement("input");
+            checkbox.type = "checkbox";
+            checkbox.id = checkbox_id;
+            const label = document.createElement("label");
+            label.htmlFor = checkbox.id;
+            label.innerText = label_text;
+            return [checkbox, label];
+        }
+        static DrawLine(canvas_context, start_x, start_y, end_x, end_y) {
+            canvas_context.moveTo(start_x, start_y);
+            canvas_context.lineTo(end_x, end_y);
+            return;
+        }
+        get node() {
+            return this.holder_;
+        }
+        get canvas() {
+            return this.canvas_;
+        }
+        static PartiallyDrawGrid(canvas_context, w_grid_set, h_grid_set, width, height, scale, grid_color) {
+            canvas_context.beginPath();
+            const line_height = height;
+            const line_width = width;
+            const adjust_e = -(1 / scale) / 2;
+            for (let w of w_grid_set) {
+                const x = (w + 1) + adjust_e;
+                CanvasUi.DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
+            }
+            for (let h of h_grid_set) {
+                const y = (h + 1) + adjust_e;
+                CanvasUi.DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
+            }
+            canvas_context.lineWidth = 1 / scale;
+            canvas_context.strokeStyle = grid_color;
+            canvas_context.stroke();
+        }
+        static DrawSmallGrid(canvas_context, width, height, scale, grid_color) {
+            const all_w_grid_set = new Set();
+            const all_h_grid_set = new Set();
+            for (var w = 0; w < width; w++) {
+                all_w_grid_set.add(w);
+            }
+            for (var h = 0; h < height; h++) {
+                all_h_grid_set.add(h);
+            }
+            CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
+        }
+        static DrawLargeGrid(canvas_context, width, height, scale, grid_color, grid_width, grid_height) {
+            const all_w_grid_set = new Set();
+            const all_h_grid_set = new Set();
+            const large_grid_width = Math.min(512, Math.max(2, grid_width));
+            const large_grid_height = Math.min(512, Math.max(2, grid_height));
+            for (var w = large_grid_width; w <= width; w += large_grid_width) {
+                all_w_grid_set.add(w - 1);
+            }
+            for (var h = large_grid_height; h <= height; h += large_grid_height) {
+                all_h_grid_set.add(h - 1);
+            }
+            canvas_context.setLineDash([0.5, 0.5]);
+            CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
+            canvas_context.setLineDash([]);
+        }
+        static PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color) {
+            const font_size = 8;
+            canvas_context.save();
+            canvas_context.textAlign = "center";
+            canvas_context.textBaseline = "middle";
+            canvas_context.font = `8px gothic`;
+            canvas_context.fillStyle = color;
+            canvas_context.scale(1 / scale, 1 / scale);
+            const y_offset = font_size / 2;
+            target_pixel_set.forEach((pixel_index) => {
+                const w = Math.floor(pixel_index % width);
+                const h = Math.floor(pixel_index / width);
+                const dst_x = w * scale;
+                const dst_y = h * scale;
+                const ci = pixels[h][w];
+                const x_offset = scale - String(ci).length * (font_size / 2 - 1) - 1;
+                canvas_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
+            });
+            canvas_context.restore();
+        }
+        static DrawColorIndex(canvas_context, pixels, width, height, scale, color) {
+            const target_pixel_set = new Set();
+            for (var h = 0; h < height; h++) {
+                for (var w = 0; w < width; w++) {
+                    target_pixel_set.add(h * width + w);
+                }
+            }
+            CanvasUi.PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color);
+        }
+        static DrawSelectedRectangleArea(canvas_context, rectangle, scale, frame_count) {
+            const e_ = 0.5;
+            canvas_context.setTransform(1, 0, 0, 1, 0, 0);
+            const point_left = rectangle.left * scale + e_;
+            const point_top = rectangle.top * scale + e_;
+            const point_right = (rectangle.right + 1) * scale - e_;
+            const point_bottom = (rectangle.bottom + 1) * scale - e_;
+            canvas_context.setLineDash([4, 4]);
+            canvas_context.lineWidth = 1;
+            canvas_context.beginPath();
+            canvas_context.strokeStyle = "#ffffff";
+            canvas_context.lineDashOffset = frame_count % 8;
+            CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
+            CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
+            CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
+            CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
+            canvas_context.stroke();
+            canvas_context.beginPath();
+            canvas_context.strokeStyle = "#000000";
+            canvas_context.lineDashOffset = (frame_count + 4) % 8;
+            CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
+            CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
+            CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
+            CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
+            canvas_context.stroke();
+            canvas_context.setLineDash([]);
+        }
+        static ExtractTouchedPixelsAndGrids(current_pixels, last_pixels, current_pixel_mask, last_pixel_mask, width, height, current_colors, last_colors, last_selected_rectangle_area) {
+            const pixel_index_set = new Set();
+            const grid_w_set = new Set();
+            const grid_h_set = new Set();
+            /* ピクセル値の変化差分を抽出 */
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    let is_touched = false;
+                    if (last_pixels[h][w] !== current_pixels[h][w]) {
+                        is_touched = true;
+                    }
+                    else if (last_pixel_mask[h][w] !== current_pixel_mask[h][w]) {
+                        is_touched = true;
+                    }
+                    else {
+                        /* 色が変わっている場合も更新対象 */
+                        const ci = last_pixels[h][w];
+                        if (last_colors[ci] !== current_colors[ci]) {
+                            is_touched = true;
+                        }
+                    }
+                    if (is_touched) {
+                        pixel_index_set.add(h * width + w);
+                        grid_w_set.add(w);
+                        grid_h_set.add(h);
+                    }
+                }
+            }
+            /* 前回の矩形選択範囲の線を描画したピクセルは今回上書きが必要 */
+            if (last_selected_rectangle_area !== null) {
+                const rect = last_selected_rectangle_area;
+                if (rect.top === rect.bottom) {
+                    for (let w = rect.left; w <= rect.right; w++) {
+                        pixel_index_set.add(rect.top * width + w);
+                    }
+                }
+                else {
+                    for (let w = rect.left; w <= rect.right; w++) {
+                        pixel_index_set.add(rect.top * width + w);
+                        pixel_index_set.add(rect.bottom * width + w);
+                    }
+                }
+                const offset_top = rect.top + 1;
+                const offset_bottom = rect.bottom - 1;
+                if (0 <= (offset_bottom - offset_top)) {
+                    if (rect.left === rect.right) {
+                        for (let h = offset_top; h <= offset_bottom; h++) {
+                            pixel_index_set.add(h * width + rect.left);
+                        }
+                    }
+                    else {
+                        for (let h = offset_top; h <= offset_bottom; h++) {
+                            pixel_index_set.add(h * width + rect.left);
+                            pixel_index_set.add(h * width + rect.right);
+                        }
+                    }
+                }
+                for (let h = rect.top; h <= rect.bottom; h++) {
+                    for (let w = rect.left; w <= rect.right; w++) {
+                        grid_w_set.add(w);
+                        grid_h_set.add(h);
+                    }
+                }
+            }
+            return [pixel_index_set, grid_w_set, grid_h_set];
+        }
+        UpdateParameters(large_grid_width, large_grid_height, small_grid_color) {
+            const scale = parseInt(this.scale_selector_.value);
+            let width = parseInt(this.canvas_width_spin_.value);
+            let height = parseInt(this.canvas_height_spin_.value);
+            const small_grid_view = this.small_grid_view_.checked;
+            const large_grid_view = this.large_grid_view_.checked;
+            const color_index_view = this.color_index_view_.checked;
+            if (isNaN(width)) {
+                width = this.last_width_;
+            }
+            if (isNaN(height)) {
+                height = this.last_height_;
+            }
+            if (this.canvas_.width !== width * scale) {
+                this.canvas_.width = width * scale;
+            }
+            if (this.canvas_.height !== height * scale) {
+                this.canvas_.height = height * scale;
+            }
+            const need_update_all = (this.last_scale_ !== scale)
+                || (this.last_width_ !== width)
+                || (this.last_height_ !== height)
+                || (this.last_small_grid_view_ !== small_grid_view)
+                || (this.last_large_grid_view_ !== large_grid_view)
+                || (this.last_large_grid_width_ !== large_grid_width)
+                || (this.last_large_grid_height_ !== large_grid_height)
+                || (this.last_color_index_view_ !== color_index_view)
+                || (this.last_small_grid_color_ !== small_grid_color);
+            this.last_scale_ = scale;
+            this.last_width_ = width;
+            this.last_height_ = height;
+            this.last_small_grid_view_ = small_grid_view;
+            this.last_large_grid_view_ = large_grid_view;
+            this.last_large_grid_width_ = large_grid_width;
+            this.last_large_grid_height_ = large_grid_height;
+            this.last_color_index_view_ = color_index_view;
+            this.last_small_grid_color_ = small_grid_color;
+            return need_update_all ? "need_all" : "partial";
+        }
+        Draw(pixels, pixels_mask, color_table, small_grid_color, large_grid_width, large_grid_height, large_grid_color, selected_rectangle_area, frame_count) {
+            const draw_type = this.UpdateParameters(large_grid_width, large_grid_height, small_grid_color);
+            const scale = this.last_scale_;
+            const width = this.last_width_;
+            const height = this.last_height_;
+            const context = this.canvas_.getContext("2d");
+            context.imageSmoothingEnabled = false;
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.scale(scale, scale);
+            if (draw_type === "need_all") {
+                /* ピクセル描画 */
+                for (let h = 0; h < height; h++) {
+                    for (let w = 0; w < width; w++) {
+                        const color_index = pixels[h][w];
+                        context.fillStyle = color_table[color_index];
+                        context.fillRect(w, h, 1, 1);
+                    }
+                }
+                /* マスク表示 */
+                context.fillStyle = '#ff0000';
+                context.globalAlpha = 0.5;
+                for (var h = 0; h < height; h++) {
+                    for (var w = 0; w < width; w++) {
+                        if (pixels_mask[h][w]) {
+                            context.fillRect(w, h, 1, 1);
+                        }
+                    }
+                }
+                context.globalAlpha = 1;
+                /* グリッド描画 */
+                if (this.small_grid_view_.checked) {
+                    CanvasUi.DrawSmallGrid(context, width, height, scale, small_grid_color);
+                }
+                /* 色番号描画 */
+                if (this.color_index_view_.checked) {
+                    CanvasUi.DrawColorIndex(context, pixels, width, height, scale, small_grid_color);
+                }
+                /* キャッシュ更新 */
+                for (let h = 0; h < height; h++) {
+                    for (let w = 0; w < width; w++) {
+                        this.last_pixels_[h][w] = pixels[h][w];
+                        this.last_pixel_mask_[h][w] = pixels_mask[h][w];
+                    }
+                }
+                /* 色のキャッシュ更新 */
+                for (let i = 0; i < 256; i++) {
+                    this.last_colors_[i] = color_table[i];
+                }
+            }
+            else {
+                /* 際描画が必要なピクセルとグリッドを抽出 */
+                const [written_pixel_set, update_w_grid_set, update_h_grid_set] = CanvasUi.ExtractTouchedPixelsAndGrids(pixels, this.last_pixels_, pixels_mask, this.last_pixel_mask_, width, height, color_table, this.last_colors_, this.last_selected_rectangle_area_);
+                /* ピクセルの部分描画 */
+                written_pixel_set.forEach((pixel_index) => {
+                    const w = Math.floor(pixel_index % width);
+                    const h = Math.floor(pixel_index / width);
+                    const ci = pixels[h][w];
+                    const color = color_table[ci];
+                    context.fillStyle = color;
+                    context.fillRect(w, h, 1, 1);
+                });
+                /* マスクの部分表示 */
+                context.fillStyle = '#ff0000';
+                context.globalAlpha = 0.5;
+                written_pixel_set.forEach((pixel_index) => {
+                    const w = Math.floor(pixel_index % width);
+                    const h = Math.floor(pixel_index / width);
+                    if (pixels_mask[h][w]) {
+                        context.fillRect(w, h, 1, 1);
+                    }
+                });
+                context.globalAlpha = 1;
+                /* グリッドの部分描画 */
+                if (this.small_grid_view_.checked) {
+                    CanvasUi.PartiallyDrawGrid(context, update_w_grid_set, update_h_grid_set, width, height, scale, small_grid_color);
+                }
+                /* 色番号の部分描画 */
+                if (this.color_index_view_.checked) {
+                    CanvasUi.PartiallyDrawColorIndex(context, pixels, written_pixel_set, width, height, scale, small_grid_color);
+                }
+            }
+            if (this.large_grid_view_.checked) {
+                CanvasUi.DrawLargeGrid(context, width, height, scale, large_grid_color, large_grid_width, large_grid_height);
+            }
+            if (selected_rectangle_area !== null) {
+                CanvasUi.DrawSelectedRectangleArea(context, selected_rectangle_area, scale, frame_count);
+            }
+            /* キャッシュ更新 */
+            /* ピクセルおよびマスク */
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    this.last_pixels_[h][w] = pixels[h][w];
+                    this.last_pixel_mask_[h][w] = pixels_mask[h][w];
+                }
+            }
+            /* 色　*/
+            for (let i = 0; i < 256; i++) {
+                this.last_colors_[i] = color_table[i];
+            }
+            /* 矩形選択 */
+            this.last_selected_rectangle_area_ = selected_rectangle_area;
+            return;
+        }
+        get canvas_width() {
+            return this.last_width_;
+        }
+        get canvas_height() {
+            return this.last_height_;
+        }
+        set canvas_width(new_width) {
+            this.canvas_width_spin_.valueAsNumber = new_width;
+        }
+        set canvas_height(new_height) {
+            this.canvas_height_spin_.valueAsNumber = new_height;
+        }
+        get edit_scale() {
+            return this.last_scale_;
+        }
+        set edit_scale(new_scale) {
+            const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
+            const index = scales.indexOf(new_scale);
+            if (0 <= index) {
+                this.scale_selector_.selectedIndex = index;
+            }
+        }
+    }
+    CanvasUi.count_ = 0;
+    UiParts.CanvasUi = CanvasUi;
 })(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
@@ -1717,13 +2132,6 @@ class Data {
     IsCurrentPixelLayer(pixel_layer) {
         return (this.current_pixel_layer_ === pixel_layer);
     }
-    get edit_scale() {
-        return this.edit_scale_;
-    }
-    set edit_scale(new_scale) {
-        this.edit_scale_ = new_scale;
-        this.is_edit_view_touched_ = true;
-    }
     get edit_width() {
         return this.edit_width_;
     }
@@ -1787,6 +2195,9 @@ class Data {
     }
     IsMasked(w, h) {
         return this.pixels_mask_[h][w];
+    }
+    get pixels_mask() {
+        return this.pixels_mask_;
     }
     WriteMap(w, h, color_index) {
         if (this.IsMasked(w, h)) {
@@ -2000,8 +2411,10 @@ const ApplyColorPalette = function () {
 };
 const ApplyView = function () {
     ApplyColorPalette();
-    dom.editwidth.value = data.edit_width.toString();
-    dom.editheight.value = data.edit_height.toString();
+    if (canvas_ui !== null) {
+        canvas_ui.canvas_width = data.edit_width;
+        canvas_ui.canvas_height = data.edit_height;
+    }
     return;
 };
 class RectangleTargetPixels {
@@ -2021,33 +2434,6 @@ class RectangleTargetPixels {
     }
     BrakedownToPixelMask() {
         data.SetMaskFlagsByRectangle(this.left, this.top, this.right, this.bottom, true);
-    }
-    Draw(canvas_context, view_scale, frame_count, hex_color) {
-        const dot_span = 5;
-        const edit_context = dom.edit_canvas.getContext("2d");
-        edit_context.scale(1, 1);
-        canvas_context = edit_context;
-        let z = this.left + (frame_count % dot_span);
-        canvas_context.fillStyle = hex_color;
-        for (; z <= this.right; z += dot_span) {
-            canvas_context.fillRect(z, this.top, 1, 1);
-            data.TouchPixel(z, this.top);
-        }
-        z = z - this.right + this.top;
-        for (; z <= this.bottom; z += dot_span) {
-            canvas_context.fillRect(this.right, z, 1, 1);
-            data.TouchPixel(this.right, z);
-        }
-        z = this.right - (z - this.bottom);
-        for (; this.left <= z; z -= dot_span) {
-            canvas_context.fillRect(z, this.bottom, 1, 1);
-            data.TouchPixel(z, this.bottom);
-        }
-        z = this.bottom - (this.left - z);
-        for (; this.top <= z; z -= dot_span) {
-            canvas_context.fillRect(this.left, z, 1, 1);
-            data.TouchPixel(this.left, z);
-        }
     }
     VerticalTurn() {
         const half_h = Number(Math.floor((this.bottom - this.top + 1) / 2));
@@ -2088,22 +2474,26 @@ class RectangleTargetPixels {
         data.PushUndoLog();
         data.PasteToCanvas(this.left, this.top);
     }
+    get rectangle() {
+        return { left: this.left, top: this.top, right: this.right, bottom: this.bottom };
+    }
 }
 const data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
+let canvas_ui = null;
 const canvas_tools = new CanvasTools.CanvasTools((x, y) => {
     return !data.IsMasked(x, y);
 }, (x, y) => {
-    if (x < 0 || y < 0 || data.edit_width <= x || data.edit_height <= y) {
+    if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
         return;
     }
     data.WriteMap(x, y, data.selected_color_index);
 }, (x, y) => {
     return data.GetWrittenColorIndex(x, y);
 }, () => {
-    return [data.edit_width, data.edit_height];
+    return [canvas_ui.canvas_width, canvas_ui.canvas_height];
 }, () => {
-    return data.edit_scale;
+    return canvas_ui.edit_scale;
 }, (x, y) => {
     const color_index = data.GetWrittenColorIndex(x, y);
     ChengeCurrentColor(color_index);
@@ -2203,17 +2593,9 @@ const LoadEditData = function (bytes) {
 };
 class Dom {
     Initialize() {
-        this.edit_canvas = GetHtmlElement('edit');
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_block = GetHtmlElement('editblock');
-        this.edit_frame = GetHtmlElement('editframe');
-        this.editwidth = GetHtmlElement('editwidth');
-        this.editheight = GetHtmlElement('editheight');
-        this.edit_scale = GetHtmlElement('edit_scale');
         this.edit_filepath = GetHtmlElement('edit_filepath');
-        this.view_index = GetHtmlElement('view_index');
-        this.view_grid = GetHtmlElement('view_grid');
-        this.view_large_grid = GetHtmlElement('view_large_grid');
         this.large_grid_width = GetHtmlElement('large_grid_width');
         this.large_grid_height = GetHtmlElement('large_grid_height');
         this.dom_pen_tool = GetHtmlElement('pen_tool');
@@ -2234,173 +2616,9 @@ class Dom {
     }
 }
 const dom = new Dom();
-const DrawLine = function (canvas_context, start_x, start_y, end_x, end_y) {
-    canvas_context.moveTo(start_x, start_y);
-    canvas_context.lineTo(end_x, end_y);
-};
-const PartiallyDrawGrid = function (canvas_context, w_grid_set, h_grid_set, width_count, height_count, scale, grid_size, grid_color) {
-    canvas_context.beginPath();
-    const line_height = height_count * grid_size;
-    const line_width = width_count * grid_size;
-    const adjust_e = -(1 / scale) / 2;
-    for (let w of w_grid_set) {
-        const x = (w + 1) * grid_size + adjust_e;
-        DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
-    }
-    for (let h of h_grid_set) {
-        const y = (h + 1) * grid_size + adjust_e;
-        DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
-    }
-    canvas_context.lineWidth = 1 / scale;
-    canvas_context.strokeStyle = grid_color;
-    canvas_context.stroke();
-};
-const DrawGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
-    const all_w_grid_set = new Set();
-    const all_h_grid_set = new Set();
-    for (var w = 0; w < width_count; w++) {
-        all_w_grid_set.add(w);
-    }
-    for (var h = 0; h < height_count; h++) {
-        all_h_grid_set.add(h);
-    }
-    PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
-};
-const DrawLargeGrid = function (canvas_context, width_count, height_count, scale, grid_size, grid_color) {
-    const all_w_grid_set = new Set();
-    const all_h_grid_set = new Set();
-    const large_grid_width = Math.min(512, Math.max(2, dom.large_grid_width.valueAsNumber));
-    const large_grid_height = Math.min(512, Math.max(2, dom.large_grid_height.valueAsNumber));
-    for (var w = large_grid_width; w <= width_count; w += large_grid_width) {
-        all_w_grid_set.add(w - 1);
-    }
-    for (var h = large_grid_height; h <= height_count; h += large_grid_height) {
-        all_h_grid_set.add(h - 1);
-    }
-    canvas_context.setLineDash([0.5, 0.5]);
-    PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width_count, height_count, scale, grid_size, grid_color);
-    canvas_context.setLineDash([]);
-};
-const PartiallyDrawMapchipIndex = function (edit_context, target_pixel_set, view_scale, color) {
-    const font_size = view_font_size;
-    edit_context.save();
-    edit_context.textAlign = "center";
-    edit_context.textBaseline = "middle";
-    edit_context.font = `${font_size}px gothic`;
-    edit_context.fillStyle = color;
-    edit_context.scale(1 / view_scale, 1 / view_scale);
-    const y_offset = font_size / 2;
-    const width = data.edit_width;
-    target_pixel_set.forEach((pixel_index) => {
-        const w = PixelPoint.IndexToPixelPointW(pixel_index, width);
-        const h = PixelPoint.IndexToPixelPointH(pixel_index, width);
-        const dst_x = w * view_scale;
-        const dst_y = h * view_scale;
-        const ci = marged_pixel_layer.pixels[h][w];
-        const x_offset = view_scale - String(ci).length * (font_size / 2 - 1) - 1;
-        edit_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
-    });
-    edit_context.restore();
-};
-const DrawMapchipIndex = function (edit_context, edit_w_count, edit_h_count, view_scale, color) {
-    const target_pixel_set = new Set();
-    for (var h = 0; h < edit_h_count; h++) {
-        for (var w = 0; w < edit_w_count; w++) {
-            target_pixel_set.add((new PixelPoint(w, h)).ToIndex(edit_w_count));
-        }
-    }
-    PartiallyDrawMapchipIndex(edit_context, target_pixel_set, view_scale, color);
-};
-const DrawCanvasPixelsPartial = function (edit_w_count, edit_h_count, view_scale) {
-    const written_pixel_set = data.GetWrittenPixelSet();
-    const edit_context = dom.edit_canvas.getContext("2d");
-    edit_context.imageSmoothingEnabled = false;
-    const update_w_grid_set = new Set();
-    const update_h_grid_set = new Set();
-    const pi = written_pixel_set.values[0];
-    written_pixel_set.forEach((pixel_index) => {
-        const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
-        const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
-        update_w_grid_set.add(w);
-        update_h_grid_set.add(h);
-        const mi = marged_pixel_layer.pixels[h][w];
-        const color = data.GetRgbColorFromPalette(mi).ToHexColor();
-        edit_context.fillStyle = color;
-        edit_context.fillRect(w, h, 1, 1);
-    });
-    /* マスク表示 */
-    edit_context.fillStyle = '#ff0000';
-    edit_context.globalAlpha = 0.5;
-    written_pixel_set.forEach((pixel_index) => {
-        const w = PixelPoint.IndexToPixelPointW(pixel_index, edit_w_count);
-        const h = PixelPoint.IndexToPixelPointH(pixel_index, edit_w_count);
-        if (data.IsMasked(w, h)) {
-            edit_context.fillRect(w, h, 1, 1);
-        }
-    });
-    edit_context.globalAlpha = 1;
-    const grid_color = dom.grid_color.value;
-    if (dom.view_grid.checked) {
-        PartiallyDrawGrid(edit_context, update_w_grid_set, update_h_grid_set, edit_w_count, edit_h_count, view_scale, 1, grid_color);
-    }
-    if (dom.view_index.checked) {
-        PartiallyDrawMapchipIndex(edit_context, written_pixel_set, view_scale, grid_color);
-    }
-    if (dom.view_large_grid.checked) {
-        DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
-    }
-    written_pixel_set.clear();
-};
-const DrawCanvasPixelsAll = function (edit_w_count, edit_h_count, view_scale) {
-    const edit_context = dom.edit_canvas.getContext("2d");
-    dom.edit_canvas.width = edit_w_count * view_scale;
-    dom.edit_canvas.height = edit_h_count * view_scale;
-    edit_context.imageSmoothingEnabled = false;
-    edit_context.scale(view_scale, view_scale);
-    for (var h = 0; h < edit_h_count; h++) {
-        for (var w = 0; w < edit_w_count; w++) {
-            const mi = marged_pixel_layer.pixels[h][w];
-            edit_context.fillStyle = data.GetRgbColorFromPalette(mi).ToHexColor();
-            edit_context.fillRect(w, h, 1, 1);
-        }
-    }
-    /* マスク表示 */
-    edit_context.fillStyle = '#ff0000';
-    edit_context.globalAlpha = 0.5;
-    for (var h = 0; h < edit_h_count; h++) {
-        for (var w = 0; w < edit_w_count; w++) {
-            if (data.IsMasked(w, h)) {
-                edit_context.fillRect(w, h, 1, 1);
-            }
-        }
-    }
-    edit_context.globalAlpha = 1;
-    const grid_color = dom.grid_color.value;
-    if (dom.view_index.checked) {
-        DrawMapchipIndex(edit_context, edit_w_count, edit_h_count, view_scale, grid_color);
-    }
-    if (dom.view_grid.checked) {
-        DrawGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, grid_color);
-    }
-    if (dom.view_large_grid.checked) {
-        DrawLargeGrid(edit_context, edit_w_count, edit_h_count, view_scale, 1, large_grid_color);
-    }
-    data.GetWrittenPixelSet().clear();
-};
 var frame_count = 0;
 const UpdateView = function () {
     MargeLayers();
-    if (data.is_edit_view_touched) {
-        DrawCanvasPixelsAll(data.edit_width, data.edit_height, data.edit_scale);
-        data.ClearEditViewTouchedFlag();
-    }
-    else {
-        DrawCanvasPixelsPartial(data.edit_width, data.edit_height, data.edit_scale);
-    }
-    if (target_pixels !== null) {
-        target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count, '#ffffff');
-        target_pixels.Draw(dom.edit_canvas.getContext("2d"), data.edit_scale, frame_count + 1, '#000000');
-    }
     layer_pane_ui.Draw();
     const color_table = new Array(256);
     for (let i = 0; i < 256; i++) {
@@ -2411,6 +2629,9 @@ const UpdateView = function () {
     }
     if (animation_window !== null) {
         animation_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height, frame_count);
+    }
+    if (canvas_ui !== null) {
+        canvas_ui.Draw(marged_pixel_layer.pixels, data.pixels_mask, color_table, dom.grid_color.value, dom.large_grid_width.valueAsNumber, dom.large_grid_height.valueAsNumber, large_grid_color, ((target_pixels !== null) ? target_pixels.rectangle : null), frame_count);
     }
     frame_count++;
     window.requestAnimationFrame(UpdateView);
@@ -2456,38 +2677,8 @@ const ApplyLayerUi = function () {
 function Initialize() {
     dom.Initialize();
     const edit_reader = new FileReader();
-    dom.edit_canvas.width = 256;
-    dom.edit_canvas.height = 192;
-    FitDivWidth('editframe', 'editblock');
-    canvas_tools.Attach(dom.edit_canvas);
-    dom.editwidth.max = max_edit_width.toString();
-    dom.editheight.max = max_edit_height.toString();
-    dom.editwidth.value = default_edit_width.toString();
-    dom.editheight.value = default_edit_height.toString();
-    dom.edit_scale.value = default_edit_scale.toString();
-    data.edit_width = dom.editwidth.valueAsNumber;
-    data.edit_height = dom.editheight.valueAsNumber;
-    data.edit_scale = Number(dom.edit_scale.value);
-    dom.editwidth.addEventListener('change', (event) => {
-        data.edit_width = event.target.valueAsNumber;
-    });
-    dom.editheight.addEventListener('change', (event) => {
-        data.edit_height = event.target.valueAsNumber;
-    });
-    dom.edit_scale.addEventListener('change', (event) => {
-        data.edit_scale = Number(event.target.value);
-    });
     dom.edit_filepath.addEventListener('change', (event) => {
         edit_reader.readAsArrayBuffer(event.target.files[0]);
-    });
-    dom.view_index.addEventListener('change', (event) => {
-        data.TouchEditView();
-    });
-    dom.view_grid.addEventListener('change', (event) => {
-        data.TouchEditView();
-    });
-    dom.view_large_grid.addEventListener('change', (event) => {
-        data.TouchEditView();
     });
     dom.large_grid_width.addEventListener('change', (event) => {
         data.TouchEditView();
@@ -2546,6 +2737,15 @@ function Initialize() {
         data.AppendLayer(pixel_layer);
     }
     ApplyView();
+    if (canvas_ui === null) {
+        canvas_ui = new UiParts.CanvasUi(data.edit_width, data.edit_height, (width, height) => {
+            data.edit_width = width;
+            data.edit_height = height;
+        });
+        canvas_ui.edit_scale = default_edit_scale;
+    }
+    canvas_tools.Attach(canvas_ui.canvas);
+    dom.edit_block.appendChild(canvas_ui.node);
     dom.undo_button.addEventListener('click', (event) => {
         data.Undo();
         ApplyView();
@@ -2604,14 +2804,16 @@ function Initialize() {
         if (is_focusin === true) {
             data.SetCurrentPixelLayer(pixel_layer);
             dom.edit_block.style.backgroundColor = tag_color;
-            dom.edit_frame.style.backgroundColor = tag_color;
+            canvas_ui.node.style.backgroundColor = tag_color;
         }
         if (data.IsCurrentPixelLayer(pixel_layer)) {
-            if (is_locked) {
-                dom.edit_canvas.style.cursor = 'not-allowed';
-            }
-            else {
-                dom.edit_canvas.style.cursor = 'auto';
+            if (canvas_ui !== null) {
+                if (is_locked) {
+                    canvas_ui.canvas.style.cursor = 'not-allowed';
+                }
+                else {
+                    canvas_ui.canvas.style.cursor = 'auto';
+                }
             }
         }
     }, (value, order, is_locked, is_visible, thumbnail_context) => {
