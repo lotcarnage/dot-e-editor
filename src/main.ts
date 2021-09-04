@@ -1,7 +1,13 @@
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
 /// <reference path="./browser.ts" />
-/// <reference path="./ui_parts.ts" />
+/// <reference path="./gui/canvas.ts" />
+/// <reference path="./gui/color_palette.ts" />
+/// <reference path="./gui/download_button.ts" />
+/// <reference path="./gui/preview_window.ts" />
+/// <reference path="./gui/sprite_animation_preview_window.ts" />
+/// <reference path="./gui/layer.ts" />
+/// <reference path="./gui/tab_pane.ts" />
 /// <reference path="./canvas_tools.ts" />
 
 class RgbColor {

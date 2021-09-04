@@ -755,762 +755,6 @@ var Misc;
 })(Misc || (Misc = {}));
 var UiParts;
 (function (UiParts) {
-    class LayerUi {
-        constructor(parent, order, name, color, user_value) {
-            this.parent_ = parent;
-            this.user_value_ = user_value;
-            this.layer_frame_ = document.createElement("div");
-            this.layer_frame_.style.display = "flex";
-            this.layer_frame_.style.alignItems = "center";
-            this.tab_ = document.createElement("div");
-            this.tab_.style.width = (40).toString();
-            this.tab_.style.height = (32).toString();
-            this.tab_.style.backgroundColor = color;
-            this.tab_.style.display = "flex";
-            this.tab_.style.justifyContent = "center";
-            this.tab_.style.alignItems = "center";
-            this.thumbnail_ = document.createElement("canvas");
-            this.layer_lock_checkbox_ = document.createElement("input");
-            this.layer_view_checkbox_ = document.createElement("input");
-            this.layer_name_ = document.createElement("input");
-            this.thumbnail_.width = 16;
-            this.thumbnail_.height = 16;
-            this.layer_lock_checkbox_.type = "checkbox";
-            this.layer_lock_checkbox_.checked = false;
-            this.layer_view_checkbox_.type = "checkbox";
-            this.layer_view_checkbox_.checked = true;
-            this.layer_name_.type = "text";
-            this.layer_name_.value = name;
-            this.layer_name_.style.height = '1em';
-            this.layer_name_.style.paddingTop = (8).toString();
-            this.layer_name_.style.paddingBottom = (8).toString();
-            this.tab_.appendChild(this.thumbnail_);
-            this.layer_frame_.appendChild(this.tab_);
-            this.layer_frame_.appendChild(this.layer_lock_checkbox_);
-            this.layer_frame_.appendChild(this.layer_view_checkbox_);
-            this.layer_frame_.appendChild(this.layer_name_);
-            this.order_ = order;
-            this.layer_frame_.style.order = this.order_.toString();
-            this.layer_frame_.tabIndex = 0;
-            this.layer_frame_.style.backgroundColor = "rgb(255,255,255)";
-            this.parent_.appendChild(this.layer_frame_);
-        }
-        Destruct() {
-            this.parent_.removeChild(this.layer_frame_);
-            return this.user_value_;
-        }
-        FocusIn() {
-            this.layer_frame_.style.backgroundColor = 'rgb(0, 0, 255)';
-            this.layer_frame_.style.boxShadow = "0px 0px 0px 0px";
-            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
-            this.Update(this.update_state_callback_, true, false);
-        }
-        FocusOut() {
-            this.layer_frame_.style.backgroundColor = 'rgb(255, 255, 255)';
-            this.layer_frame_.style.boxShadow = "0px 8px 16px -2px rgba(10,10,10,0.1), 2px 2px 3px 0px rgba(0,0,0,0.48) inset";
-            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
-            this.Update(this.update_state_callback_, false, true);
-        }
-        Update(callback, is_focusin, is_focusout) {
-            callback(this.user_value_, this.order_, this.layer_name_.value, this.tab_.style.backgroundColor, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
-        }
-        DrawThumbnail(callback) {
-            callback(this.user_value_, this.order_, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, this.thumbnail_.getContext('2d'));
-        }
-        AddFoucsinCallback(callback) {
-            this.layer_frame_.addEventListener('focusin', (event) => {
-                callback(this);
-            });
-        }
-        AddUpdateStateCallback(callback) {
-            this.layer_lock_checkbox_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.layer_view_checkbox_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.layer_name_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.update_state_callback_ = callback;
-        }
-        get order() {
-            return this.order_;
-        }
-        set order(new_order) {
-            if (new_order < 0) {
-                return;
-            }
-            this.order_ = new_order;
-            this.layer_frame_.style.order = this.order_.toString();
-            this.Update(this.update_state_callback_, false, false);
-        }
-    }
-    UiParts.LayerUi = LayerUi;
-    class LayerPaneUi {
-        constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
-            this.layers_ = new Array(0);
-            this.frame_ = document.createElement("div");
-            this.command_holder_ = document.createElement("div");
-            this.new_layer_button_ = document.createElement("button");
-            this.up_layer_button_ = document.createElement("button");
-            this.down_layer_button_ = document.createElement("button");
-            this.delete_layer_button_ = document.createElement("button");
-            this.layer_holder_ = document.createElement("div");
-            this.current_layer_ = null;
-            this.command_holder_.style.display = "flex";
-            this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
-            this.layer_holder_.style.display = "flex";
-            this.layer_holder_.style.flexDirection = "column-reverse";
-            this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
-            this.new_layer_button_.innerText = "＋";
-            this.up_layer_button_.innerText = "▲";
-            this.down_layer_button_.innerText = "▼";
-            this.delete_layer_button_.innerText = "×";
-            this.new_layer_button_.addEventListener('click', (event) => {
-                const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
-                const [layer_name, color, user_value] = this.register_callback_(registration_order);
-                this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
-            });
-            this.up_layer_button_.addEventListener('click', (event) => {
-                this.UpLayer(this.current_layer_.order);
-            });
-            this.down_layer_button_.addEventListener('click', (event) => {
-                this.DownLayer(this.current_layer_.order);
-            });
-            this.delete_layer_button_.addEventListener('click', (event) => {
-                if (1 < this.layers_.length) {
-                    this.DeleteCurrentLayer();
-                }
-            });
-            this.register_callback_ = register_callback;
-            this.removed_callback_ = destructed_callback;
-            this.swap_callback_ = swap_callback;
-            this.updated_state_callback_ = updated_state_callback;
-            this.draw_thumbnail_callback_ = draw_thumbnail_callback;
-            this.command_holder_.appendChild(this.new_layer_button_);
-            this.command_holder_.appendChild(this.up_layer_button_);
-            this.command_holder_.appendChild(this.down_layer_button_);
-            this.command_holder_.appendChild(this.delete_layer_button_);
-            this.frame_.appendChild(this.command_holder_);
-            this.frame_.appendChild(this.layer_holder_);
-            return;
-        }
-        ChangeFocus(focus_in_layer) {
-            if (focus_in_layer === this.current_layer_) {
-                return;
-            }
-            focus_in_layer.FocusIn();
-            if (this.current_layer_ !== null) {
-                this.current_layer_.FocusOut();
-            }
-            this.current_layer_ = focus_in_layer;
-            return;
-        }
-        SwapLayer(lh_order, rh_order) {
-            let lh_layer = null;
-            let rh_layer = null;
-            for (let layer of this.layers_) {
-                if (layer.order === lh_order) {
-                    lh_layer = layer;
-                }
-                if (layer.order === rh_order) {
-                    rh_layer = layer;
-                }
-                if ((lh_layer !== null) && (rh_layer !== null)) {
-                    break;
-                }
-            }
-            if (lh_layer === null) {
-                return false;
-            }
-            if (rh_layer === null) {
-                return false;
-            }
-            const tmp_order = lh_layer.order;
-            lh_layer.order = rh_layer.order;
-            rh_layer.order = tmp_order;
-            return true;
-        }
-        CalculateRegistrationOrder(insert_target_order) {
-            if (this.layers_.length === 0) {
-                return 0;
-            }
-            return Math.min(insert_target_order, this.layers_.length - 1) + 1;
-        }
-        CreateNewLayer(insert_target_order, layer_name, color, user_value) {
-            const registration_order = this.CalculateRegistrationOrder(insert_target_order);
-            if (0 < registration_order) {
-                for (let layer of this.layers_) {
-                    if (registration_order <= layer.order) {
-                        layer.order++;
-                    }
-                }
-                insert_target_order += 1;
-            }
-            const new_layer = new LayerUi(this.layer_holder_, insert_target_order, layer_name, color, user_value);
-            new_layer.AddFoucsinCallback((focus_in_layer) => { this.ChangeFocus(focus_in_layer); });
-            new_layer.AddUpdateStateCallback(this.updated_state_callback_);
-            this.layers_.push(new_layer);
-            this.ChangeFocus(new_layer);
-            return;
-        }
-        DeleteCurrentLayer() {
-            if (this.current_layer_ === null) {
-                return;
-            }
-            if (this.layers_.length === 1) {
-                const destructed_order = this.current_layer_.order;
-                const user_value = this.current_layer_.Destruct();
-                this.removed_callback_(user_value, destructed_order);
-                this.current_layer_ = null;
-                this.layers_.splice(0, 1);
-                return;
-            }
-            let target_index;
-            for (target_index = 0; target_index < this.layers_.length; target_index++) {
-                if (this.layers_[target_index] === this.current_layer_) {
-                    break;
-                }
-            }
-            this.layers_.splice(target_index, 1);
-            const current_order = Math.min(this.current_layer_.order, this.layers_.length - 1);
-            for (let layer of this.layers_) {
-                if (current_order < layer.order) {
-                    layer.order--;
-                }
-                if (current_order === layer.order) {
-                    const destructed_order = this.current_layer_.order;
-                    const user_value = this.current_layer_.Destruct();
-                    this.removed_callback_(user_value, destructed_order);
-                    this.current_layer_ = layer;
-                }
-            }
-            this.current_layer_.FocusIn();
-            return;
-        }
-        DeleteAll() {
-            const num_layers = this.layers_.length;
-            for (let i = 0; i < num_layers; i++) {
-                this.DeleteCurrentLayer();
-            }
-        }
-        CreateNewLayers(creation_parameters) {
-            const ordered_parameters = Array(creation_parameters.length);
-            for (let parameter of creation_parameters) {
-                ordered_parameters[parameter[0]] = parameter;
-            }
-            for (let parameter of ordered_parameters) {
-                parameter[0] = Math.max(0, parameter[0] - 1);
-                this.CreateNewLayer(...parameter);
-            }
-        }
-        UpLayer(target_order) {
-            if (this.SwapLayer(target_order, target_order + 1)) {
-                this.swap_callback_(target_order, target_order + 1);
-            }
-            return;
-        }
-        DownLayer(target_order) {
-            if (this.SwapLayer(target_order, target_order - 1)) {
-                this.swap_callback_(target_order, target_order - 1);
-            }
-            return;
-        }
-        Draw() {
-            for (let layer of this.layers_) {
-                layer.DrawThumbnail(this.draw_thumbnail_callback_);
-            }
-        }
-        get node() {
-            return this.frame_;
-        }
-    }
-    UiParts.LayerPaneUi = LayerPaneUi;
-    class DonwloadButton {
-        constructor(parent, caption, dldata_request_callback) {
-            this.link_ = document.createElement("a");
-            this.button_ = document.createElement("button");
-            this.link_.href = "#";
-            this.button_.innerText = caption;
-            this.button_.addEventListener('click', () => {
-                const [dldata_filename, dldata_blob] = dldata_request_callback();
-                const object_url = window.URL.createObjectURL(dldata_blob);
-                this.link_.href = object_url;
-                this.link_.download = dldata_filename;
-            });
-            this.link_.appendChild(this.button_);
-            parent.appendChild(this.link_);
-        }
-    }
-    UiParts.DonwloadButton = DonwloadButton;
-    class ColorPaletteTableUi {
-        constructor(num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
-            this.selected_index_ = 0;
-            this.preset_color_palettes_ = preset_color_palettes;
-            /* for color table UI */
-            this.dummy_canvas_array_ = new Array(256);
-            for (let i = 0; i < 256; i++) {
-                const dummy_canvas = document.createElement("canvas");
-                dummy_canvas.width = cell_width - 2;
-                dummy_canvas.height = cell_height - 2;
-                this.dummy_canvas_array_[i] = dummy_canvas;
-            }
-            this.color_cells_ = new Array(256);
-            const initiali_color_palette = preset_color_palettes[initial_color_palette_index].colors;
-            for (let i = 0; i < 256; i++) {
-                const color_cell = document.createElement("td");
-                color_cell.draggable = true;
-                color_cell.style.backgroundColor = initiali_color_palette[i];
-                color_cell.appendChild(this.dummy_canvas_array_[i]);
-                ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
-                this.color_cells_[i] = color_cell;
-            }
-            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[this.selected_index_]);
-            this.tr_array_ = new Array(16);
-            for (let i = 0; i < 16; i++) {
-                const tr = document.createElement("tr");
-                for (let j = 0; j < 16; j++) {
-                    const td_index = 16 * i + j;
-                    tr.appendChild(this.color_cells_[td_index]);
-                }
-                this.tr_array_[i] = tr;
-            }
-            this.table_ = document.createElement("table");
-            this.table_.style.borderSpacing = "0";
-            for (let i = 0; i < 16; i++) {
-                this.table_.appendChild(this.tr_array_[i]);
-            }
-            for (let i = 0; i < 256; i++) {
-                this.color_cells_[i].addEventListener('click', () => {
-                    select_color_callback(i);
-                    ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
-                    ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[i]);
-                    this.selected_index_ = i;
-                    this.UpdateColorEditView();
-                });
-                this.color_cells_[i].addEventListener('dragstart', (event) => {
-                    event.dataTransfer.setData("color_index", i.toString());
-                });
-                this.color_cells_[i].addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                });
-                this.color_cells_[i].addEventListener('drop', (event) => {
-                    event.preventDefault();
-                    const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
-                    dad_color_cell_callback(drag_color_index, this.color_cells_[drag_color_index], i, this.color_cells_[i]);
-                    const tmp_color = this.color_cells_[drag_color_index].style.backgroundColor;
-                    this.color_cells_[drag_color_index].style.backgroundColor = this.color_cells_[i].style.backgroundColor;
-                    this.color_cells_[i].style.backgroundColor = tmp_color;
-                });
-            }
-            /* for preset color palette UI */
-            this.preset_palette_selector_ = document.createElement("select");
-            const none_option = document.createElement("option");
-            none_option.value = "0";
-            none_option.innerText = "変更しない";
-            this.preset_palette_selector_.append(none_option);
-            for (let i = 0; i < preset_color_palettes.length; i++) {
-                const preset_option = document.createElement("option");
-                preset_option.value = (i + 1).toString();
-                preset_option.innerText = preset_color_palettes[i].caption;
-                this.preset_palette_selector_.append(preset_option);
-            }
-            this.preset_palette_selector_.selectedIndex = 0;
-            this.reset_color_palette_button_ = document.createElement("button");
-            this.reset_color_palette_button_.innerText = "リセット";
-            this.reset_color_palette_button_.addEventListener('click', (event) => {
-                const preset_command_index = parseInt(this.preset_palette_selector_.value);
-                if (preset_command_index === 0) {
-                    return;
-                }
-                const preset_index = preset_command_index - 1;
-                const preset_color_palette = this.preset_color_palettes_[preset_index].colors;
-                for (let i = 0; i < 256; i++) {
-                    const color_cell = this.color_cells_[i];
-                    const color_string = preset_color_palette[i];
-                    color_cell.style.backgroundColor = color_string;
-                    change_color_callback(i, color_string);
-                }
-                this.UpdateColorEditView();
-                this.preset_palette_selector_.value = "0";
-            });
-            /* for color edit UI */
-            this.color_input_ = document.createElement("input");
-            this.color_caption_ = document.createElement("div");
-            this.color_caption_.style.float = "right";
-            this.UpdateColorEditView();
-            this.color_input_.type = "color";
-            this.color_input_.addEventListener('input', (event) => {
-                const i = this.selected_index_;
-                const new_color_string = event.target.value;
-                this.color_cells_[i].style.backgroundColor = new_color_string;
-                this.UpdateColorEditCaption();
-                change_color_callback(i, new_color_string);
-            });
-            this.preset_command_holder_ = document.createElement("div");
-            this.color_table_holder_ = document.createElement("div");
-            this.color_edit_holder_ = document.createElement("div");
-            this.holder_ = document.createElement("div");
-            this.preset_command_holder_.style.clear = "both";
-            this.color_table_holder_.style.clear = "both";
-            this.color_edit_holder_.style.clear = "both";
-            this.holder_.style.clear = "both";
-            this.preset_command_holder_.appendChild(this.preset_palette_selector_);
-            this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
-            this.color_table_holder_.appendChild(this.table_);
-            this.color_edit_holder_.appendChild(this.color_input_);
-            this.color_edit_holder_.appendChild(this.color_caption_);
-            this.holder_.appendChild(this.preset_command_holder_);
-            this.holder_.appendChild(this.color_table_holder_);
-            this.holder_.appendChild(this.color_edit_holder_);
-            return;
-        }
-        static SetUnselectedColorCellStyle(color_cell) {
-            color_cell.style.borderStyle = "solid";
-            color_cell.style.borderColor = "#000000";
-            color_cell.style.borderWidth = "1";
-        }
-        static SetSelectedColorCellStyle(color_cell) {
-            color_cell.style.borderStyle = "solid";
-            color_cell.style.borderColor = "#00ff00";
-            color_cell.style.borderWidth = "1";
-        }
-        static RgbStringToHexColor(rgb_string) {
-            const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-            const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
-            const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
-            const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
-            return `#${r_hex}${g_hex}${b_hex}`;
-        }
-        UpdateColorEditCaption() {
-            const i = this.selected_index_;
-            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
-            this.color_caption_.innerText = `${i}:${color}`;
-        }
-        UpdateColorEditView() {
-            const i = this.selected_index_;
-            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
-            this.color_input_.value = color;
-            this.color_caption_.innerText = `${i}:${color}`;
-        }
-        get node() {
-            return this.holder_;
-        }
-        GetColor(index) {
-            return this.color_cells_[index].style.backgroundColor;
-        }
-        GetColorTable() {
-            const color_table = new Array(256);
-            for (let i = 0; i < 256; i++) {
-                color_table[i] = this.color_cells_[i].style.backgroundColor;
-            }
-            return color_table;
-        }
-        SetColor(index, color_string) {
-            this.color_cells_[index].style.backgroundColor = color_string;
-            if (this.selected_index_ === index) {
-                this.UpdateColorEditView();
-            }
-        }
-        SetColorTable(color_table) {
-            for (let i = 0; i < 256; i++) {
-                this.color_cells_[i].style.backgroundColor = color_table[i];
-            }
-            this.UpdateColorEditView();
-        }
-        SelectColorCell(color_index) {
-            ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
-            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[color_index]);
-            this.selected_index_ = color_index;
-            this.UpdateColorEditView();
-        }
-    }
-    UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
-    class PreviewWindowUi {
-        constructor(width, height) {
-            this.canvas_ = document.createElement("canvas");
-            this.canvas_.width = width;
-            this.canvas_.height = height;
-            this.canvas_frame_ = document.createElement("div");
-            this.canvas_frame_.style.overflow = "scroll";
-            this.canvas_frame_.style.resize = "both";
-            this.canvas_frame_.appendChild(this.canvas_);
-            this.scale_selector_ = document.createElement("select");
-            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-            for (let scale of scale_array) {
-                const scale_option = document.createElement("option");
-                scale_option.value = scale.toString();
-                scale_option.innerText = `x${scale}`;
-                this.scale_selector_.appendChild(scale_option);
-            }
-            this.command_frame_ = document.createElement("div");
-            this.command_frame_.style.textAlign = "right";
-            this.command_frame_.innerText = "表示倍率";
-            this.command_frame_.appendChild(this.scale_selector_);
-            this.holder_ = document.createElement("div");
-            this.holder_.appendChild(this.command_frame_);
-            this.holder_.appendChild(this.canvas_frame_);
-        }
-        get node() {
-            return this.holder_;
-        }
-        Draw(pixels, color_table, width, height) {
-            const view_scale = parseInt(this.scale_selector_.value);
-            if (this.canvas_.width !== width * view_scale) {
-                this.canvas_.width = width * view_scale;
-            }
-            if (this.canvas_.height !== height * view_scale) {
-                this.canvas_.height = height * view_scale;
-            }
-            const context = this.canvas_.getContext("2d");
-            context.imageSmoothingEnabled = false;
-            context.setTransform(1, 0, 0, 1, 0, 0);
-            context.scale(view_scale, view_scale);
-            for (let h = 0; h < height; h++) {
-                for (let w = 0; w < width; w++) {
-                    const color_index = pixels[h][w];
-                    context.fillStyle = color_table[color_index];
-                    context.fillRect(w, h, 1, 1);
-                }
-            }
-        }
-    }
-    UiParts.PreviewWindowUi = PreviewWindowUi;
-    const CreateLeftBox = function () {
-        const div = document.createElement("div");
-        div.style.float = "left";
-        return div;
-    };
-    const CreateRightBox = function () {
-        const div = document.createElement("div");
-        div.style.float = "right";
-        return div;
-    };
-    const CreateText = function (text) {
-        const span = document.createElement("span");
-        span.innerText = text;
-        return span;
-    };
-    class SpriteAnimationPreviewWindowUi {
-        constructor(width, height) {
-            this.sprite_width_ = document.createElement("input");
-            this.sprite_height_ = document.createElement("input");
-            this.sprite_width_.type = "number";
-            this.sprite_height_.type = "number";
-            this.sprite_width_.min = "1";
-            this.sprite_height_.min = "1";
-            this.sprite_width_.value = width.toString();
-            this.sprite_height_.value = height.toString();
-            this.size_frame_ = document.createElement("div");
-            this.size_frame_.appendChild(CreateText("サイズ"));
-            this.size_frame_.appendChild(this.sprite_width_);
-            this.size_frame_.appendChild(CreateText("x"));
-            this.size_frame_.appendChild(this.sprite_height_);
-            this.animation_step_par_frame_ = document.createElement("input");
-            this.animation_step_par_frame_.type = "number";
-            this.animation_step_par_frame_.min = "1";
-            this.animation_step_par_frame_.value = "1";
-            this.animation_step_par_frame_holder_ = CreateLeftBox();
-            this.animation_step_par_frame_holder_.appendChild(this.animation_step_par_frame_);
-            this.animation_step_par_frame_holder_.appendChild(CreateText("/１コマ"));
-            this.scale_selector_ = document.createElement("select");
-            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-            for (let scale of scale_array) {
-                const scale_option = document.createElement("option");
-                scale_option.value = scale.toString();
-                scale_option.innerText = `x${scale}`;
-                this.scale_selector_.appendChild(scale_option);
-            }
-            this.scale_selector_holder_ = CreateRightBox();
-            this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
-            this.scale_selector_holder_.appendChild(this.scale_selector_);
-            this.command_frame_ = document.createElement("div");
-            this.command_frame_.appendChild(this.animation_step_par_frame_holder_);
-            this.command_frame_.appendChild(this.scale_selector_holder_);
-            this.canvas_ = document.createElement("canvas");
-            this.canvas_.width = width;
-            this.canvas_.height = height;
-            this.canvas_frame_ = document.createElement("div");
-            this.canvas_frame_.style.overflow = "scroll";
-            this.canvas_frame_.style.resize = "both";
-            this.canvas_frame_.style.clear = "both";
-            this.canvas_frame_.appendChild(this.canvas_);
-            this.animation_playback_button_ = document.createElement("button");
-            this.animation_playback_button_.innerText = "▶︎";
-            this.is_playing_ = false;
-            this.animation_playback_button_.addEventListener('click', (event) => {
-                const button = event.target;
-                button.innerText = this.is_playing_ === true ? "▶︎" : "■";
-                this.is_playing_ = !this.is_playing_;
-            });
-            this.sprite_animation_indices_ = new Array(0);
-            this.sprite_indices_ = document.createElement("textarea");
-            this.sprite_indices_.style.height = "1.4em";
-            this.sprite_indices_.innerText = "0";
-            this.settings_frame_ = document.createElement("div");
-            this.settings_frame_.appendChild(this.animation_playback_button_);
-            this.settings_frame_.appendChild(this.sprite_indices_);
-            this.holder_ = document.createElement("div");
-            this.holder_.appendChild(this.size_frame_);
-            this.holder_.appendChild(this.command_frame_);
-            this.holder_.appendChild(this.canvas_frame_);
-            this.holder_.appendChild(this.settings_frame_);
-        }
-        UpdateSpriteIndicesArray() {
-            const index_strings = this.sprite_indices_.value.split(',');
-            this.sprite_animation_indices_.length = 0;
-            for (let index_string of index_strings) {
-                const parsed = parseInt(index_string);
-                if (!isNaN(parsed)) {
-                    this.sprite_animation_indices_.push(parsed);
-                }
-            }
-        }
-        get node() {
-            return this.holder_;
-        }
-        Draw(pixels, color_table, width, height, frame_count) {
-            if (!this.is_playing_) {
-                return;
-            }
-            this.UpdateSpriteIndicesArray();
-            const num_indeices = this.sprite_animation_indices_.length;
-            if (0 === num_indeices) {
-                return;
-            }
-            const step_par_frame = Math.max(1, this.animation_step_par_frame_.valueAsNumber);
-            const frame_number = Math.floor(frame_count / step_par_frame) % num_indeices;
-            const sprite_index = this.sprite_animation_indices_[frame_number];
-            const sprite_w = Math.max(1, Math.min(width, this.sprite_width_.valueAsNumber));
-            const sprite_h = Math.max(1, Math.min(height, this.sprite_height_.valueAsNumber));
-            const sprite_count_in_w = Math.floor(width / sprite_w);
-            const sprite_count_in_h = Math.floor(height / sprite_h);
-            const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
-            if (max_sprite_index <= sprite_index) {
-                return;
-            }
-            const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
-            const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
-            const max_w = Math.min(pixel_w_offset + sprite_w, width);
-            const max_h = Math.min(pixel_h_offset + sprite_h, height);
-            const view_scale = parseInt(this.scale_selector_.value);
-            if (this.canvas_.width !== sprite_w * view_scale) {
-                this.canvas_.width = sprite_w * view_scale;
-            }
-            if (this.canvas_.height !== sprite_h * view_scale) {
-                this.canvas_.height = sprite_h * view_scale;
-            }
-            const context = this.canvas_.getContext('2d');
-            context.imageSmoothingEnabled = false;
-            context.setTransform(1, 0, 0, 1, 0, 0);
-            context.scale(view_scale, view_scale);
-            for (let h = pixel_h_offset; h < max_h; h++) {
-                for (let w = pixel_w_offset; w < max_w; w++) {
-                    const color_index = pixels[h][w];
-                    context.fillStyle = color_table[color_index];
-                    context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
-                }
-            }
-            return;
-        }
-    }
-    UiParts.SpriteAnimationPreviewWindowUi = SpriteAnimationPreviewWindowUi;
-    class TabPaneUi {
-        constructor() {
-            if (TabPaneUi.tab_content_class_style_ === null) {
-                const style = document.createElement("style");
-                style.innerText
-                    = `.tab_content {`
-                        + `display: none;`
-                        + `clear: both;`
-                        + `overflow: scroll;`
-                        + `resize: both;`
-                        + `}`
-                        + `input[name="tab_tags"] {`
-                        + `display: none;`
-                        + `}`
-                        + `.tab_tag {`
-                        + `text-align: center;`
-                        + `display: block;`
-                        + `float: left;`
-                        + `order: -1;`
-                        + `margin: 2px 2px 0px;`
-                        + `}`
-                        + `input:checked + .tab_tag + .tab_content {`
-                        + `display: block;`
-                        + `}`;
-                document.getElementsByTagName("head").item(0).appendChild(style);
-                TabPaneUi.tab_content_class_style_ = style;
-            }
-            this.tab_frame_ = document.createElement("div");
-            this.tab_frame_.style.display = "grid";
-            //this.tab_frame_.style.gridAutoColumns = "max-content";
-            this.tab_frame_.style.gridAutoColumns = "1fr";
-            this.tab_frame_.style.gridAutoRows = "max-content";
-            this.tab_frame_.style.gridTemplateAreas = `"t0" "c"`;
-            this.current_tab_ = null;
-            this.local_tab_count_ = 0;
-        }
-        FitSize() {
-            if (!("width" in this.current_tab_.style)) {
-                return;
-            }
-            const contents = this.tab_frame_.getElementsByClassName("tab_content");
-            const length = contents.length;
-            for (let i = 0; i < length; i++) {
-                contents[i].style.width = this.current_tab_.style.width;
-                contents[i].style.height = this.current_tab_.style.height;
-            }
-            return;
-        }
-        AddTab(content, tab_title) {
-            const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
-            const tab_radio = document.createElement("input");
-            tab_radio.type = "radio";
-            tab_radio.id = tag_id;
-            tab_radio.name = "tab_tags";
-            const tab_label = document.createElement("label");
-            tab_label.htmlFor = tag_id;
-            tab_label.innerText = tab_title;
-            tab_label.className = "tab_tag";
-            tab_label.style.backgroundColor = content.style.backgroundColor;
-            tab_label.style.gridArea = `t${this.local_tab_count_}`;
-            const content_frame = document.createElement("div");
-            content_frame.appendChild(content);
-            content_frame.className = "tab_content";
-            content_frame.style.backgroundColor = content.style.backgroundColor;
-            content_frame.style.order = "1";
-            content_frame.style.gridArea = "c";
-            if (this.tab_frame_.childElementCount === 0) {
-                tab_radio.checked = true;
-                this.current_tab_ = content_frame;
-            }
-            tab_radio.addEventListener("change", (event) => {
-                this.FitSize();
-                this.current_tab_ = content_frame;
-            });
-            this.local_tab_count_++;
-            const tag_grids = new Array(this.local_tab_count_);
-            const content_grids = new Array(this.local_tab_count_);
-            for (let i = 0; i < this.local_tab_count_; i++) {
-                tag_grids[i] = `t${i}`;
-                content_grids[i] = "c";
-            }
-            this.tab_frame_.style.gridTemplateAreas = `"${tag_grids.join(" ")}" "${content_grids.join(" ")}"`;
-            this.tab_frame_.appendChild(tab_radio);
-            this.tab_frame_.appendChild(tab_label);
-            this.tab_frame_.appendChild(content_frame);
-            TabPaneUi.global_tab_count_++;
-            return;
-        }
-        get node() {
-            return this.tab_frame_;
-        }
-    }
-    TabPaneUi.tab_content_class_style_ = null;
-    TabPaneUi.global_tab_count_ = 0;
-    UiParts.TabPaneUi = TabPaneUi;
     class CanvasUi {
         constructor(width, height, resize_cb) {
             /* for Canvas Size */
@@ -1992,10 +1236,790 @@ var UiParts;
     CanvasUi.count_ = 0;
     UiParts.CanvasUi = CanvasUi;
 })(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    class ColorPaletteTableUi {
+        constructor(num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
+            this.selected_index_ = 0;
+            this.preset_color_palettes_ = preset_color_palettes;
+            /* for color table UI */
+            this.dummy_canvas_array_ = new Array(256);
+            for (let i = 0; i < 256; i++) {
+                const dummy_canvas = document.createElement("canvas");
+                dummy_canvas.width = cell_width - 2;
+                dummy_canvas.height = cell_height - 2;
+                this.dummy_canvas_array_[i] = dummy_canvas;
+            }
+            this.color_cells_ = new Array(256);
+            const initiali_color_palette = preset_color_palettes[initial_color_palette_index].colors;
+            for (let i = 0; i < 256; i++) {
+                const color_cell = document.createElement("td");
+                color_cell.draggable = true;
+                color_cell.style.backgroundColor = initiali_color_palette[i];
+                color_cell.appendChild(this.dummy_canvas_array_[i]);
+                ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
+                this.color_cells_[i] = color_cell;
+            }
+            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[this.selected_index_]);
+            this.tr_array_ = new Array(16);
+            for (let i = 0; i < 16; i++) {
+                const tr = document.createElement("tr");
+                for (let j = 0; j < 16; j++) {
+                    const td_index = 16 * i + j;
+                    tr.appendChild(this.color_cells_[td_index]);
+                }
+                this.tr_array_[i] = tr;
+            }
+            this.table_ = document.createElement("table");
+            this.table_.style.borderSpacing = "0";
+            for (let i = 0; i < 16; i++) {
+                this.table_.appendChild(this.tr_array_[i]);
+            }
+            for (let i = 0; i < 256; i++) {
+                this.color_cells_[i].addEventListener('click', () => {
+                    select_color_callback(i);
+                    ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+                    ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[i]);
+                    this.selected_index_ = i;
+                    this.UpdateColorEditView();
+                });
+                this.color_cells_[i].addEventListener('dragstart', (event) => {
+                    event.dataTransfer.setData("color_index", i.toString());
+                });
+                this.color_cells_[i].addEventListener('dragover', (event) => {
+                    event.preventDefault();
+                });
+                this.color_cells_[i].addEventListener('drop', (event) => {
+                    event.preventDefault();
+                    const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
+                    dad_color_cell_callback(drag_color_index, this.color_cells_[drag_color_index], i, this.color_cells_[i]);
+                    const tmp_color = this.color_cells_[drag_color_index].style.backgroundColor;
+                    this.color_cells_[drag_color_index].style.backgroundColor = this.color_cells_[i].style.backgroundColor;
+                    this.color_cells_[i].style.backgroundColor = tmp_color;
+                });
+            }
+            /* for preset color palette UI */
+            this.preset_palette_selector_ = document.createElement("select");
+            const none_option = document.createElement("option");
+            none_option.value = "0";
+            none_option.innerText = "変更しない";
+            this.preset_palette_selector_.append(none_option);
+            for (let i = 0; i < preset_color_palettes.length; i++) {
+                const preset_option = document.createElement("option");
+                preset_option.value = (i + 1).toString();
+                preset_option.innerText = preset_color_palettes[i].caption;
+                this.preset_palette_selector_.append(preset_option);
+            }
+            this.preset_palette_selector_.selectedIndex = 0;
+            this.reset_color_palette_button_ = document.createElement("button");
+            this.reset_color_palette_button_.innerText = "リセット";
+            this.reset_color_palette_button_.addEventListener('click', (event) => {
+                const preset_command_index = parseInt(this.preset_palette_selector_.value);
+                if (preset_command_index === 0) {
+                    return;
+                }
+                const preset_index = preset_command_index - 1;
+                const preset_color_palette = this.preset_color_palettes_[preset_index].colors;
+                for (let i = 0; i < 256; i++) {
+                    const color_cell = this.color_cells_[i];
+                    const color_string = preset_color_palette[i];
+                    color_cell.style.backgroundColor = color_string;
+                    change_color_callback(i, color_string);
+                }
+                this.UpdateColorEditView();
+                this.preset_palette_selector_.value = "0";
+            });
+            /* for color edit UI */
+            this.color_input_ = document.createElement("input");
+            this.color_caption_ = document.createElement("div");
+            this.color_caption_.style.float = "right";
+            this.UpdateColorEditView();
+            this.color_input_.type = "color";
+            this.color_input_.addEventListener('input', (event) => {
+                const i = this.selected_index_;
+                const new_color_string = event.target.value;
+                this.color_cells_[i].style.backgroundColor = new_color_string;
+                this.UpdateColorEditCaption();
+                change_color_callback(i, new_color_string);
+            });
+            this.preset_command_holder_ = document.createElement("div");
+            this.color_table_holder_ = document.createElement("div");
+            this.color_edit_holder_ = document.createElement("div");
+            this.holder_ = document.createElement("div");
+            this.preset_command_holder_.style.clear = "both";
+            this.color_table_holder_.style.clear = "both";
+            this.color_edit_holder_.style.clear = "both";
+            this.holder_.style.clear = "both";
+            this.preset_command_holder_.appendChild(this.preset_palette_selector_);
+            this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
+            this.color_table_holder_.appendChild(this.table_);
+            this.color_edit_holder_.appendChild(this.color_input_);
+            this.color_edit_holder_.appendChild(this.color_caption_);
+            this.holder_.appendChild(this.preset_command_holder_);
+            this.holder_.appendChild(this.color_table_holder_);
+            this.holder_.appendChild(this.color_edit_holder_);
+            return;
+        }
+        static SetUnselectedColorCellStyle(color_cell) {
+            color_cell.style.borderStyle = "solid";
+            color_cell.style.borderColor = "#000000";
+            color_cell.style.borderWidth = "1";
+        }
+        static SetSelectedColorCellStyle(color_cell) {
+            color_cell.style.borderStyle = "solid";
+            color_cell.style.borderColor = "#00ff00";
+            color_cell.style.borderWidth = "1";
+        }
+        static RgbStringToHexColor(rgb_string) {
+            const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+            const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
+            const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
+            const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
+            return `#${r_hex}${g_hex}${b_hex}`;
+        }
+        UpdateColorEditCaption() {
+            const i = this.selected_index_;
+            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+            this.color_caption_.innerText = `${i}:${color}`;
+        }
+        UpdateColorEditView() {
+            const i = this.selected_index_;
+            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+            this.color_input_.value = color;
+            this.color_caption_.innerText = `${i}:${color}`;
+        }
+        get node() {
+            return this.holder_;
+        }
+        GetColor(index) {
+            return this.color_cells_[index].style.backgroundColor;
+        }
+        GetColorTable() {
+            const color_table = new Array(256);
+            for (let i = 0; i < 256; i++) {
+                color_table[i] = this.color_cells_[i].style.backgroundColor;
+            }
+            return color_table;
+        }
+        SetColor(index, color_string) {
+            this.color_cells_[index].style.backgroundColor = color_string;
+            if (this.selected_index_ === index) {
+                this.UpdateColorEditView();
+            }
+        }
+        SetColorTable(color_table) {
+            for (let i = 0; i < 256; i++) {
+                this.color_cells_[i].style.backgroundColor = color_table[i];
+            }
+            this.UpdateColorEditView();
+        }
+        SelectColorCell(color_index) {
+            ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[color_index]);
+            this.selected_index_ = color_index;
+            this.UpdateColorEditView();
+        }
+    }
+    UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
+})(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    class DonwloadButton {
+        constructor(parent, caption, dldata_request_callback) {
+            this.link_ = document.createElement("a");
+            this.button_ = document.createElement("button");
+            this.link_.href = "#";
+            this.button_.innerText = caption;
+            this.button_.addEventListener('click', () => {
+                const [dldata_filename, dldata_blob] = dldata_request_callback();
+                const object_url = window.URL.createObjectURL(dldata_blob);
+                this.link_.href = object_url;
+                this.link_.download = dldata_filename;
+            });
+            this.link_.appendChild(this.button_);
+            parent.appendChild(this.link_);
+        }
+    }
+    UiParts.DonwloadButton = DonwloadButton;
+})(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    class PreviewWindowUi {
+        constructor(width, height) {
+            this.canvas_ = document.createElement("canvas");
+            this.canvas_.width = width;
+            this.canvas_.height = height;
+            this.canvas_frame_ = document.createElement("div");
+            this.canvas_frame_.style.overflow = "scroll";
+            this.canvas_frame_.style.resize = "both";
+            this.canvas_frame_.appendChild(this.canvas_);
+            this.scale_selector_ = document.createElement("select");
+            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+            for (let scale of scale_array) {
+                const scale_option = document.createElement("option");
+                scale_option.value = scale.toString();
+                scale_option.innerText = `x${scale}`;
+                this.scale_selector_.appendChild(scale_option);
+            }
+            this.command_frame_ = document.createElement("div");
+            this.command_frame_.style.textAlign = "right";
+            this.command_frame_.innerText = "表示倍率";
+            this.command_frame_.appendChild(this.scale_selector_);
+            this.holder_ = document.createElement("div");
+            this.holder_.appendChild(this.command_frame_);
+            this.holder_.appendChild(this.canvas_frame_);
+        }
+        get node() {
+            return this.holder_;
+        }
+        Draw(pixels, color_table, width, height) {
+            const view_scale = parseInt(this.scale_selector_.value);
+            if (this.canvas_.width !== width * view_scale) {
+                this.canvas_.width = width * view_scale;
+            }
+            if (this.canvas_.height !== height * view_scale) {
+                this.canvas_.height = height * view_scale;
+            }
+            const context = this.canvas_.getContext("2d");
+            context.imageSmoothingEnabled = false;
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.scale(view_scale, view_scale);
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    const color_index = pixels[h][w];
+                    context.fillStyle = color_table[color_index];
+                    context.fillRect(w, h, 1, 1);
+                }
+            }
+        }
+    }
+    UiParts.PreviewWindowUi = PreviewWindowUi;
+})(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    const CreateLeftBox = function () {
+        const div = document.createElement("div");
+        div.style.float = "left";
+        return div;
+    };
+    const CreateRightBox = function () {
+        const div = document.createElement("div");
+        div.style.float = "right";
+        return div;
+    };
+    const CreateText = function (text) {
+        const span = document.createElement("span");
+        span.innerText = text;
+        return span;
+    };
+    class SpriteAnimationPreviewWindowUi {
+        constructor(width, height) {
+            this.sprite_width_ = document.createElement("input");
+            this.sprite_height_ = document.createElement("input");
+            this.sprite_width_.type = "number";
+            this.sprite_height_.type = "number";
+            this.sprite_width_.min = "1";
+            this.sprite_height_.min = "1";
+            this.sprite_width_.value = width.toString();
+            this.sprite_height_.value = height.toString();
+            this.size_frame_ = document.createElement("div");
+            this.size_frame_.appendChild(CreateText("サイズ"));
+            this.size_frame_.appendChild(this.sprite_width_);
+            this.size_frame_.appendChild(CreateText("x"));
+            this.size_frame_.appendChild(this.sprite_height_);
+            this.animation_step_par_frame_ = document.createElement("input");
+            this.animation_step_par_frame_.type = "number";
+            this.animation_step_par_frame_.min = "1";
+            this.animation_step_par_frame_.value = "1";
+            this.animation_step_par_frame_holder_ = CreateLeftBox();
+            this.animation_step_par_frame_holder_.appendChild(this.animation_step_par_frame_);
+            this.animation_step_par_frame_holder_.appendChild(CreateText("/１コマ"));
+            this.scale_selector_ = document.createElement("select");
+            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+            for (let scale of scale_array) {
+                const scale_option = document.createElement("option");
+                scale_option.value = scale.toString();
+                scale_option.innerText = `x${scale}`;
+                this.scale_selector_.appendChild(scale_option);
+            }
+            this.scale_selector_holder_ = CreateRightBox();
+            this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
+            this.scale_selector_holder_.appendChild(this.scale_selector_);
+            this.command_frame_ = document.createElement("div");
+            this.command_frame_.appendChild(this.animation_step_par_frame_holder_);
+            this.command_frame_.appendChild(this.scale_selector_holder_);
+            this.canvas_ = document.createElement("canvas");
+            this.canvas_.width = width;
+            this.canvas_.height = height;
+            this.canvas_frame_ = document.createElement("div");
+            this.canvas_frame_.style.overflow = "scroll";
+            this.canvas_frame_.style.resize = "both";
+            this.canvas_frame_.style.clear = "both";
+            this.canvas_frame_.appendChild(this.canvas_);
+            this.animation_playback_button_ = document.createElement("button");
+            this.animation_playback_button_.innerText = "▶︎";
+            this.is_playing_ = false;
+            this.animation_playback_button_.addEventListener('click', (event) => {
+                const button = event.target;
+                button.innerText = this.is_playing_ === true ? "▶︎" : "■";
+                this.is_playing_ = !this.is_playing_;
+            });
+            this.sprite_animation_indices_ = new Array(0);
+            this.sprite_indices_ = document.createElement("textarea");
+            this.sprite_indices_.style.height = "1.4em";
+            this.sprite_indices_.innerText = "0";
+            this.settings_frame_ = document.createElement("div");
+            this.settings_frame_.appendChild(this.animation_playback_button_);
+            this.settings_frame_.appendChild(this.sprite_indices_);
+            this.holder_ = document.createElement("div");
+            this.holder_.appendChild(this.size_frame_);
+            this.holder_.appendChild(this.command_frame_);
+            this.holder_.appendChild(this.canvas_frame_);
+            this.holder_.appendChild(this.settings_frame_);
+        }
+        UpdateSpriteIndicesArray() {
+            const index_strings = this.sprite_indices_.value.split(',');
+            this.sprite_animation_indices_.length = 0;
+            for (let index_string of index_strings) {
+                const parsed = parseInt(index_string);
+                if (!isNaN(parsed)) {
+                    this.sprite_animation_indices_.push(parsed);
+                }
+            }
+        }
+        get node() {
+            return this.holder_;
+        }
+        Draw(pixels, color_table, width, height, frame_count) {
+            if (!this.is_playing_) {
+                return;
+            }
+            this.UpdateSpriteIndicesArray();
+            const num_indeices = this.sprite_animation_indices_.length;
+            if (0 === num_indeices) {
+                return;
+            }
+            const step_par_frame = Math.max(1, this.animation_step_par_frame_.valueAsNumber);
+            const frame_number = Math.floor(frame_count / step_par_frame) % num_indeices;
+            const sprite_index = this.sprite_animation_indices_[frame_number];
+            const sprite_w = Math.max(1, Math.min(width, this.sprite_width_.valueAsNumber));
+            const sprite_h = Math.max(1, Math.min(height, this.sprite_height_.valueAsNumber));
+            const sprite_count_in_w = Math.floor(width / sprite_w);
+            const sprite_count_in_h = Math.floor(height / sprite_h);
+            const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
+            if (max_sprite_index <= sprite_index) {
+                return;
+            }
+            const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
+            const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
+            const max_w = Math.min(pixel_w_offset + sprite_w, width);
+            const max_h = Math.min(pixel_h_offset + sprite_h, height);
+            const view_scale = parseInt(this.scale_selector_.value);
+            if (this.canvas_.width !== sprite_w * view_scale) {
+                this.canvas_.width = sprite_w * view_scale;
+            }
+            if (this.canvas_.height !== sprite_h * view_scale) {
+                this.canvas_.height = sprite_h * view_scale;
+            }
+            const context = this.canvas_.getContext('2d');
+            context.imageSmoothingEnabled = false;
+            context.setTransform(1, 0, 0, 1, 0, 0);
+            context.scale(view_scale, view_scale);
+            for (let h = pixel_h_offset; h < max_h; h++) {
+                for (let w = pixel_w_offset; w < max_w; w++) {
+                    const color_index = pixels[h][w];
+                    context.fillStyle = color_table[color_index];
+                    context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
+                }
+            }
+            return;
+        }
+    }
+    UiParts.SpriteAnimationPreviewWindowUi = SpriteAnimationPreviewWindowUi;
+})(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    class LayerUi {
+        constructor(parent, order, name, color, user_value) {
+            this.parent_ = parent;
+            this.user_value_ = user_value;
+            this.layer_frame_ = document.createElement("div");
+            this.layer_frame_.style.display = "flex";
+            this.layer_frame_.style.alignItems = "center";
+            this.tab_ = document.createElement("div");
+            this.tab_.style.width = (40).toString();
+            this.tab_.style.height = (32).toString();
+            this.tab_.style.backgroundColor = color;
+            this.tab_.style.display = "flex";
+            this.tab_.style.justifyContent = "center";
+            this.tab_.style.alignItems = "center";
+            this.thumbnail_ = document.createElement("canvas");
+            this.layer_lock_checkbox_ = document.createElement("input");
+            this.layer_view_checkbox_ = document.createElement("input");
+            this.layer_name_ = document.createElement("input");
+            this.thumbnail_.width = 16;
+            this.thumbnail_.height = 16;
+            this.layer_lock_checkbox_.type = "checkbox";
+            this.layer_lock_checkbox_.checked = false;
+            this.layer_view_checkbox_.type = "checkbox";
+            this.layer_view_checkbox_.checked = true;
+            this.layer_name_.type = "text";
+            this.layer_name_.value = name;
+            this.layer_name_.style.height = '1em';
+            this.layer_name_.style.paddingTop = (8).toString();
+            this.layer_name_.style.paddingBottom = (8).toString();
+            this.tab_.appendChild(this.thumbnail_);
+            this.layer_frame_.appendChild(this.tab_);
+            this.layer_frame_.appendChild(this.layer_lock_checkbox_);
+            this.layer_frame_.appendChild(this.layer_view_checkbox_);
+            this.layer_frame_.appendChild(this.layer_name_);
+            this.order_ = order;
+            this.layer_frame_.style.order = this.order_.toString();
+            this.layer_frame_.tabIndex = 0;
+            this.layer_frame_.style.backgroundColor = "rgb(255,255,255)";
+            this.parent_.appendChild(this.layer_frame_);
+        }
+        Destruct() {
+            this.parent_.removeChild(this.layer_frame_);
+            return this.user_value_;
+        }
+        FocusIn() {
+            this.layer_frame_.style.backgroundColor = 'rgb(0, 0, 255)';
+            this.layer_frame_.style.boxShadow = "0px 0px 0px 0px";
+            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
+            this.Update(this.update_state_callback_, true, false);
+        }
+        FocusOut() {
+            this.layer_frame_.style.backgroundColor = 'rgb(255, 255, 255)';
+            this.layer_frame_.style.boxShadow = "0px 8px 16px -2px rgba(10,10,10,0.1), 2px 2px 3px 0px rgba(0,0,0,0.48) inset";
+            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
+            this.Update(this.update_state_callback_, false, true);
+        }
+        Update(callback, is_focusin, is_focusout) {
+            callback(this.user_value_, this.order_, this.layer_name_.value, this.tab_.style.backgroundColor, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
+        }
+        DrawThumbnail(callback) {
+            callback(this.user_value_, this.order_, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, this.thumbnail_.getContext('2d'));
+        }
+        AddFoucsinCallback(callback) {
+            this.layer_frame_.addEventListener('focusin', (event) => {
+                callback(this);
+            });
+        }
+        AddUpdateStateCallback(callback) {
+            this.layer_lock_checkbox_.addEventListener('change', (event) => {
+                this.Update(callback, false, false);
+            });
+            this.layer_view_checkbox_.addEventListener('change', (event) => {
+                this.Update(callback, false, false);
+            });
+            this.layer_name_.addEventListener('change', (event) => {
+                this.Update(callback, false, false);
+            });
+            this.update_state_callback_ = callback;
+        }
+        get order() {
+            return this.order_;
+        }
+        set order(new_order) {
+            if (new_order < 0) {
+                return;
+            }
+            this.order_ = new_order;
+            this.layer_frame_.style.order = this.order_.toString();
+            this.Update(this.update_state_callback_, false, false);
+        }
+    }
+    UiParts.LayerUi = LayerUi;
+    class LayerPaneUi {
+        constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
+            this.layers_ = new Array(0);
+            this.frame_ = document.createElement("div");
+            this.command_holder_ = document.createElement("div");
+            this.new_layer_button_ = document.createElement("button");
+            this.up_layer_button_ = document.createElement("button");
+            this.down_layer_button_ = document.createElement("button");
+            this.delete_layer_button_ = document.createElement("button");
+            this.layer_holder_ = document.createElement("div");
+            this.current_layer_ = null;
+            this.command_holder_.style.display = "flex";
+            this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
+            this.layer_holder_.style.display = "flex";
+            this.layer_holder_.style.flexDirection = "column-reverse";
+            this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
+            this.new_layer_button_.innerText = "＋";
+            this.up_layer_button_.innerText = "▲";
+            this.down_layer_button_.innerText = "▼";
+            this.delete_layer_button_.innerText = "×";
+            this.new_layer_button_.addEventListener('click', (event) => {
+                const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
+                const [layer_name, color, user_value] = this.register_callback_(registration_order);
+                this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
+            });
+            this.up_layer_button_.addEventListener('click', (event) => {
+                this.UpLayer(this.current_layer_.order);
+            });
+            this.down_layer_button_.addEventListener('click', (event) => {
+                this.DownLayer(this.current_layer_.order);
+            });
+            this.delete_layer_button_.addEventListener('click', (event) => {
+                if (1 < this.layers_.length) {
+                    this.DeleteCurrentLayer();
+                }
+            });
+            this.register_callback_ = register_callback;
+            this.removed_callback_ = destructed_callback;
+            this.swap_callback_ = swap_callback;
+            this.updated_state_callback_ = updated_state_callback;
+            this.draw_thumbnail_callback_ = draw_thumbnail_callback;
+            this.command_holder_.appendChild(this.new_layer_button_);
+            this.command_holder_.appendChild(this.up_layer_button_);
+            this.command_holder_.appendChild(this.down_layer_button_);
+            this.command_holder_.appendChild(this.delete_layer_button_);
+            this.frame_.appendChild(this.command_holder_);
+            this.frame_.appendChild(this.layer_holder_);
+            return;
+        }
+        ChangeFocus(focus_in_layer) {
+            if (focus_in_layer === this.current_layer_) {
+                return;
+            }
+            focus_in_layer.FocusIn();
+            if (this.current_layer_ !== null) {
+                this.current_layer_.FocusOut();
+            }
+            this.current_layer_ = focus_in_layer;
+            return;
+        }
+        SwapLayer(lh_order, rh_order) {
+            let lh_layer = null;
+            let rh_layer = null;
+            for (let layer of this.layers_) {
+                if (layer.order === lh_order) {
+                    lh_layer = layer;
+                }
+                if (layer.order === rh_order) {
+                    rh_layer = layer;
+                }
+                if ((lh_layer !== null) && (rh_layer !== null)) {
+                    break;
+                }
+            }
+            if (lh_layer === null) {
+                return false;
+            }
+            if (rh_layer === null) {
+                return false;
+            }
+            const tmp_order = lh_layer.order;
+            lh_layer.order = rh_layer.order;
+            rh_layer.order = tmp_order;
+            return true;
+        }
+        CalculateRegistrationOrder(insert_target_order) {
+            if (this.layers_.length === 0) {
+                return 0;
+            }
+            return Math.min(insert_target_order, this.layers_.length - 1) + 1;
+        }
+        CreateNewLayer(insert_target_order, layer_name, color, user_value) {
+            const registration_order = this.CalculateRegistrationOrder(insert_target_order);
+            if (0 < registration_order) {
+                for (let layer of this.layers_) {
+                    if (registration_order <= layer.order) {
+                        layer.order++;
+                    }
+                }
+                insert_target_order += 1;
+            }
+            const new_layer = new LayerUi(this.layer_holder_, insert_target_order, layer_name, color, user_value);
+            new_layer.AddFoucsinCallback((focus_in_layer) => { this.ChangeFocus(focus_in_layer); });
+            new_layer.AddUpdateStateCallback(this.updated_state_callback_);
+            this.layers_.push(new_layer);
+            this.ChangeFocus(new_layer);
+            return;
+        }
+        DeleteCurrentLayer() {
+            if (this.current_layer_ === null) {
+                return;
+            }
+            if (this.layers_.length === 1) {
+                const destructed_order = this.current_layer_.order;
+                const user_value = this.current_layer_.Destruct();
+                this.removed_callback_(user_value, destructed_order);
+                this.current_layer_ = null;
+                this.layers_.splice(0, 1);
+                return;
+            }
+            let target_index;
+            for (target_index = 0; target_index < this.layers_.length; target_index++) {
+                if (this.layers_[target_index] === this.current_layer_) {
+                    break;
+                }
+            }
+            this.layers_.splice(target_index, 1);
+            const current_order = Math.min(this.current_layer_.order, this.layers_.length - 1);
+            for (let layer of this.layers_) {
+                if (current_order < layer.order) {
+                    layer.order--;
+                }
+                if (current_order === layer.order) {
+                    const destructed_order = this.current_layer_.order;
+                    const user_value = this.current_layer_.Destruct();
+                    this.removed_callback_(user_value, destructed_order);
+                    this.current_layer_ = layer;
+                }
+            }
+            this.current_layer_.FocusIn();
+            return;
+        }
+        DeleteAll() {
+            const num_layers = this.layers_.length;
+            for (let i = 0; i < num_layers; i++) {
+                this.DeleteCurrentLayer();
+            }
+        }
+        CreateNewLayers(creation_parameters) {
+            const ordered_parameters = Array(creation_parameters.length);
+            for (let parameter of creation_parameters) {
+                ordered_parameters[parameter[0]] = parameter;
+            }
+            for (let parameter of ordered_parameters) {
+                parameter[0] = Math.max(0, parameter[0] - 1);
+                this.CreateNewLayer(...parameter);
+            }
+        }
+        UpLayer(target_order) {
+            if (this.SwapLayer(target_order, target_order + 1)) {
+                this.swap_callback_(target_order, target_order + 1);
+            }
+            return;
+        }
+        DownLayer(target_order) {
+            if (this.SwapLayer(target_order, target_order - 1)) {
+                this.swap_callback_(target_order, target_order - 1);
+            }
+            return;
+        }
+        Draw() {
+            for (let layer of this.layers_) {
+                layer.DrawThumbnail(this.draw_thumbnail_callback_);
+            }
+        }
+        get node() {
+            return this.frame_;
+        }
+    }
+    UiParts.LayerPaneUi = LayerPaneUi;
+})(UiParts || (UiParts = {}));
+var UiParts;
+(function (UiParts) {
+    class TabPaneUi {
+        constructor() {
+            if (TabPaneUi.tab_content_class_style_ === null) {
+                const style = document.createElement("style");
+                style.innerText
+                    = `.tab_content {`
+                        + `display: none;`
+                        + `clear: both;`
+                        + `overflow: scroll;`
+                        + `resize: both;`
+                        + `}`
+                        + `input[name="tab_tags"] {`
+                        + `display: none;`
+                        + `}`
+                        + `.tab_tag {`
+                        + `text-align: center;`
+                        + `display: block;`
+                        + `float: left;`
+                        + `order: -1;`
+                        + `margin: 2px 2px 0px;`
+                        + `}`
+                        + `input:checked + .tab_tag + .tab_content {`
+                        + `display: block;`
+                        + `}`;
+                document.getElementsByTagName("head").item(0).appendChild(style);
+                TabPaneUi.tab_content_class_style_ = style;
+            }
+            this.tab_frame_ = document.createElement("div");
+            this.tab_frame_.style.display = "grid";
+            //this.tab_frame_.style.gridAutoColumns = "max-content";
+            this.tab_frame_.style.gridAutoColumns = "1fr";
+            this.tab_frame_.style.gridAutoRows = "max-content";
+            this.tab_frame_.style.gridTemplateAreas = `"t0" "c"`;
+            this.current_tab_ = null;
+            this.local_tab_count_ = 0;
+        }
+        FitSize() {
+            if (!("width" in this.current_tab_.style)) {
+                return;
+            }
+            const contents = this.tab_frame_.getElementsByClassName("tab_content");
+            const length = contents.length;
+            for (let i = 0; i < length; i++) {
+                contents[i].style.width = this.current_tab_.style.width;
+                contents[i].style.height = this.current_tab_.style.height;
+            }
+            return;
+        }
+        AddTab(content, tab_title) {
+            const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
+            const tab_radio = document.createElement("input");
+            tab_radio.type = "radio";
+            tab_radio.id = tag_id;
+            tab_radio.name = "tab_tags";
+            const tab_label = document.createElement("label");
+            tab_label.htmlFor = tag_id;
+            tab_label.innerText = tab_title;
+            tab_label.className = "tab_tag";
+            tab_label.style.backgroundColor = content.style.backgroundColor;
+            tab_label.style.gridArea = `t${this.local_tab_count_}`;
+            const content_frame = document.createElement("div");
+            content_frame.appendChild(content);
+            content_frame.className = "tab_content";
+            content_frame.style.backgroundColor = content.style.backgroundColor;
+            content_frame.style.order = "1";
+            content_frame.style.gridArea = "c";
+            if (this.tab_frame_.childElementCount === 0) {
+                tab_radio.checked = true;
+                this.current_tab_ = content_frame;
+            }
+            tab_radio.addEventListener("change", (event) => {
+                this.FitSize();
+                this.current_tab_ = content_frame;
+            });
+            this.local_tab_count_++;
+            const tag_grids = new Array(this.local_tab_count_);
+            const content_grids = new Array(this.local_tab_count_);
+            for (let i = 0; i < this.local_tab_count_; i++) {
+                tag_grids[i] = `t${i}`;
+                content_grids[i] = "c";
+            }
+            this.tab_frame_.style.gridTemplateAreas = `"${tag_grids.join(" ")}" "${content_grids.join(" ")}"`;
+            this.tab_frame_.appendChild(tab_radio);
+            this.tab_frame_.appendChild(tab_label);
+            this.tab_frame_.appendChild(content_frame);
+            TabPaneUi.global_tab_count_++;
+            return;
+        }
+        get node() {
+            return this.tab_frame_;
+        }
+    }
+    TabPaneUi.tab_content_class_style_ = null;
+    TabPaneUi.global_tab_count_ = 0;
+    UiParts.TabPaneUi = TabPaneUi;
+})(UiParts || (UiParts = {}));
 /// <reference path="./windows_bitmap.ts" />
 /// <reference path="./misc.ts" />
 /// <reference path="./browser.ts" />
-/// <reference path="./ui_parts.ts" />
+/// <reference path="./gui/canvas.ts" />
+/// <reference path="./gui/color_palette.ts" />
+/// <reference path="./gui/download_button.ts" />
+/// <reference path="./gui/preview_window.ts" />
+/// <reference path="./gui/sprite_animation_preview_window.ts" />
+/// <reference path="./gui/layer.ts" />
+/// <reference path="./gui/tab_pane.ts" />
 /// <reference path="./canvas_tools.ts" />
 class RgbColor {
     constructor(r = 0, g = 0, b = 0) {
