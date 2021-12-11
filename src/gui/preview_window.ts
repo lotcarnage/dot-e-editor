@@ -9,9 +9,9 @@ namespace UiParts {
 			this.canvas_ = document.createElement("canvas");
 			this.canvas_.width = width;
 			this.canvas_.height = height;
+			this.canvas_.style.margin = "auto";
 			this.canvas_frame_ = document.createElement("div");
-			this.canvas_frame_.style.overflow = "scroll";
-			this.canvas_frame_.style.resize = "both";
+			this.canvas_frame_.style.display = "flex";
 			this.canvas_frame_.appendChild(this.canvas_);
 			this.scale_selector_ = document.createElement("select");
 			const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];

@@ -20,7 +20,6 @@ namespace UiParts {
 		private sprite_height_: HTMLInputElement;
 		private size_frame_: HTMLDivElement;
 		private animation_step_par_frame_: HTMLInputElement;
-		private animation_step_par_frame_holder_: HTMLDivElement;
 		private scale_selector_: HTMLSelectElement;
 		private scale_selector_holder_: HTMLDivElement;
 		private command_frame_: HTMLDivElement;
@@ -41,19 +40,6 @@ namespace UiParts {
 			this.sprite_height_.min = "1";
 			this.sprite_width_.value = width.toString();
 			this.sprite_height_.value = height.toString();
-			this.size_frame_ = document.createElement("div");
-			this.size_frame_.appendChild(CreateText("サイズ"));
-			this.size_frame_.appendChild(this.sprite_width_);
-			this.size_frame_.appendChild(CreateText("x"));
-			this.size_frame_.appendChild(this.sprite_height_);
-
-			this.animation_step_par_frame_ = document.createElement("input");
-			this.animation_step_par_frame_.type = "number";
-			this.animation_step_par_frame_.min = "1";
-			this.animation_step_par_frame_.value = "1";
-			this.animation_step_par_frame_holder_ = CreateLeftBox();
-			this.animation_step_par_frame_holder_.appendChild(this.animation_step_par_frame_);
-			this.animation_step_par_frame_holder_.appendChild(CreateText("/１コマ"));
 
 			this.scale_selector_ = document.createElement("select");
 			const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
@@ -66,18 +52,18 @@ namespace UiParts {
 			this.scale_selector_holder_ = CreateRightBox();
 			this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
 			this.scale_selector_holder_.appendChild(this.scale_selector_);
-			this.command_frame_ = document.createElement("div");
-			this.command_frame_.appendChild(this.animation_step_par_frame_holder_);
-			this.command_frame_.appendChild(this.scale_selector_holder_);
 
-			this.canvas_ = document.createElement("canvas");
-			this.canvas_.width = width;
-			this.canvas_.height = height;
-			this.canvas_frame_ = document.createElement("div");
-			this.canvas_frame_.style.overflow = "scroll";
-			this.canvas_frame_.style.resize = "both";
-			this.canvas_frame_.style.clear = "both";
-			this.canvas_frame_.appendChild(this.canvas_);
+			this.size_frame_ = document.createElement("div");
+			this.size_frame_.appendChild(CreateText("サイズ"));
+			this.size_frame_.appendChild(this.sprite_width_);
+			this.size_frame_.appendChild(CreateText("x"));
+			this.size_frame_.appendChild(this.sprite_height_);
+			this.size_frame_.appendChild(this.scale_selector_holder_);
+
+			this.animation_step_par_frame_ = document.createElement("input");
+			this.animation_step_par_frame_.type = "number";
+			this.animation_step_par_frame_.min = "1";
+			this.animation_step_par_frame_.value = "1";
 
 			this.animation_playback_button_ = document.createElement("button");
 			this.animation_playback_button_.innerText = "▶︎";
@@ -87,12 +73,25 @@ namespace UiParts {
 				button.innerText = this.is_playing_ === true ? "▶︎" : "■";
 				this.is_playing_ = !this.is_playing_;
 			});
+
+			this.command_frame_ = document.createElement("div");
+			this.command_frame_.appendChild(this.animation_step_par_frame_);
+			this.command_frame_.appendChild(CreateText("/１コマ"));
+			this.command_frame_.appendChild(this.animation_playback_button_);
+
+			this.canvas_ = document.createElement("canvas");
+			this.canvas_.width = width;
+			this.canvas_.height = height;
+			this.canvas_.style.margin = "auto";
+			this.canvas_frame_ = document.createElement("div");
+			this.canvas_frame_.style.display = "flex";
+			this.canvas_frame_.appendChild(this.canvas_);
+
 			this.sprite_animation_indices_ = new Array<number>(0);
 			this.sprite_indices_ = document.createElement("textarea");
 			this.sprite_indices_.style.height = "1.4em";
 			this.sprite_indices_.innerText = "0";
 			this.settings_frame_ = document.createElement("div");
-			this.settings_frame_.appendChild(this.animation_playback_button_);
 			this.settings_frame_.appendChild(this.sprite_indices_);
 
 			this.holder_ = document.createElement("div");
