@@ -196,9 +196,19 @@
         </details>
     </div>
 <script>/******/ (() => { // webpackBootstrap
-/*!***********************!*\
-  !*** ./built/main.js ***!
-  \***********************/
+/******/ 	"use strict";
+/******/ 	var __webpack_modules__ = ({
+
+/***/ "./built/browser.js":
+/*!**************************!*\
+  !*** ./built/browser.js ***!
+  \**************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "Browser": () => (/* binding */ Browser)
+/* harmony export */ });
 var Browser;
 (function (Browser) {
     function isStorageAvailable(type) {
@@ -227,6 +237,43 @@ var Browser;
     }
     Browser.isStorageAvailable = isStorageAvailable;
 })(Browser || (Browser = {}));
+
+
+/***/ }),
+
+/***/ "./built/canvas_tools.js":
+/*!*******************************!*\
+  !*** ./built/canvas_tools.js ***!
+  \*******************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "PixelPoint": () => (/* binding */ PixelPoint),
+/* harmony export */   "CanvasTools": () => (/* binding */ CanvasTools)
+/* harmony export */ });
+/* harmony import */ var _misc__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./misc */ "./built/misc.js");
+
+class PixelPoint {
+    constructor(w, h) {
+        this.w = w;
+        this.h = h;
+    }
+    ToIndex(width) {
+        return width * this.h + this.w;
+    }
+    static IndexToPixelPoint(index, width) {
+        const w = Math.floor(index % width);
+        const h = Math.floor(index / width);
+        return new PixelPoint(w, h);
+    }
+    static IndexToPixelPointW(index, width) {
+        return Math.floor(index % width);
+    }
+    static IndexToPixelPointH(index, width) {
+        return Math.floor(index / width);
+    }
+}
 var CanvasTools;
 (function (CanvasTools_1) {
     class Tool {
@@ -288,7 +335,7 @@ var CanvasTools;
         ;
         MouseMove(pixel_w, pixel_h) {
             if (this.is_activated) {
-                Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.cb_table_.write_pixel_cb_);
+                _misc__WEBPACK_IMPORTED_MODULE_0__.Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.cb_table_.write_pixel_cb_);
             }
             else {
                 this.cb_table_.begin_cb_();
@@ -302,7 +349,7 @@ var CanvasTools;
         ;
         MouseOut(pixel_w, pixel_h) {
             if (this.is_activated) {
-                Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.cb_table_.write_pixel_cb_);
+                _misc__WEBPACK_IMPORTED_MODULE_0__.Misc.LineTo2d(this.last_point_w, this.last_point_h, pixel_w, pixel_h, this.cb_table_.write_pixel_cb_);
             }
             this.is_activated = false;
         }
@@ -500,121 +547,1344 @@ var CanvasTools;
     }
     CanvasTools_1.CanvasTools = CanvasTools;
 })(CanvasTools || (CanvasTools = {}));
-var WindowsIndexColorBitmap;
-(function (WindowsIndexColorBitmap) {
-    const bmp_file_header_size = 14;
-    const bmp_info_header_size = 40;
-    const palette_size = 4 * 256;
-    const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
-    const Store16LE = function (bytes, offset, value) {
-        bytes[offset + 0] = value & 0x00ff;
-        bytes[offset + 1] = (value >> 8) & 0x00ff;
-    };
-    const Store32LE = function (bytes, offset, value) {
-        bytes[offset + 0] = value & 0x000000ff;
-        bytes[offset + 1] = (value >> 8) & 0x000000ff;
-        bytes[offset + 2] = (value >> 16) & 0x000000ff;
-        bytes[offset + 3] = (value >> 24) & 0x000000ff;
-    };
-    const Load16LE = function (bytes, offset) {
-        return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
-    };
-    const Load32LE = function (bytes, offset) {
-        return (bytes[offset + 0] & 0x000000ff)
-            | ((bytes[offset + 1] << 8) & 0x0000ff00)
-            | ((bytes[offset + 2] << 16) & 0x00ff0000)
-            | ((bytes[offset + 3] << 14) & 0xff000000);
-    };
-    const RgbStringToRgbValues = function (rgb_string) {
+
+
+/***/ }),
+
+/***/ "./built/gui/canvas.js":
+/*!*****************************!*\
+  !*** ./built/gui/canvas.js ***!
+  \*****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "CanvasUi": () => (/* binding */ CanvasUi)
+/* harmony export */ });
+class CanvasUi {
+    constructor(width, height, resize_cb) {
+        /* for Canvas Size */
+        this.canvas_width_spin_ = CanvasUi.CreateNumberInput(1, 512);
+        this.canvas_height_spin_ = CanvasUi.CreateNumberInput(1, 512);
+        this.canvas_width_spin_.value = width.toString();
+        this.canvas_height_spin_.value = height.toString();
+        /* 最初の描画のために必ず差分が発生するように初期化しておく */
+        this.last_width_ = 0;
+        this.last_height_ = 0;
+        /* view grid checkbox */
+        [this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, CanvasUi.CreateSmallGridIcon(24));
+        [this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, CanvasUi.CreateLargeGridIcon(24));
+        [this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, CanvasUi.CreateText("色番号"));
+        this.last_small_grid_view_ = false;
+        this.last_large_grid_view_ = false;
+        this.last_color_index_view_ = false;
+        this.last_large_grid_width_ = 0;
+        this.last_large_grid_height_ = 0;
+        this.last_small_grid_color_ = '#000000';
+        /* for Scale selector */
+        this.scale_selector_ = document.createElement("select");
+        const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
+        for (let i = 0; i < scales.length; i++) {
+            const preset_option = document.createElement("option");
+            preset_option.value = scales[i].toString();
+            preset_option.innerText = `x${scales[i]}`;
+            this.scale_selector_.append(preset_option);
+        }
+        this.scale_selector_.selectedIndex = 0;
+        this.last_scale_ = 1;
+        /* settings holder */
+        this.settings_holder_ = document.createElement("div");
+        this.settings_holder_.appendChild(this.canvas_width_spin_);
+        this.settings_holder_.appendChild(this.canvas_height_spin_);
+        this.settings_holder_.appendChild(this.small_grid_view_);
+        this.settings_holder_.appendChild(this.small_grid_label_);
+        this.settings_holder_.appendChild(this.large_grid_view_);
+        this.settings_holder_.appendChild(this.large_grid_label_);
+        this.settings_holder_.appendChild(this.color_index_view_);
+        this.settings_holder_.appendChild(this.color_index_label_);
+        this.settings_holder_.appendChild(this.scale_selector_);
+        this.settings_holder_.style.backgroundColor = "gray";
+        this.settings_holder_.style.display = "flex";
+        this.settings_holder_.style.padding = "2px 0px 2px 2px";
+        /* for Canvas */
+        this.canvas_ = document.createElement("canvas");
+        this.canvas_.width = width;
+        this.canvas_.height = height;
+        this.canvas_.addEventListener("contextmenu", (event) => {
+            event.preventDefault();
+            return false;
+        });
+        this.canvas_box_ = document.createElement("div");
+        this.canvas_box_.style.width = "max-content";
+        this.canvas_box_.style.height = "max-content";
+        this.canvas_frame_ = document.createElement("div");
+        this.canvas_frame_.style.overflow = "scroll";
+        this.canvas_frame_.style.resize = "both";
+        this.canvas_frame_.style.clear = "both";
+        this.canvas_box_.appendChild(this.canvas_);
+        this.canvas_frame_.appendChild(this.canvas_box_);
+        this.last_pixels_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(0))));
+        this.last_pixel_mask_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(false))));
+        this.last_colors_ = JSON.parse(JSON.stringify(new Array(256).fill('#000000')));
+        this.last_selected_rectangle_area_ = null;
+        /* compose */
+        this.holder_ = document.createElement("div");
+        this.holder_.appendChild(this.settings_holder_);
+        this.holder_.appendChild(this.canvas_frame_);
+        this.resize_cb_ = resize_cb;
+        this.canvas_width_spin_.addEventListener("input", (event) => {
+            const width = event.target.valueAsNumber;
+            const height = this.canvas_height_spin_.valueAsNumber;
+            if (!isNaN(width) && !isNaN(height)) {
+                resize_cb(width, height);
+            }
+        });
+        this.canvas_height_spin_.addEventListener("input", (event) => {
+            const height = event.target.valueAsNumber;
+            const width = this.canvas_width_spin_.valueAsNumber;
+            if (!isNaN(width) && !isNaN(height)) {
+                resize_cb(width, height);
+            }
+        });
+    }
+    static CreateNumberInput(minimum, maximum) {
+        const element = document.createElement("input");
+        element.type = "number";
+        element.min = minimum.toString();
+        element.max = maximum.toString();
+        return element;
+    }
+    static CreateCheckBox(checkbox_id, label_content) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = checkbox_id;
+        const label = document.createElement("label");
+        label.htmlFor = checkbox.id;
+        label.appendChild(label_content);
+        return [checkbox, label];
+    }
+    static DrawLine(canvas_context, start_x, start_y, end_x, end_y) {
+        canvas_context.moveTo(start_x, start_y);
+        canvas_context.lineTo(end_x, end_y);
+        return;
+    }
+    static CreateSmallGridIcon(icon_size) {
+        const icon = document.createElement("canvas");
+        icon.width = icon_size;
+        icon.height = icon_size;
+        const icon_context = icon.getContext("2d");
+        icon_context.fillStyle = "#101010";
+        icon_context.fillRect(0, 0, icon_size, icon_size);
+        icon_context.beginPath();
+        icon_context.lineWidth = 1;
+        icon_context.strokeStyle = "#909090";
+        for (let i = -0.5; i < icon_size; i += 4) {
+            CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
+            CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
+        }
+        icon_context.stroke();
+        return icon;
+    }
+    static CreateLargeGridIcon(icon_size) {
+        const icon = CanvasUi.CreateSmallGridIcon(icon_size);
+        const icon_context = icon.getContext("2d");
+        icon_context.beginPath();
+        icon_context.lineWidth = 1;
+        icon_context.strokeStyle = "#ffff00";
+        for (let i = -0.5; i < icon_size; i += 8) {
+            CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
+            CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
+        }
+        icon_context.stroke();
+        return icon;
+    }
+    static CreateText(text) {
+        const span = document.createElement("span");
+        span.innerText = text;
+        return span;
+    }
+    get node() {
+        return this.holder_;
+    }
+    get canvas() {
+        return this.canvas_;
+    }
+    static PartiallyDrawGrid(canvas_context, w_grid_set, h_grid_set, width, height, scale, grid_color) {
+        canvas_context.beginPath();
+        const line_height = height;
+        const line_width = width;
+        const adjust_e = -(1 / scale) / 2;
+        for (let w of w_grid_set) {
+            const x = (w + 1) + adjust_e;
+            CanvasUi.DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
+        }
+        for (let h of h_grid_set) {
+            const y = (h + 1) + adjust_e;
+            CanvasUi.DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
+        }
+        canvas_context.lineWidth = 1 / scale;
+        canvas_context.strokeStyle = grid_color;
+        canvas_context.stroke();
+    }
+    static DrawSmallGrid(canvas_context, width, height, scale, grid_color) {
+        const all_w_grid_set = new Set();
+        const all_h_grid_set = new Set();
+        for (var w = 0; w < width; w++) {
+            all_w_grid_set.add(w);
+        }
+        for (var h = 0; h < height; h++) {
+            all_h_grid_set.add(h);
+        }
+        CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
+    }
+    static DrawLargeGrid(canvas_context, width, height, scale, grid_color, grid_width, grid_height) {
+        const all_w_grid_set = new Set();
+        const all_h_grid_set = new Set();
+        const large_grid_width = Math.min(512, Math.max(2, grid_width));
+        const large_grid_height = Math.min(512, Math.max(2, grid_height));
+        for (var w = large_grid_width; w <= width; w += large_grid_width) {
+            all_w_grid_set.add(w - 1);
+        }
+        for (var h = large_grid_height; h <= height; h += large_grid_height) {
+            all_h_grid_set.add(h - 1);
+        }
+        canvas_context.setLineDash([0.5, 0.5]);
+        CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
+        canvas_context.setLineDash([]);
+    }
+    static PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color) {
+        const font_size = 8;
+        canvas_context.save();
+        canvas_context.textAlign = "center";
+        canvas_context.textBaseline = "middle";
+        canvas_context.font = `8px gothic`;
+        canvas_context.fillStyle = color;
+        canvas_context.scale(1 / scale, 1 / scale);
+        const y_offset = font_size / 2;
+        target_pixel_set.forEach((pixel_index) => {
+            const w = Math.floor(pixel_index % width);
+            const h = Math.floor(pixel_index / width);
+            const dst_x = w * scale;
+            const dst_y = h * scale;
+            const ci = pixels[h][w];
+            const x_offset = scale - String(ci).length * (font_size / 2 - 1) - 1;
+            canvas_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
+        });
+        canvas_context.restore();
+    }
+    static DrawColorIndex(canvas_context, pixels, width, height, scale, color) {
+        const target_pixel_set = new Set();
+        for (var h = 0; h < height; h++) {
+            for (var w = 0; w < width; w++) {
+                target_pixel_set.add(h * width + w);
+            }
+        }
+        CanvasUi.PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color);
+    }
+    static DrawSelectedRectangleArea(canvas_context, rectangle, scale, frame_count) {
+        const e_ = 0.5;
+        canvas_context.setTransform(1, 0, 0, 1, 0, 0);
+        const point_left = rectangle.left * scale + e_;
+        const point_top = rectangle.top * scale + e_;
+        const point_right = (rectangle.right + 1) * scale - e_;
+        const point_bottom = (rectangle.bottom + 1) * scale - e_;
+        canvas_context.setLineDash([4, 4]);
+        canvas_context.lineWidth = 1;
+        canvas_context.beginPath();
+        canvas_context.strokeStyle = "#ffffff";
+        canvas_context.lineDashOffset = frame_count % 8;
+        CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
+        CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
+        CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
+        CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
+        canvas_context.stroke();
+        canvas_context.beginPath();
+        canvas_context.strokeStyle = "#000000";
+        canvas_context.lineDashOffset = (frame_count + 4) % 8;
+        CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
+        CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
+        CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
+        CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
+        canvas_context.stroke();
+        canvas_context.setLineDash([]);
+    }
+    static ExtractTouchedPixelsAndGrids(current_pixels, last_pixels, current_pixel_mask, last_pixel_mask, width, height, current_colors, last_colors, last_selected_rectangle_area) {
+        const pixel_index_set = new Set();
+        const grid_w_set = new Set();
+        const grid_h_set = new Set();
+        /* ピクセル値の変化差分を抽出 */
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                let is_touched = false;
+                if (last_pixels[h][w] !== current_pixels[h][w]) {
+                    is_touched = true;
+                }
+                else if (last_pixel_mask[h][w] !== current_pixel_mask[h][w]) {
+                    is_touched = true;
+                }
+                else {
+                    /* 色が変わっている場合も更新対象 */
+                    const ci = last_pixels[h][w];
+                    if (last_colors[ci] !== current_colors[ci]) {
+                        is_touched = true;
+                    }
+                }
+                if (is_touched) {
+                    pixel_index_set.add(h * width + w);
+                    grid_w_set.add(w);
+                    grid_h_set.add(h);
+                }
+            }
+        }
+        /* 前回の矩形選択範囲の線を描画したピクセルは今回上書きが必要 */
+        if (last_selected_rectangle_area !== null) {
+            const rect = last_selected_rectangle_area;
+            if (rect.top === rect.bottom) {
+                for (let w = rect.left; w <= rect.right; w++) {
+                    pixel_index_set.add(rect.top * width + w);
+                }
+            }
+            else {
+                for (let w = rect.left; w <= rect.right; w++) {
+                    pixel_index_set.add(rect.top * width + w);
+                    pixel_index_set.add(rect.bottom * width + w);
+                }
+            }
+            const offset_top = rect.top + 1;
+            const offset_bottom = rect.bottom - 1;
+            if (0 <= (offset_bottom - offset_top)) {
+                if (rect.left === rect.right) {
+                    for (let h = offset_top; h <= offset_bottom; h++) {
+                        pixel_index_set.add(h * width + rect.left);
+                    }
+                }
+                else {
+                    for (let h = offset_top; h <= offset_bottom; h++) {
+                        pixel_index_set.add(h * width + rect.left);
+                        pixel_index_set.add(h * width + rect.right);
+                    }
+                }
+            }
+            for (let h = rect.top; h <= rect.bottom; h++) {
+                for (let w = rect.left; w <= rect.right; w++) {
+                    grid_w_set.add(w);
+                    grid_h_set.add(h);
+                }
+            }
+        }
+        return [pixel_index_set, grid_w_set, grid_h_set];
+    }
+    UpdateParameters(large_grid_width, large_grid_height, small_grid_color) {
+        const scale = parseInt(this.scale_selector_.value);
+        let width = parseInt(this.canvas_width_spin_.value);
+        let height = parseInt(this.canvas_height_spin_.value);
+        const small_grid_view = this.small_grid_view_.checked;
+        const large_grid_view = this.large_grid_view_.checked;
+        const color_index_view = this.color_index_view_.checked;
+        if (isNaN(width)) {
+            width = this.last_width_;
+        }
+        if (isNaN(height)) {
+            height = this.last_height_;
+        }
+        if (this.canvas_.width !== width * scale) {
+            this.canvas_.width = width * scale;
+        }
+        if (this.canvas_.height !== height * scale) {
+            this.canvas_.height = height * scale;
+        }
+        const need_update_all = (this.last_scale_ !== scale)
+            || (this.last_width_ !== width)
+            || (this.last_height_ !== height)
+            || (this.last_small_grid_view_ !== small_grid_view)
+            || (this.last_large_grid_view_ !== large_grid_view)
+            || (this.last_large_grid_width_ !== large_grid_width)
+            || (this.last_large_grid_height_ !== large_grid_height)
+            || (this.last_color_index_view_ !== color_index_view)
+            || (this.last_small_grid_color_ !== small_grid_color);
+        this.last_scale_ = scale;
+        this.last_width_ = width;
+        this.last_height_ = height;
+        this.last_small_grid_view_ = small_grid_view;
+        this.last_large_grid_view_ = large_grid_view;
+        this.last_large_grid_width_ = large_grid_width;
+        this.last_large_grid_height_ = large_grid_height;
+        this.last_color_index_view_ = color_index_view;
+        this.last_small_grid_color_ = small_grid_color;
+        return need_update_all ? "need_all" : "partial";
+    }
+    Draw(pixels, pixels_mask, color_table, small_grid_color, large_grid_width, large_grid_height, large_grid_color, selected_rectangle_area, frame_count) {
+        const draw_type = this.UpdateParameters(large_grid_width, large_grid_height, small_grid_color);
+        const scale = this.last_scale_;
+        const width = this.last_width_;
+        const height = this.last_height_;
+        const context = this.canvas_.getContext("2d");
+        context.imageSmoothingEnabled = false;
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.scale(scale, scale);
+        if (draw_type === "need_all") {
+            /* ピクセル描画 */
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    const color_index = pixels[h][w];
+                    context.fillStyle = color_table[color_index];
+                    context.fillRect(w, h, 1, 1);
+                }
+            }
+            /* マスク表示 */
+            context.fillStyle = '#ff0000';
+            context.globalAlpha = 0.5;
+            for (var h = 0; h < height; h++) {
+                for (var w = 0; w < width; w++) {
+                    if (pixels_mask[h][w]) {
+                        context.fillRect(w, h, 1, 1);
+                    }
+                }
+            }
+            context.globalAlpha = 1;
+            /* グリッド描画 */
+            if (this.small_grid_view_.checked) {
+                CanvasUi.DrawSmallGrid(context, width, height, scale, small_grid_color);
+            }
+            /* 色番号描画 */
+            if (this.color_index_view_.checked) {
+                CanvasUi.DrawColorIndex(context, pixels, width, height, scale, small_grid_color);
+            }
+            /* キャッシュ更新 */
+            for (let h = 0; h < height; h++) {
+                for (let w = 0; w < width; w++) {
+                    this.last_pixels_[h][w] = pixels[h][w];
+                    this.last_pixel_mask_[h][w] = pixels_mask[h][w];
+                }
+            }
+            /* 色のキャッシュ更新 */
+            for (let i = 0; i < 256; i++) {
+                this.last_colors_[i] = color_table[i];
+            }
+        }
+        else {
+            /* 際描画が必要なピクセルとグリッドを抽出 */
+            const [written_pixel_set, update_w_grid_set, update_h_grid_set] = CanvasUi.ExtractTouchedPixelsAndGrids(pixels, this.last_pixels_, pixels_mask, this.last_pixel_mask_, width, height, color_table, this.last_colors_, this.last_selected_rectangle_area_);
+            /* ピクセルの部分描画 */
+            written_pixel_set.forEach((pixel_index) => {
+                const w = Math.floor(pixel_index % width);
+                const h = Math.floor(pixel_index / width);
+                const ci = pixels[h][w];
+                const color = color_table[ci];
+                context.fillStyle = color;
+                context.fillRect(w, h, 1, 1);
+            });
+            /* マスクの部分表示 */
+            context.fillStyle = '#ff0000';
+            context.globalAlpha = 0.5;
+            written_pixel_set.forEach((pixel_index) => {
+                const w = Math.floor(pixel_index % width);
+                const h = Math.floor(pixel_index / width);
+                if (pixels_mask[h][w]) {
+                    context.fillRect(w, h, 1, 1);
+                }
+            });
+            context.globalAlpha = 1;
+            /* グリッドの部分描画 */
+            if (this.small_grid_view_.checked) {
+                CanvasUi.PartiallyDrawGrid(context, update_w_grid_set, update_h_grid_set, width, height, scale, small_grid_color);
+            }
+            /* 色番号の部分描画 */
+            if (this.color_index_view_.checked) {
+                CanvasUi.PartiallyDrawColorIndex(context, pixels, written_pixel_set, width, height, scale, small_grid_color);
+            }
+        }
+        if (this.large_grid_view_.checked) {
+            CanvasUi.DrawLargeGrid(context, width, height, scale, large_grid_color, large_grid_width, large_grid_height);
+        }
+        if (selected_rectangle_area !== null) {
+            CanvasUi.DrawSelectedRectangleArea(context, selected_rectangle_area, scale, frame_count);
+        }
+        /* キャッシュ更新 */
+        /* ピクセルおよびマスク */
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                this.last_pixels_[h][w] = pixels[h][w];
+                this.last_pixel_mask_[h][w] = pixels_mask[h][w];
+            }
+        }
+        /* 色　*/
+        for (let i = 0; i < 256; i++) {
+            this.last_colors_[i] = color_table[i];
+        }
+        /* 矩形選択 */
+        this.last_selected_rectangle_area_ = selected_rectangle_area;
+        return;
+    }
+    get canvas_width() {
+        return this.last_width_;
+    }
+    get canvas_height() {
+        return this.last_height_;
+    }
+    set canvas_width(new_width) {
+        this.canvas_width_spin_.valueAsNumber = new_width;
+    }
+    set canvas_height(new_height) {
+        this.canvas_height_spin_.valueAsNumber = new_height;
+    }
+    get edit_scale() {
+        return this.last_scale_;
+    }
+    set edit_scale(new_scale) {
+        const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
+        const index = scales.indexOf(new_scale);
+        if (0 <= index) {
+            this.scale_selector_.selectedIndex = index;
+        }
+    }
+}
+CanvasUi.count_ = 0;
+
+
+/***/ }),
+
+/***/ "./built/gui/color_palette.js":
+/*!************************************!*\
+  !*** ./built/gui/color_palette.js ***!
+  \************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "ColorPaletteTableUi": () => (/* binding */ ColorPaletteTableUi)
+/* harmony export */ });
+class ColorPaletteTableUi {
+    constructor(num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
+        this.selected_index_ = 0;
+        this.preset_color_palettes_ = preset_color_palettes;
+        /* for color table UI */
+        this.dummy_canvas_array_ = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            const dummy_canvas = document.createElement("canvas");
+            dummy_canvas.width = cell_width - 2;
+            dummy_canvas.height = cell_height - 2;
+            this.dummy_canvas_array_[i] = dummy_canvas;
+        }
+        this.color_cells_ = new Array(256);
+        const initiali_color_palette = preset_color_palettes[initial_color_palette_index].colors;
+        for (let i = 0; i < 256; i++) {
+            const color_cell = document.createElement("td");
+            color_cell.draggable = true;
+            color_cell.style.backgroundColor = initiali_color_palette[i];
+            color_cell.appendChild(this.dummy_canvas_array_[i]);
+            ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
+            this.color_cells_[i] = color_cell;
+        }
+        ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[this.selected_index_]);
+        this.tr_array_ = new Array(16);
+        for (let i = 0; i < 16; i++) {
+            const tr = document.createElement("tr");
+            for (let j = 0; j < 16; j++) {
+                const td_index = 16 * i + j;
+                tr.appendChild(this.color_cells_[td_index]);
+            }
+            this.tr_array_[i] = tr;
+        }
+        this.table_ = document.createElement("table");
+        this.table_.style.borderSpacing = "0";
+        for (let i = 0; i < 16; i++) {
+            this.table_.appendChild(this.tr_array_[i]);
+        }
+        for (let i = 0; i < 256; i++) {
+            this.color_cells_[i].addEventListener('click', () => {
+                select_color_callback(i);
+                ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+                ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[i]);
+                this.selected_index_ = i;
+                this.UpdateColorEditView();
+            });
+            this.color_cells_[i].addEventListener('dragstart', (event) => {
+                event.dataTransfer.setData("color_index", i.toString());
+            });
+            this.color_cells_[i].addEventListener('dragover', (event) => {
+                event.preventDefault();
+            });
+            this.color_cells_[i].addEventListener('drop', (event) => {
+                event.preventDefault();
+                const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
+                dad_color_cell_callback(drag_color_index, this.color_cells_[drag_color_index], i, this.color_cells_[i]);
+                const tmp_color = this.color_cells_[drag_color_index].style.backgroundColor;
+                this.color_cells_[drag_color_index].style.backgroundColor = this.color_cells_[i].style.backgroundColor;
+                this.color_cells_[i].style.backgroundColor = tmp_color;
+            });
+        }
+        /* for preset color palette UI */
+        this.preset_palette_selector_ = document.createElement("select");
+        const none_option = document.createElement("option");
+        none_option.value = "0";
+        none_option.innerText = "変更しない";
+        this.preset_palette_selector_.append(none_option);
+        for (let i = 0; i < preset_color_palettes.length; i++) {
+            const preset_option = document.createElement("option");
+            preset_option.value = (i + 1).toString();
+            preset_option.innerText = preset_color_palettes[i].caption;
+            this.preset_palette_selector_.append(preset_option);
+        }
+        this.preset_palette_selector_.selectedIndex = 0;
+        this.reset_color_palette_button_ = document.createElement("button");
+        this.reset_color_palette_button_.innerText = "リセット";
+        this.reset_color_palette_button_.addEventListener('click', (event) => {
+            const preset_command_index = parseInt(this.preset_palette_selector_.value);
+            if (preset_command_index === 0) {
+                return;
+            }
+            const preset_index = preset_command_index - 1;
+            const preset_color_palette = this.preset_color_palettes_[preset_index].colors;
+            for (let i = 0; i < 256; i++) {
+                const color_cell = this.color_cells_[i];
+                const color_string = preset_color_palette[i];
+                color_cell.style.backgroundColor = color_string;
+                change_color_callback(i, color_string);
+            }
+            this.UpdateColorEditView();
+            this.preset_palette_selector_.value = "0";
+        });
+        /* for color edit UI */
+        this.color_input_ = document.createElement("input");
+        this.color_caption_ = document.createElement("div");
+        this.color_caption_.style.float = "right";
+        this.UpdateColorEditView();
+        this.color_input_.type = "color";
+        this.color_input_.addEventListener('input', (event) => {
+            const i = this.selected_index_;
+            const new_color_string = event.target.value;
+            this.color_cells_[i].style.backgroundColor = new_color_string;
+            this.UpdateColorEditCaption();
+            change_color_callback(i, new_color_string);
+        });
+        this.preset_command_holder_ = document.createElement("div");
+        this.color_table_holder_ = document.createElement("div");
+        this.color_edit_holder_ = document.createElement("div");
+        this.holder_ = document.createElement("div");
+        this.preset_command_holder_.style.clear = "both";
+        this.color_table_holder_.style.clear = "both";
+        this.color_edit_holder_.style.clear = "both";
+        this.holder_.style.clear = "both";
+        this.preset_command_holder_.appendChild(this.preset_palette_selector_);
+        this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
+        this.color_table_holder_.appendChild(this.table_);
+        this.color_edit_holder_.appendChild(this.color_input_);
+        this.color_edit_holder_.appendChild(this.color_caption_);
+        this.holder_.appendChild(this.preset_command_holder_);
+        this.holder_.appendChild(this.color_table_holder_);
+        this.holder_.appendChild(this.color_edit_holder_);
+        return;
+    }
+    static SetUnselectedColorCellStyle(color_cell) {
+        color_cell.style.borderStyle = "solid";
+        color_cell.style.borderColor = "#000000";
+        color_cell.style.borderWidth = "1";
+    }
+    static SetSelectedColorCellStyle(color_cell) {
+        color_cell.style.borderStyle = "solid";
+        color_cell.style.borderColor = "#00ff00";
+        color_cell.style.borderWidth = "1";
+    }
+    static RgbStringToHexColor(rgb_string) {
         const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-        return [Number(r_string), Number(g_string), Number(b_string)];
-    };
-    function Serialize(color_palette, pixels, width, height) {
-        const bmp_width = Math.ceil(width / 4) * 4;
-        const pixels_size = bmp_width * height;
-        const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
-        const buffer = new ArrayBuffer(binary_size);
-        const bytes = new Uint8Array(buffer);
-        bytes[0] = 0x42;
-        bytes[1] = 0x4d;
-        /* Bitmap File Header */
-        Store32LE(bytes, 2, binary_size);
-        Store16LE(bytes, 6, 0);
-        Store16LE(bytes, 8, 0);
-        Store32LE(bytes, 10, pixels_offset);
-        /* Bitmap Info Header */
-        Store32LE(bytes, 14, 40);
-        Store32LE(bytes, 18, width);
-        Store32LE(bytes, 22, height);
-        Store16LE(bytes, 26, 1);
-        Store16LE(bytes, 28, 8);
-        Store32LE(bytes, 30, 0);
-        Store32LE(bytes, 34, pixels_size);
-        Store32LE(bytes, 38, 0);
-        Store32LE(bytes, 42, 0);
-        Store32LE(bytes, 46, 256);
-        Store32LE(bytes, 50, 256);
-        /* Color palette */
+        const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
+        const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
+        const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
+        return `#${r_hex}${g_hex}${b_hex}`;
+    }
+    UpdateColorEditCaption() {
+        const i = this.selected_index_;
+        const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+        this.color_caption_.innerText = `${i}:${color}`;
+    }
+    UpdateColorEditView() {
+        const i = this.selected_index_;
+        const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
+        this.color_input_.value = color;
+        this.color_caption_.innerText = `${i}:${color}`;
+    }
+    get node() {
+        return this.holder_;
+    }
+    GetColor(index) {
+        return this.color_cells_[index].style.backgroundColor;
+    }
+    GetColorTable() {
+        const color_table = new Array(256);
         for (let i = 0; i < 256; i++) {
-            const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
-            bytes[54 + 4 * i + 0] = b;
-            bytes[54 + 4 * i + 1] = g;
-            bytes[54 + 4 * i + 2] = r;
-            bytes[54 + 4 * i + 3] = 0;
+            color_table[i] = this.color_cells_[i].style.backgroundColor;
         }
-        /* pixels */
-        /* ラスタ座標系から数学座標系に入れ替えて出力する */
-        for (let h = 0; h < height; h++) {
-            for (let w = 0; w < width; w++) {
-                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-                bytes[offset] = pixels[h][w];
+        return color_table;
+    }
+    SetColor(index, color_string) {
+        this.color_cells_[index].style.backgroundColor = color_string;
+        if (this.selected_index_ === index) {
+            this.UpdateColorEditView();
+        }
+    }
+    SetColorTable(color_table) {
+        for (let i = 0; i < 256; i++) {
+            this.color_cells_[i].style.backgroundColor = color_table[i];
+        }
+        this.UpdateColorEditView();
+    }
+    SelectColorCell(color_index) {
+        ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
+        ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[color_index]);
+        this.selected_index_ = color_index;
+        this.UpdateColorEditView();
+    }
+}
+
+
+/***/ }),
+
+/***/ "./built/gui/download_button.js":
+/*!**************************************!*\
+  !*** ./built/gui/download_button.js ***!
+  \**************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "DonwloadButton": () => (/* binding */ DonwloadButton)
+/* harmony export */ });
+class DonwloadButton {
+    constructor(parent, caption, dldata_request_callback) {
+        this.link_ = document.createElement("a");
+        this.button_ = document.createElement("button");
+        this.link_.href = "#";
+        this.button_.innerText = caption;
+        this.button_.addEventListener('click', () => {
+            const [dldata_filename, dldata_blob] = dldata_request_callback();
+            const object_url = window.URL.createObjectURL(dldata_blob);
+            this.link_.href = object_url;
+            this.link_.download = dldata_filename;
+        });
+        this.link_.appendChild(this.button_);
+        parent.appendChild(this.link_);
+    }
+}
+
+
+/***/ }),
+
+/***/ "./built/gui/layer.js":
+/*!****************************!*\
+  !*** ./built/gui/layer.js ***!
+  \****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "LayerUi": () => (/* binding */ LayerUi),
+/* harmony export */   "LayerPaneUi": () => (/* binding */ LayerPaneUi)
+/* harmony export */ });
+class LayerUi {
+    constructor(parent, order, name, color, user_value) {
+        this.parent_ = parent;
+        this.user_value_ = user_value;
+        this.layer_frame_ = document.createElement("div");
+        this.layer_frame_.style.display = "flex";
+        this.layer_frame_.style.alignItems = "center";
+        this.tab_ = document.createElement("div");
+        this.tab_.style.width = (40).toString();
+        this.tab_.style.height = (32).toString();
+        this.tab_.style.backgroundColor = color;
+        this.tab_.style.display = "flex";
+        this.tab_.style.justifyContent = "center";
+        this.tab_.style.alignItems = "center";
+        this.thumbnail_ = document.createElement("canvas");
+        this.layer_lock_checkbox_ = document.createElement("input");
+        this.layer_view_checkbox_ = document.createElement("input");
+        this.layer_name_ = document.createElement("input");
+        this.thumbnail_.width = 16;
+        this.thumbnail_.height = 16;
+        this.layer_lock_checkbox_.type = "checkbox";
+        this.layer_lock_checkbox_.checked = false;
+        this.layer_view_checkbox_.type = "checkbox";
+        this.layer_view_checkbox_.checked = true;
+        this.layer_name_.type = "text";
+        this.layer_name_.value = name;
+        this.layer_name_.style.height = '1em';
+        this.layer_name_.style.paddingTop = (8).toString();
+        this.layer_name_.style.paddingBottom = (8).toString();
+        this.tab_.appendChild(this.thumbnail_);
+        this.layer_frame_.appendChild(this.tab_);
+        this.layer_frame_.appendChild(this.layer_lock_checkbox_);
+        this.layer_frame_.appendChild(this.layer_view_checkbox_);
+        this.layer_frame_.appendChild(this.layer_name_);
+        this.order_ = order;
+        this.layer_frame_.style.order = this.order_.toString();
+        this.layer_frame_.tabIndex = 0;
+        this.layer_frame_.style.backgroundColor = "rgb(255,255,255)";
+        this.parent_.appendChild(this.layer_frame_);
+    }
+    Destruct() {
+        this.parent_.removeChild(this.layer_frame_);
+        return this.user_value_;
+    }
+    FocusIn() {
+        this.layer_frame_.style.backgroundColor = 'rgb(0, 0, 255)';
+        this.layer_frame_.style.boxShadow = "0px 0px 0px 0px";
+        this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
+        this.Update(this.update_state_callback_, true, false);
+    }
+    FocusOut() {
+        this.layer_frame_.style.backgroundColor = 'rgb(255, 255, 255)';
+        this.layer_frame_.style.boxShadow = "0px 8px 16px -2px rgba(10,10,10,0.1), 2px 2px 3px 0px rgba(0,0,0,0.48) inset";
+        this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
+        this.Update(this.update_state_callback_, false, true);
+    }
+    Update(callback, is_focusin, is_focusout) {
+        callback(this.user_value_, this.order_, this.layer_name_.value, this.tab_.style.backgroundColor, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
+    }
+    DrawThumbnail(callback) {
+        callback(this.user_value_, this.order_, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, this.thumbnail_.getContext('2d'));
+    }
+    AddFoucsinCallback(callback) {
+        this.layer_frame_.addEventListener('focusin', (event) => {
+            callback(this);
+        });
+    }
+    AddUpdateStateCallback(callback) {
+        this.layer_lock_checkbox_.addEventListener('change', (event) => {
+            this.Update(callback, false, false);
+        });
+        this.layer_view_checkbox_.addEventListener('change', (event) => {
+            this.Update(callback, false, false);
+        });
+        this.layer_name_.addEventListener('change', (event) => {
+            this.Update(callback, false, false);
+        });
+        this.update_state_callback_ = callback;
+    }
+    get order() {
+        return this.order_;
+    }
+    set order(new_order) {
+        if (new_order < 0) {
+            return;
+        }
+        this.order_ = new_order;
+        this.layer_frame_.style.order = this.order_.toString();
+        this.Update(this.update_state_callback_, false, false);
+    }
+}
+class LayerPaneUi {
+    constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
+        this.layers_ = new Array(0);
+        this.frame_ = document.createElement("div");
+        this.command_holder_ = document.createElement("div");
+        this.new_layer_button_ = document.createElement("button");
+        this.up_layer_button_ = document.createElement("button");
+        this.down_layer_button_ = document.createElement("button");
+        this.delete_layer_button_ = document.createElement("button");
+        this.layer_holder_ = document.createElement("div");
+        this.current_layer_ = null;
+        this.command_holder_.style.display = "flex";
+        this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
+        this.layer_holder_.style.display = "flex";
+        this.layer_holder_.style.flexDirection = "column-reverse";
+        this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
+        this.new_layer_button_.innerText = "＋";
+        this.up_layer_button_.innerText = "▲";
+        this.down_layer_button_.innerText = "▼";
+        this.delete_layer_button_.innerText = "×";
+        this.new_layer_button_.addEventListener('click', (event) => {
+            const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
+            const [layer_name, color, user_value] = this.register_callback_(registration_order);
+            this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
+        });
+        this.up_layer_button_.addEventListener('click', (event) => {
+            this.UpLayer(this.current_layer_.order);
+        });
+        this.down_layer_button_.addEventListener('click', (event) => {
+            this.DownLayer(this.current_layer_.order);
+        });
+        this.delete_layer_button_.addEventListener('click', (event) => {
+            if (1 < this.layers_.length) {
+                this.DeleteCurrentLayer();
+            }
+        });
+        this.register_callback_ = register_callback;
+        this.removed_callback_ = destructed_callback;
+        this.swap_callback_ = swap_callback;
+        this.updated_state_callback_ = updated_state_callback;
+        this.draw_thumbnail_callback_ = draw_thumbnail_callback;
+        this.command_holder_.appendChild(this.new_layer_button_);
+        this.command_holder_.appendChild(this.up_layer_button_);
+        this.command_holder_.appendChild(this.down_layer_button_);
+        this.command_holder_.appendChild(this.delete_layer_button_);
+        this.frame_.appendChild(this.command_holder_);
+        this.frame_.appendChild(this.layer_holder_);
+        return;
+    }
+    ChangeFocus(focus_in_layer) {
+        if (focus_in_layer === this.current_layer_) {
+            return;
+        }
+        focus_in_layer.FocusIn();
+        if (this.current_layer_ !== null) {
+            this.current_layer_.FocusOut();
+        }
+        this.current_layer_ = focus_in_layer;
+        return;
+    }
+    SwapLayer(lh_order, rh_order) {
+        let lh_layer = null;
+        let rh_layer = null;
+        for (let layer of this.layers_) {
+            if (layer.order === lh_order) {
+                lh_layer = layer;
+            }
+            if (layer.order === rh_order) {
+                rh_layer = layer;
+            }
+            if ((lh_layer !== null) && (rh_layer !== null)) {
+                break;
             }
         }
-        return bytes;
+        if (lh_layer === null) {
+            return false;
+        }
+        if (rh_layer === null) {
+            return false;
+        }
+        const tmp_order = lh_layer.order;
+        lh_layer.order = rh_layer.order;
+        rh_layer.order = tmp_order;
+        return true;
     }
-    WindowsIndexColorBitmap.Serialize = Serialize;
-    function Deserialize(buffer) {
-        const bytes = new Uint8Array(buffer);
-        console.log(bytes[0]);
-        console.log(bytes[1]);
-        if (bytes[0] !== 0x42) {
-            return null;
+    CalculateRegistrationOrder(insert_target_order) {
+        if (this.layers_.length === 0) {
+            return 0;
         }
-        if (bytes[1] !== 0x4d) {
-            return null;
+        return Math.min(insert_target_order, this.layers_.length - 1) + 1;
+    }
+    CreateNewLayer(insert_target_order, layer_name, color, user_value) {
+        const registration_order = this.CalculateRegistrationOrder(insert_target_order);
+        if (0 < registration_order) {
+            for (let layer of this.layers_) {
+                if (registration_order <= layer.order) {
+                    layer.order++;
+                }
+            }
+            insert_target_order += 1;
         }
-        if (Load32LE(bytes, 10) !== pixels_offset) {
-            return null;
+        const new_layer = new LayerUi(this.layer_holder_, insert_target_order, layer_name, color, user_value);
+        new_layer.AddFoucsinCallback((focus_in_layer) => { this.ChangeFocus(focus_in_layer); });
+        new_layer.AddUpdateStateCallback(this.updated_state_callback_);
+        this.layers_.push(new_layer);
+        this.ChangeFocus(new_layer);
+        return;
+    }
+    DeleteCurrentLayer() {
+        if (this.current_layer_ === null) {
+            return;
         }
-        if (Load16LE(bytes, 26) !== 1) {
-            return null;
+        if (this.layers_.length === 1) {
+            const destructed_order = this.current_layer_.order;
+            const user_value = this.current_layer_.Destruct();
+            this.removed_callback_(user_value, destructed_order);
+            this.current_layer_ = null;
+            this.layers_.splice(0, 1);
+            return;
         }
-        if (Load16LE(bytes, 28) !== 8) {
-            return null;
-        }
-        const width = Load32LE(bytes, 18);
-        const height = Load32LE(bytes, 22);
-        const bmp_width = Math.ceil(width / 4) * 4;
-        const color_palette = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            const b = bytes[54 + 4 * i + 0];
-            const g = bytes[54 + 4 * i + 1];
-            const r = bytes[54 + 4 * i + 2];
-            color_palette[i] = `rgb(${r},${g},${b})`;
-        }
-        /* pixels */
-        /* 数学座標系からラスタ座標系に入れ替えて読みこむ */
-        const pixels = Misc.Make2dArray(width, height, 0);
-        for (let h = 0; h < height; h++) {
-            for (let w = 0; w < width; w++) {
-                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
-                pixels[h][w] = bytes[offset];
+        let target_index;
+        for (target_index = 0; target_index < this.layers_.length; target_index++) {
+            if (this.layers_[target_index] === this.current_layer_) {
+                break;
             }
         }
-        return [color_palette, pixels, width, height];
+        this.layers_.splice(target_index, 1);
+        const current_order = Math.min(this.current_layer_.order, this.layers_.length - 1);
+        for (let layer of this.layers_) {
+            if (current_order < layer.order) {
+                layer.order--;
+            }
+            if (current_order === layer.order) {
+                const destructed_order = this.current_layer_.order;
+                const user_value = this.current_layer_.Destruct();
+                this.removed_callback_(user_value, destructed_order);
+                this.current_layer_ = layer;
+            }
+        }
+        this.current_layer_.FocusIn();
+        return;
     }
-    WindowsIndexColorBitmap.Deserialize = Deserialize;
-})(WindowsIndexColorBitmap || (WindowsIndexColorBitmap = {}));
+    DeleteAll() {
+        const num_layers = this.layers_.length;
+        for (let i = 0; i < num_layers; i++) {
+            this.DeleteCurrentLayer();
+        }
+    }
+    CreateNewLayers(creation_parameters) {
+        const ordered_parameters = Array(creation_parameters.length);
+        for (let parameter of creation_parameters) {
+            ordered_parameters[parameter[0]] = parameter;
+        }
+        for (let parameter of ordered_parameters) {
+            parameter[0] = Math.max(0, parameter[0] - 1);
+            this.CreateNewLayer(...parameter);
+        }
+    }
+    UpLayer(target_order) {
+        if (this.SwapLayer(target_order, target_order + 1)) {
+            this.swap_callback_(target_order, target_order + 1);
+        }
+        return;
+    }
+    DownLayer(target_order) {
+        if (this.SwapLayer(target_order, target_order - 1)) {
+            this.swap_callback_(target_order, target_order - 1);
+        }
+        return;
+    }
+    Draw() {
+        for (let layer of this.layers_) {
+            layer.DrawThumbnail(this.draw_thumbnail_callback_);
+        }
+    }
+    get node() {
+        return this.frame_;
+    }
+}
+
+
+/***/ }),
+
+/***/ "./built/gui/preview_window.js":
+/*!*************************************!*\
+  !*** ./built/gui/preview_window.js ***!
+  \*************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "PreviewWindowUi": () => (/* binding */ PreviewWindowUi)
+/* harmony export */ });
+class PreviewWindowUi {
+    constructor(width, height) {
+        this.canvas_ = document.createElement("canvas");
+        this.canvas_.width = width;
+        this.canvas_.height = height;
+        this.canvas_.style.margin = "auto";
+        this.canvas_frame_ = document.createElement("div");
+        this.canvas_frame_.style.display = "flex";
+        this.canvas_frame_.appendChild(this.canvas_);
+        this.scale_selector_ = document.createElement("select");
+        const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+        for (let scale of scale_array) {
+            const scale_option = document.createElement("option");
+            scale_option.value = scale.toString();
+            scale_option.innerText = `x${scale}`;
+            this.scale_selector_.appendChild(scale_option);
+        }
+        this.command_frame_ = document.createElement("div");
+        this.command_frame_.style.textAlign = "right";
+        this.command_frame_.innerText = "表示倍率";
+        this.command_frame_.appendChild(this.scale_selector_);
+        this.holder_ = document.createElement("div");
+        this.holder_.appendChild(this.command_frame_);
+        this.holder_.appendChild(this.canvas_frame_);
+    }
+    get node() {
+        return this.holder_;
+    }
+    Draw(pixels, color_table, width, height) {
+        const view_scale = parseInt(this.scale_selector_.value);
+        if (this.canvas_.width !== width * view_scale) {
+            this.canvas_.width = width * view_scale;
+        }
+        if (this.canvas_.height !== height * view_scale) {
+            this.canvas_.height = height * view_scale;
+        }
+        const context = this.canvas_.getContext("2d");
+        context.imageSmoothingEnabled = false;
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.scale(view_scale, view_scale);
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                const color_index = pixels[h][w];
+                context.fillStyle = color_table[color_index];
+                context.fillRect(w, h, 1, 1);
+            }
+        }
+    }
+}
+
+
+/***/ }),
+
+/***/ "./built/gui/sprite_animation_preview_window.js":
+/*!******************************************************!*\
+  !*** ./built/gui/sprite_animation_preview_window.js ***!
+  \******************************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "SpriteAnimationPreviewWindowUi": () => (/* binding */ SpriteAnimationPreviewWindowUi)
+/* harmony export */ });
+const CreateLeftBox = function () {
+    const div = document.createElement("div");
+    div.style.float = "left";
+    return div;
+};
+const CreateRightBox = function () {
+    const div = document.createElement("div");
+    div.style.float = "right";
+    return div;
+};
+const CreateText = function (text) {
+    const span = document.createElement("span");
+    span.innerText = text;
+    return span;
+};
+class SpriteAnimationPreviewWindowUi {
+    constructor(width, height) {
+        this.sprite_width_ = document.createElement("input");
+        this.sprite_height_ = document.createElement("input");
+        this.sprite_width_.type = "number";
+        this.sprite_height_.type = "number";
+        this.sprite_width_.min = "1";
+        this.sprite_height_.min = "1";
+        this.sprite_width_.value = width.toString();
+        this.sprite_height_.value = height.toString();
+        this.scale_selector_ = document.createElement("select");
+        const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
+        for (let scale of scale_array) {
+            const scale_option = document.createElement("option");
+            scale_option.value = scale.toString();
+            scale_option.innerText = `x${scale}`;
+            this.scale_selector_.appendChild(scale_option);
+        }
+        this.scale_selector_holder_ = CreateRightBox();
+        this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
+        this.scale_selector_holder_.appendChild(this.scale_selector_);
+        this.size_frame_ = document.createElement("div");
+        this.size_frame_.appendChild(CreateText("サイズ"));
+        this.size_frame_.appendChild(this.sprite_width_);
+        this.size_frame_.appendChild(CreateText("x"));
+        this.size_frame_.appendChild(this.sprite_height_);
+        this.size_frame_.appendChild(this.scale_selector_holder_);
+        this.animation_step_par_frame_ = document.createElement("input");
+        this.animation_step_par_frame_.type = "number";
+        this.animation_step_par_frame_.min = "1";
+        this.animation_step_par_frame_.value = "1";
+        this.animation_playback_button_ = document.createElement("button");
+        this.animation_playback_button_.innerText = "▶︎";
+        this.is_playing_ = false;
+        this.animation_playback_button_.addEventListener('click', (event) => {
+            const button = event.target;
+            button.innerText = this.is_playing_ === true ? "▶︎" : "■";
+            this.is_playing_ = !this.is_playing_;
+        });
+        this.command_frame_ = document.createElement("div");
+        this.command_frame_.appendChild(this.animation_step_par_frame_);
+        this.command_frame_.appendChild(CreateText("/１コマ"));
+        this.command_frame_.appendChild(this.animation_playback_button_);
+        this.canvas_ = document.createElement("canvas");
+        this.canvas_.width = width;
+        this.canvas_.height = height;
+        this.canvas_.style.margin = "auto";
+        this.canvas_frame_ = document.createElement("div");
+        this.canvas_frame_.style.display = "flex";
+        this.canvas_frame_.appendChild(this.canvas_);
+        this.sprite_animation_indices_ = new Array(0);
+        this.sprite_indices_ = document.createElement("textarea");
+        this.sprite_indices_.style.height = "1.4em";
+        this.sprite_indices_.innerText = "0";
+        this.settings_frame_ = document.createElement("div");
+        this.settings_frame_.appendChild(this.sprite_indices_);
+        this.holder_ = document.createElement("div");
+        this.holder_.appendChild(this.size_frame_);
+        this.holder_.appendChild(this.command_frame_);
+        this.holder_.appendChild(this.canvas_frame_);
+        this.holder_.appendChild(this.settings_frame_);
+    }
+    UpdateSpriteIndicesArray() {
+        const index_strings = this.sprite_indices_.value.split(',');
+        this.sprite_animation_indices_.length = 0;
+        for (let index_string of index_strings) {
+            const parsed = parseInt(index_string);
+            if (!isNaN(parsed)) {
+                this.sprite_animation_indices_.push(parsed);
+            }
+        }
+    }
+    get node() {
+        return this.holder_;
+    }
+    Draw(pixels, color_table, width, height, frame_count) {
+        if (!this.is_playing_) {
+            return;
+        }
+        this.UpdateSpriteIndicesArray();
+        const num_indeices = this.sprite_animation_indices_.length;
+        if (0 === num_indeices) {
+            return;
+        }
+        const step_par_frame = Math.max(1, this.animation_step_par_frame_.valueAsNumber);
+        const frame_number = Math.floor(frame_count / step_par_frame) % num_indeices;
+        const sprite_index = this.sprite_animation_indices_[frame_number];
+        const sprite_w = Math.max(1, Math.min(width, this.sprite_width_.valueAsNumber));
+        const sprite_h = Math.max(1, Math.min(height, this.sprite_height_.valueAsNumber));
+        const sprite_count_in_w = Math.floor(width / sprite_w);
+        const sprite_count_in_h = Math.floor(height / sprite_h);
+        const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
+        if (max_sprite_index <= sprite_index) {
+            return;
+        }
+        const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
+        const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
+        const max_w = Math.min(pixel_w_offset + sprite_w, width);
+        const max_h = Math.min(pixel_h_offset + sprite_h, height);
+        const view_scale = parseInt(this.scale_selector_.value);
+        if (this.canvas_.width !== sprite_w * view_scale) {
+            this.canvas_.width = sprite_w * view_scale;
+        }
+        if (this.canvas_.height !== sprite_h * view_scale) {
+            this.canvas_.height = sprite_h * view_scale;
+        }
+        const context = this.canvas_.getContext('2d');
+        context.imageSmoothingEnabled = false;
+        context.setTransform(1, 0, 0, 1, 0, 0);
+        context.scale(view_scale, view_scale);
+        for (let h = pixel_h_offset; h < max_h; h++) {
+            for (let w = pixel_w_offset; w < max_w; w++) {
+                const color_index = pixels[h][w];
+                context.fillStyle = color_table[color_index];
+                context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
+            }
+        }
+        return;
+    }
+}
+
+
+/***/ }),
+
+/***/ "./built/gui/tab_pane.js":
+/*!*******************************!*\
+  !*** ./built/gui/tab_pane.js ***!
+  \*******************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "TabPaneUi": () => (/* binding */ TabPaneUi)
+/* harmony export */ });
+class TabPaneUi {
+    constructor() {
+        if (TabPaneUi.tab_content_class_style_ === null) {
+            const style = document.createElement("style");
+            style.innerText
+                = `.tab_content {`
+                    + `display: none;`
+                    + `clear: both;`
+                    + `overflow: scroll;`
+                    + `resize: both;`
+                    + `}`
+                    + `input[name="tab_tags"] {`
+                    + `display: none;`
+                    + `}`
+                    + `.tab_tag {`
+                    + `text-align: center;`
+                    + `display: block;`
+                    + `float: left;`
+                    + `order: -1;`
+                    + `margin: 2px 2px 0px;`
+                    + `}`
+                    + `input:checked + .tab_tag + .tab_content {`
+                    + `display: block;`
+                    + `}`;
+            document.getElementsByTagName("head").item(0).appendChild(style);
+            TabPaneUi.tab_content_class_style_ = style;
+        }
+        this.tab_frame_ = document.createElement("div");
+        this.tab_frame_.style.display = "grid";
+        //this.tab_frame_.style.gridAutoColumns = "max-content";
+        this.tab_frame_.style.gridAutoColumns = "1fr";
+        this.tab_frame_.style.gridAutoRows = "max-content";
+        this.tab_frame_.style.gridTemplateAreas = `"t0" "c"`;
+        this.current_tab_ = null;
+        this.local_tab_count_ = 0;
+    }
+    FitSize() {
+        if (!("width" in this.current_tab_.style)) {
+            return;
+        }
+        const contents = this.tab_frame_.getElementsByClassName("tab_content");
+        const length = contents.length;
+        for (let i = 0; i < length; i++) {
+            contents[i].style.width = this.current_tab_.style.width;
+            contents[i].style.height = this.current_tab_.style.height;
+        }
+        return;
+    }
+    AddTab(content, tab_title) {
+        const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
+        const tab_radio = document.createElement("input");
+        tab_radio.type = "radio";
+        tab_radio.id = tag_id;
+        tab_radio.name = "tab_tags";
+        const tab_label = document.createElement("label");
+        tab_label.htmlFor = tag_id;
+        tab_label.innerText = tab_title;
+        tab_label.className = "tab_tag";
+        tab_label.style.backgroundColor = content.style.backgroundColor;
+        tab_label.style.gridArea = `t${this.local_tab_count_}`;
+        const content_frame = document.createElement("div");
+        content_frame.appendChild(content);
+        content_frame.className = "tab_content";
+        content_frame.style.backgroundColor = content.style.backgroundColor;
+        content_frame.style.order = "1";
+        content_frame.style.gridArea = "c";
+        if (this.tab_frame_.childElementCount === 0) {
+            tab_radio.checked = true;
+            this.current_tab_ = content_frame;
+        }
+        tab_radio.addEventListener("change", (event) => {
+            this.FitSize();
+            this.current_tab_ = content_frame;
+        });
+        this.local_tab_count_++;
+        const tag_grids = new Array(this.local_tab_count_);
+        const content_grids = new Array(this.local_tab_count_);
+        for (let i = 0; i < this.local_tab_count_; i++) {
+            tag_grids[i] = `t${i}`;
+            content_grids[i] = "c";
+        }
+        this.tab_frame_.style.gridTemplateAreas = `"${tag_grids.join(" ")}" "${content_grids.join(" ")}"`;
+        this.tab_frame_.appendChild(tab_radio);
+        this.tab_frame_.appendChild(tab_label);
+        this.tab_frame_.appendChild(content_frame);
+        TabPaneUi.global_tab_count_++;
+        return;
+    }
+    get node() {
+        return this.tab_frame_;
+    }
+}
+TabPaneUi.tab_content_class_style_ = null;
+TabPaneUi.global_tab_count_ = 0;
+
+
+/***/ }),
+
+/***/ "./built/misc.js":
+/*!***********************!*\
+  !*** ./built/misc.js ***!
+  \***********************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "Misc": () => (/* binding */ Misc)
+/* harmony export */ });
 var Misc;
 (function (Misc) {
     function Make2dArray(width, height, initial_value) {
@@ -753,1271 +2023,226 @@ var Misc;
     }
     Misc.MakeHSVBalancedColorList = MakeHSVBalancedColorList;
 })(Misc || (Misc = {}));
-var UiParts;
-(function (UiParts) {
-    class CanvasUi {
-        constructor(width, height, resize_cb) {
-            /* for Canvas Size */
-            this.canvas_width_spin_ = CanvasUi.CreateNumberInput(1, 512);
-            this.canvas_height_spin_ = CanvasUi.CreateNumberInput(1, 512);
-            this.canvas_width_spin_.value = width.toString();
-            this.canvas_height_spin_.value = height.toString();
-            /* 最初の描画のために必ず差分が発生するように初期化しておく */
-            this.last_width_ = 0;
-            this.last_height_ = 0;
-            /* view grid checkbox */
-            [this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, CanvasUi.CreateSmallGridIcon(24));
-            [this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, CanvasUi.CreateLargeGridIcon(24));
-            [this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, CanvasUi.CreateText("色番号"));
-            this.last_small_grid_view_ = false;
-            this.last_large_grid_view_ = false;
-            this.last_color_index_view_ = false;
-            this.last_large_grid_width_ = 0;
-            this.last_large_grid_height_ = 0;
-            this.last_small_grid_color_ = '#000000';
-            /* for Scale selector */
-            this.scale_selector_ = document.createElement("select");
-            const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
-            for (let i = 0; i < scales.length; i++) {
-                const preset_option = document.createElement("option");
-                preset_option.value = scales[i].toString();
-                preset_option.innerText = `x${scales[i]}`;
-                this.scale_selector_.append(preset_option);
-            }
-            this.scale_selector_.selectedIndex = 0;
-            this.last_scale_ = 1;
-            /* settings holder */
-            this.settings_holder_ = document.createElement("div");
-            this.settings_holder_.appendChild(this.canvas_width_spin_);
-            this.settings_holder_.appendChild(this.canvas_height_spin_);
-            this.settings_holder_.appendChild(this.small_grid_view_);
-            this.settings_holder_.appendChild(this.small_grid_label_);
-            this.settings_holder_.appendChild(this.large_grid_view_);
-            this.settings_holder_.appendChild(this.large_grid_label_);
-            this.settings_holder_.appendChild(this.color_index_view_);
-            this.settings_holder_.appendChild(this.color_index_label_);
-            this.settings_holder_.appendChild(this.scale_selector_);
-            this.settings_holder_.style.backgroundColor = "gray";
-            this.settings_holder_.style.display = "flex";
-            this.settings_holder_.style.padding = "2px 0px 2px 2px";
-            /* for Canvas */
-            this.canvas_ = document.createElement("canvas");
-            this.canvas_.width = width;
-            this.canvas_.height = height;
-            this.canvas_.addEventListener("contextmenu", (event) => {
-                event.preventDefault();
-                return false;
-            });
-            this.canvas_box_ = document.createElement("div");
-            this.canvas_box_.style.width = "max-content";
-            this.canvas_box_.style.height = "max-content";
-            this.canvas_frame_ = document.createElement("div");
-            this.canvas_frame_.style.overflow = "scroll";
-            this.canvas_frame_.style.resize = "both";
-            this.canvas_frame_.style.clear = "both";
-            this.canvas_box_.appendChild(this.canvas_);
-            this.canvas_frame_.appendChild(this.canvas_box_);
-            this.last_pixels_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(0))));
-            this.last_pixel_mask_ = JSON.parse(JSON.stringify((new Array(512)).fill((new Array(512)).fill(false))));
-            this.last_colors_ = JSON.parse(JSON.stringify(new Array(256).fill('#000000')));
-            this.last_selected_rectangle_area_ = null;
-            /* compose */
-            this.holder_ = document.createElement("div");
-            this.holder_.appendChild(this.settings_holder_);
-            this.holder_.appendChild(this.canvas_frame_);
-            this.resize_cb_ = resize_cb;
-            this.canvas_width_spin_.addEventListener("input", (event) => {
-                const width = event.target.valueAsNumber;
-                const height = this.canvas_height_spin_.valueAsNumber;
-                if (!isNaN(width) && !isNaN(height)) {
-                    resize_cb(width, height);
-                }
-            });
-            this.canvas_height_spin_.addEventListener("input", (event) => {
-                const height = event.target.valueAsNumber;
-                const width = this.canvas_width_spin_.valueAsNumber;
-                if (!isNaN(width) && !isNaN(height)) {
-                    resize_cb(width, height);
-                }
-            });
-        }
-        static CreateNumberInput(minimum, maximum) {
-            const element = document.createElement("input");
-            element.type = "number";
-            element.min = minimum.toString();
-            element.max = maximum.toString();
-            return element;
-        }
-        static CreateCheckBox(checkbox_id, label_content) {
-            const checkbox = document.createElement("input");
-            checkbox.type = "checkbox";
-            checkbox.id = checkbox_id;
-            const label = document.createElement("label");
-            label.htmlFor = checkbox.id;
-            label.appendChild(label_content);
-            return [checkbox, label];
-        }
-        static DrawLine(canvas_context, start_x, start_y, end_x, end_y) {
-            canvas_context.moveTo(start_x, start_y);
-            canvas_context.lineTo(end_x, end_y);
-            return;
-        }
-        static CreateSmallGridIcon(icon_size) {
-            const icon = document.createElement("canvas");
-            icon.width = icon_size;
-            icon.height = icon_size;
-            const icon_context = icon.getContext("2d");
-            icon_context.fillStyle = "#101010";
-            icon_context.fillRect(0, 0, icon_size, icon_size);
-            icon_context.beginPath();
-            icon_context.lineWidth = 1;
-            icon_context.strokeStyle = "#909090";
-            for (let i = -0.5; i < icon_size; i += 4) {
-                CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
-                CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
-            }
-            icon_context.stroke();
-            return icon;
-        }
-        static CreateLargeGridIcon(icon_size) {
-            const icon = CanvasUi.CreateSmallGridIcon(icon_size);
-            const icon_context = icon.getContext("2d");
-            icon_context.beginPath();
-            icon_context.lineWidth = 1;
-            icon_context.strokeStyle = "#ffff00";
-            for (let i = -0.5; i < icon_size; i += 8) {
-                CanvasUi.DrawLine(icon_context, i, 0, i, icon_size);
-                CanvasUi.DrawLine(icon_context, 0, i, icon_size, i);
-            }
-            icon_context.stroke();
-            return icon;
-        }
-        static CreateText(text) {
-            const span = document.createElement("span");
-            span.innerText = text;
-            return span;
-        }
-        get node() {
-            return this.holder_;
-        }
-        get canvas() {
-            return this.canvas_;
-        }
-        static PartiallyDrawGrid(canvas_context, w_grid_set, h_grid_set, width, height, scale, grid_color) {
-            canvas_context.beginPath();
-            const line_height = height;
-            const line_width = width;
-            const adjust_e = -(1 / scale) / 2;
-            for (let w of w_grid_set) {
-                const x = (w + 1) + adjust_e;
-                CanvasUi.DrawLine(canvas_context, x, -0.5, x, line_height + 0.5);
-            }
-            for (let h of h_grid_set) {
-                const y = (h + 1) + adjust_e;
-                CanvasUi.DrawLine(canvas_context, -0.5, y, line_width + 0.5, y);
-            }
-            canvas_context.lineWidth = 1 / scale;
-            canvas_context.strokeStyle = grid_color;
-            canvas_context.stroke();
-        }
-        static DrawSmallGrid(canvas_context, width, height, scale, grid_color) {
-            const all_w_grid_set = new Set();
-            const all_h_grid_set = new Set();
-            for (var w = 0; w < width; w++) {
-                all_w_grid_set.add(w);
-            }
-            for (var h = 0; h < height; h++) {
-                all_h_grid_set.add(h);
-            }
-            CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
-        }
-        static DrawLargeGrid(canvas_context, width, height, scale, grid_color, grid_width, grid_height) {
-            const all_w_grid_set = new Set();
-            const all_h_grid_set = new Set();
-            const large_grid_width = Math.min(512, Math.max(2, grid_width));
-            const large_grid_height = Math.min(512, Math.max(2, grid_height));
-            for (var w = large_grid_width; w <= width; w += large_grid_width) {
-                all_w_grid_set.add(w - 1);
-            }
-            for (var h = large_grid_height; h <= height; h += large_grid_height) {
-                all_h_grid_set.add(h - 1);
-            }
-            canvas_context.setLineDash([0.5, 0.5]);
-            CanvasUi.PartiallyDrawGrid(canvas_context, all_w_grid_set, all_h_grid_set, width, height, scale, grid_color);
-            canvas_context.setLineDash([]);
-        }
-        static PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color) {
-            const font_size = 8;
-            canvas_context.save();
-            canvas_context.textAlign = "center";
-            canvas_context.textBaseline = "middle";
-            canvas_context.font = `8px gothic`;
-            canvas_context.fillStyle = color;
-            canvas_context.scale(1 / scale, 1 / scale);
-            const y_offset = font_size / 2;
-            target_pixel_set.forEach((pixel_index) => {
-                const w = Math.floor(pixel_index % width);
-                const h = Math.floor(pixel_index / width);
-                const dst_x = w * scale;
-                const dst_y = h * scale;
-                const ci = pixels[h][w];
-                const x_offset = scale - String(ci).length * (font_size / 2 - 1) - 1;
-                canvas_context.fillText(ci.toString(), dst_x + x_offset, dst_y + y_offset);
-            });
-            canvas_context.restore();
-        }
-        static DrawColorIndex(canvas_context, pixels, width, height, scale, color) {
-            const target_pixel_set = new Set();
-            for (var h = 0; h < height; h++) {
-                for (var w = 0; w < width; w++) {
-                    target_pixel_set.add(h * width + w);
-                }
-            }
-            CanvasUi.PartiallyDrawColorIndex(canvas_context, pixels, target_pixel_set, width, height, scale, color);
-        }
-        static DrawSelectedRectangleArea(canvas_context, rectangle, scale, frame_count) {
-            const e_ = 0.5;
-            canvas_context.setTransform(1, 0, 0, 1, 0, 0);
-            const point_left = rectangle.left * scale + e_;
-            const point_top = rectangle.top * scale + e_;
-            const point_right = (rectangle.right + 1) * scale - e_;
-            const point_bottom = (rectangle.bottom + 1) * scale - e_;
-            canvas_context.setLineDash([4, 4]);
-            canvas_context.lineWidth = 1;
-            canvas_context.beginPath();
-            canvas_context.strokeStyle = "#ffffff";
-            canvas_context.lineDashOffset = frame_count % 8;
-            CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
-            CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
-            CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
-            CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
-            canvas_context.stroke();
-            canvas_context.beginPath();
-            canvas_context.strokeStyle = "#000000";
-            canvas_context.lineDashOffset = (frame_count + 4) % 8;
-            CanvasUi.DrawLine(canvas_context, point_left, point_top, point_right, point_top);
-            CanvasUi.DrawLine(canvas_context, point_right, point_top, point_right, point_bottom);
-            CanvasUi.DrawLine(canvas_context, point_right, point_bottom, point_left, point_bottom);
-            CanvasUi.DrawLine(canvas_context, point_left, point_bottom, point_left, point_top);
-            canvas_context.stroke();
-            canvas_context.setLineDash([]);
-        }
-        static ExtractTouchedPixelsAndGrids(current_pixels, last_pixels, current_pixel_mask, last_pixel_mask, width, height, current_colors, last_colors, last_selected_rectangle_area) {
-            const pixel_index_set = new Set();
-            const grid_w_set = new Set();
-            const grid_h_set = new Set();
-            /* ピクセル値の変化差分を抽出 */
-            for (let h = 0; h < height; h++) {
-                for (let w = 0; w < width; w++) {
-                    let is_touched = false;
-                    if (last_pixels[h][w] !== current_pixels[h][w]) {
-                        is_touched = true;
-                    }
-                    else if (last_pixel_mask[h][w] !== current_pixel_mask[h][w]) {
-                        is_touched = true;
-                    }
-                    else {
-                        /* 色が変わっている場合も更新対象 */
-                        const ci = last_pixels[h][w];
-                        if (last_colors[ci] !== current_colors[ci]) {
-                            is_touched = true;
-                        }
-                    }
-                    if (is_touched) {
-                        pixel_index_set.add(h * width + w);
-                        grid_w_set.add(w);
-                        grid_h_set.add(h);
-                    }
-                }
-            }
-            /* 前回の矩形選択範囲の線を描画したピクセルは今回上書きが必要 */
-            if (last_selected_rectangle_area !== null) {
-                const rect = last_selected_rectangle_area;
-                if (rect.top === rect.bottom) {
-                    for (let w = rect.left; w <= rect.right; w++) {
-                        pixel_index_set.add(rect.top * width + w);
-                    }
-                }
-                else {
-                    for (let w = rect.left; w <= rect.right; w++) {
-                        pixel_index_set.add(rect.top * width + w);
-                        pixel_index_set.add(rect.bottom * width + w);
-                    }
-                }
-                const offset_top = rect.top + 1;
-                const offset_bottom = rect.bottom - 1;
-                if (0 <= (offset_bottom - offset_top)) {
-                    if (rect.left === rect.right) {
-                        for (let h = offset_top; h <= offset_bottom; h++) {
-                            pixel_index_set.add(h * width + rect.left);
-                        }
-                    }
-                    else {
-                        for (let h = offset_top; h <= offset_bottom; h++) {
-                            pixel_index_set.add(h * width + rect.left);
-                            pixel_index_set.add(h * width + rect.right);
-                        }
-                    }
-                }
-                for (let h = rect.top; h <= rect.bottom; h++) {
-                    for (let w = rect.left; w <= rect.right; w++) {
-                        grid_w_set.add(w);
-                        grid_h_set.add(h);
-                    }
-                }
-            }
-            return [pixel_index_set, grid_w_set, grid_h_set];
-        }
-        UpdateParameters(large_grid_width, large_grid_height, small_grid_color) {
-            const scale = parseInt(this.scale_selector_.value);
-            let width = parseInt(this.canvas_width_spin_.value);
-            let height = parseInt(this.canvas_height_spin_.value);
-            const small_grid_view = this.small_grid_view_.checked;
-            const large_grid_view = this.large_grid_view_.checked;
-            const color_index_view = this.color_index_view_.checked;
-            if (isNaN(width)) {
-                width = this.last_width_;
-            }
-            if (isNaN(height)) {
-                height = this.last_height_;
-            }
-            if (this.canvas_.width !== width * scale) {
-                this.canvas_.width = width * scale;
-            }
-            if (this.canvas_.height !== height * scale) {
-                this.canvas_.height = height * scale;
-            }
-            const need_update_all = (this.last_scale_ !== scale)
-                || (this.last_width_ !== width)
-                || (this.last_height_ !== height)
-                || (this.last_small_grid_view_ !== small_grid_view)
-                || (this.last_large_grid_view_ !== large_grid_view)
-                || (this.last_large_grid_width_ !== large_grid_width)
-                || (this.last_large_grid_height_ !== large_grid_height)
-                || (this.last_color_index_view_ !== color_index_view)
-                || (this.last_small_grid_color_ !== small_grid_color);
-            this.last_scale_ = scale;
-            this.last_width_ = width;
-            this.last_height_ = height;
-            this.last_small_grid_view_ = small_grid_view;
-            this.last_large_grid_view_ = large_grid_view;
-            this.last_large_grid_width_ = large_grid_width;
-            this.last_large_grid_height_ = large_grid_height;
-            this.last_color_index_view_ = color_index_view;
-            this.last_small_grid_color_ = small_grid_color;
-            return need_update_all ? "need_all" : "partial";
-        }
-        Draw(pixels, pixels_mask, color_table, small_grid_color, large_grid_width, large_grid_height, large_grid_color, selected_rectangle_area, frame_count) {
-            const draw_type = this.UpdateParameters(large_grid_width, large_grid_height, small_grid_color);
-            const scale = this.last_scale_;
-            const width = this.last_width_;
-            const height = this.last_height_;
-            const context = this.canvas_.getContext("2d");
-            context.imageSmoothingEnabled = false;
-            context.setTransform(1, 0, 0, 1, 0, 0);
-            context.scale(scale, scale);
-            if (draw_type === "need_all") {
-                /* ピクセル描画 */
-                for (let h = 0; h < height; h++) {
-                    for (let w = 0; w < width; w++) {
-                        const color_index = pixels[h][w];
-                        context.fillStyle = color_table[color_index];
-                        context.fillRect(w, h, 1, 1);
-                    }
-                }
-                /* マスク表示 */
-                context.fillStyle = '#ff0000';
-                context.globalAlpha = 0.5;
-                for (var h = 0; h < height; h++) {
-                    for (var w = 0; w < width; w++) {
-                        if (pixels_mask[h][w]) {
-                            context.fillRect(w, h, 1, 1);
-                        }
-                    }
-                }
-                context.globalAlpha = 1;
-                /* グリッド描画 */
-                if (this.small_grid_view_.checked) {
-                    CanvasUi.DrawSmallGrid(context, width, height, scale, small_grid_color);
-                }
-                /* 色番号描画 */
-                if (this.color_index_view_.checked) {
-                    CanvasUi.DrawColorIndex(context, pixels, width, height, scale, small_grid_color);
-                }
-                /* キャッシュ更新 */
-                for (let h = 0; h < height; h++) {
-                    for (let w = 0; w < width; w++) {
-                        this.last_pixels_[h][w] = pixels[h][w];
-                        this.last_pixel_mask_[h][w] = pixels_mask[h][w];
-                    }
-                }
-                /* 色のキャッシュ更新 */
-                for (let i = 0; i < 256; i++) {
-                    this.last_colors_[i] = color_table[i];
-                }
-            }
-            else {
-                /* 際描画が必要なピクセルとグリッドを抽出 */
-                const [written_pixel_set, update_w_grid_set, update_h_grid_set] = CanvasUi.ExtractTouchedPixelsAndGrids(pixels, this.last_pixels_, pixels_mask, this.last_pixel_mask_, width, height, color_table, this.last_colors_, this.last_selected_rectangle_area_);
-                /* ピクセルの部分描画 */
-                written_pixel_set.forEach((pixel_index) => {
-                    const w = Math.floor(pixel_index % width);
-                    const h = Math.floor(pixel_index / width);
-                    const ci = pixels[h][w];
-                    const color = color_table[ci];
-                    context.fillStyle = color;
-                    context.fillRect(w, h, 1, 1);
-                });
-                /* マスクの部分表示 */
-                context.fillStyle = '#ff0000';
-                context.globalAlpha = 0.5;
-                written_pixel_set.forEach((pixel_index) => {
-                    const w = Math.floor(pixel_index % width);
-                    const h = Math.floor(pixel_index / width);
-                    if (pixels_mask[h][w]) {
-                        context.fillRect(w, h, 1, 1);
-                    }
-                });
-                context.globalAlpha = 1;
-                /* グリッドの部分描画 */
-                if (this.small_grid_view_.checked) {
-                    CanvasUi.PartiallyDrawGrid(context, update_w_grid_set, update_h_grid_set, width, height, scale, small_grid_color);
-                }
-                /* 色番号の部分描画 */
-                if (this.color_index_view_.checked) {
-                    CanvasUi.PartiallyDrawColorIndex(context, pixels, written_pixel_set, width, height, scale, small_grid_color);
-                }
-            }
-            if (this.large_grid_view_.checked) {
-                CanvasUi.DrawLargeGrid(context, width, height, scale, large_grid_color, large_grid_width, large_grid_height);
-            }
-            if (selected_rectangle_area !== null) {
-                CanvasUi.DrawSelectedRectangleArea(context, selected_rectangle_area, scale, frame_count);
-            }
-            /* キャッシュ更新 */
-            /* ピクセルおよびマスク */
-            for (let h = 0; h < height; h++) {
-                for (let w = 0; w < width; w++) {
-                    this.last_pixels_[h][w] = pixels[h][w];
-                    this.last_pixel_mask_[h][w] = pixels_mask[h][w];
-                }
-            }
-            /* 色　*/
-            for (let i = 0; i < 256; i++) {
-                this.last_colors_[i] = color_table[i];
-            }
-            /* 矩形選択 */
-            this.last_selected_rectangle_area_ = selected_rectangle_area;
-            return;
-        }
-        get canvas_width() {
-            return this.last_width_;
-        }
-        get canvas_height() {
-            return this.last_height_;
-        }
-        set canvas_width(new_width) {
-            this.canvas_width_spin_.valueAsNumber = new_width;
-        }
-        set canvas_height(new_height) {
-            this.canvas_height_spin_.valueAsNumber = new_height;
-        }
-        get edit_scale() {
-            return this.last_scale_;
-        }
-        set edit_scale(new_scale) {
-            const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
-            const index = scales.indexOf(new_scale);
-            if (0 <= index) {
-                this.scale_selector_.selectedIndex = index;
-            }
-        }
-    }
-    CanvasUi.count_ = 0;
-    UiParts.CanvasUi = CanvasUi;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    class ColorPaletteTableUi {
-        constructor(num_cols, cell_width, cell_height, initial_color_palette_index, preset_color_palettes, select_color_callback, dad_color_cell_callback, change_color_callback) {
-            this.selected_index_ = 0;
-            this.preset_color_palettes_ = preset_color_palettes;
-            /* for color table UI */
-            this.dummy_canvas_array_ = new Array(256);
-            for (let i = 0; i < 256; i++) {
-                const dummy_canvas = document.createElement("canvas");
-                dummy_canvas.width = cell_width - 2;
-                dummy_canvas.height = cell_height - 2;
-                this.dummy_canvas_array_[i] = dummy_canvas;
-            }
-            this.color_cells_ = new Array(256);
-            const initiali_color_palette = preset_color_palettes[initial_color_palette_index].colors;
-            for (let i = 0; i < 256; i++) {
-                const color_cell = document.createElement("td");
-                color_cell.draggable = true;
-                color_cell.style.backgroundColor = initiali_color_palette[i];
-                color_cell.appendChild(this.dummy_canvas_array_[i]);
-                ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
-                this.color_cells_[i] = color_cell;
-            }
-            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[this.selected_index_]);
-            this.tr_array_ = new Array(16);
-            for (let i = 0; i < 16; i++) {
-                const tr = document.createElement("tr");
-                for (let j = 0; j < 16; j++) {
-                    const td_index = 16 * i + j;
-                    tr.appendChild(this.color_cells_[td_index]);
-                }
-                this.tr_array_[i] = tr;
-            }
-            this.table_ = document.createElement("table");
-            this.table_.style.borderSpacing = "0";
-            for (let i = 0; i < 16; i++) {
-                this.table_.appendChild(this.tr_array_[i]);
-            }
-            for (let i = 0; i < 256; i++) {
-                this.color_cells_[i].addEventListener('click', () => {
-                    select_color_callback(i);
-                    ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
-                    ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[i]);
-                    this.selected_index_ = i;
-                    this.UpdateColorEditView();
-                });
-                this.color_cells_[i].addEventListener('dragstart', (event) => {
-                    event.dataTransfer.setData("color_index", i.toString());
-                });
-                this.color_cells_[i].addEventListener('dragover', (event) => {
-                    event.preventDefault();
-                });
-                this.color_cells_[i].addEventListener('drop', (event) => {
-                    event.preventDefault();
-                    const drag_color_index = parseInt(event.dataTransfer.getData("color_index"));
-                    dad_color_cell_callback(drag_color_index, this.color_cells_[drag_color_index], i, this.color_cells_[i]);
-                    const tmp_color = this.color_cells_[drag_color_index].style.backgroundColor;
-                    this.color_cells_[drag_color_index].style.backgroundColor = this.color_cells_[i].style.backgroundColor;
-                    this.color_cells_[i].style.backgroundColor = tmp_color;
-                });
-            }
-            /* for preset color palette UI */
-            this.preset_palette_selector_ = document.createElement("select");
-            const none_option = document.createElement("option");
-            none_option.value = "0";
-            none_option.innerText = "変更しない";
-            this.preset_palette_selector_.append(none_option);
-            for (let i = 0; i < preset_color_palettes.length; i++) {
-                const preset_option = document.createElement("option");
-                preset_option.value = (i + 1).toString();
-                preset_option.innerText = preset_color_palettes[i].caption;
-                this.preset_palette_selector_.append(preset_option);
-            }
-            this.preset_palette_selector_.selectedIndex = 0;
-            this.reset_color_palette_button_ = document.createElement("button");
-            this.reset_color_palette_button_.innerText = "リセット";
-            this.reset_color_palette_button_.addEventListener('click', (event) => {
-                const preset_command_index = parseInt(this.preset_palette_selector_.value);
-                if (preset_command_index === 0) {
-                    return;
-                }
-                const preset_index = preset_command_index - 1;
-                const preset_color_palette = this.preset_color_palettes_[preset_index].colors;
-                for (let i = 0; i < 256; i++) {
-                    const color_cell = this.color_cells_[i];
-                    const color_string = preset_color_palette[i];
-                    color_cell.style.backgroundColor = color_string;
-                    change_color_callback(i, color_string);
-                }
-                this.UpdateColorEditView();
-                this.preset_palette_selector_.value = "0";
-            });
-            /* for color edit UI */
-            this.color_input_ = document.createElement("input");
-            this.color_caption_ = document.createElement("div");
-            this.color_caption_.style.float = "right";
-            this.UpdateColorEditView();
-            this.color_input_.type = "color";
-            this.color_input_.addEventListener('input', (event) => {
-                const i = this.selected_index_;
-                const new_color_string = event.target.value;
-                this.color_cells_[i].style.backgroundColor = new_color_string;
-                this.UpdateColorEditCaption();
-                change_color_callback(i, new_color_string);
-            });
-            this.preset_command_holder_ = document.createElement("div");
-            this.color_table_holder_ = document.createElement("div");
-            this.color_edit_holder_ = document.createElement("div");
-            this.holder_ = document.createElement("div");
-            this.preset_command_holder_.style.clear = "both";
-            this.color_table_holder_.style.clear = "both";
-            this.color_edit_holder_.style.clear = "both";
-            this.holder_.style.clear = "both";
-            this.preset_command_holder_.appendChild(this.preset_palette_selector_);
-            this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
-            this.color_table_holder_.appendChild(this.table_);
-            this.color_edit_holder_.appendChild(this.color_input_);
-            this.color_edit_holder_.appendChild(this.color_caption_);
-            this.holder_.appendChild(this.preset_command_holder_);
-            this.holder_.appendChild(this.color_table_holder_);
-            this.holder_.appendChild(this.color_edit_holder_);
-            return;
-        }
-        static SetUnselectedColorCellStyle(color_cell) {
-            color_cell.style.borderStyle = "solid";
-            color_cell.style.borderColor = "#000000";
-            color_cell.style.borderWidth = "1";
-        }
-        static SetSelectedColorCellStyle(color_cell) {
-            color_cell.style.borderStyle = "solid";
-            color_cell.style.borderColor = "#00ff00";
-            color_cell.style.borderWidth = "1";
-        }
-        static RgbStringToHexColor(rgb_string) {
-            const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
-            const r_hex = ('00' + Number(r_string).toString(16)).slice(-2);
-            const g_hex = ('00' + Number(g_string).toString(16)).slice(-2);
-            const b_hex = ('00' + Number(b_string).toString(16)).slice(-2);
-            return `#${r_hex}${g_hex}${b_hex}`;
-        }
-        UpdateColorEditCaption() {
-            const i = this.selected_index_;
-            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
-            this.color_caption_.innerText = `${i}:${color}`;
-        }
-        UpdateColorEditView() {
-            const i = this.selected_index_;
-            const color = ColorPaletteTableUi.RgbStringToHexColor(this.color_cells_[i].style.backgroundColor);
-            this.color_input_.value = color;
-            this.color_caption_.innerText = `${i}:${color}`;
-        }
-        get node() {
-            return this.holder_;
-        }
-        GetColor(index) {
-            return this.color_cells_[index].style.backgroundColor;
-        }
-        GetColorTable() {
-            const color_table = new Array(256);
-            for (let i = 0; i < 256; i++) {
-                color_table[i] = this.color_cells_[i].style.backgroundColor;
-            }
-            return color_table;
-        }
-        SetColor(index, color_string) {
-            this.color_cells_[index].style.backgroundColor = color_string;
-            if (this.selected_index_ === index) {
-                this.UpdateColorEditView();
-            }
-        }
-        SetColorTable(color_table) {
-            for (let i = 0; i < 256; i++) {
-                this.color_cells_[i].style.backgroundColor = color_table[i];
-            }
-            this.UpdateColorEditView();
-        }
-        SelectColorCell(color_index) {
-            ColorPaletteTableUi.SetUnselectedColorCellStyle(this.color_cells_[this.selected_index_]);
-            ColorPaletteTableUi.SetSelectedColorCellStyle(this.color_cells_[color_index]);
-            this.selected_index_ = color_index;
-            this.UpdateColorEditView();
-        }
-    }
-    UiParts.ColorPaletteTableUi = ColorPaletteTableUi;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    class DonwloadButton {
-        constructor(parent, caption, dldata_request_callback) {
-            this.link_ = document.createElement("a");
-            this.button_ = document.createElement("button");
-            this.link_.href = "#";
-            this.button_.innerText = caption;
-            this.button_.addEventListener('click', () => {
-                const [dldata_filename, dldata_blob] = dldata_request_callback();
-                const object_url = window.URL.createObjectURL(dldata_blob);
-                this.link_.href = object_url;
-                this.link_.download = dldata_filename;
-            });
-            this.link_.appendChild(this.button_);
-            parent.appendChild(this.link_);
-        }
-    }
-    UiParts.DonwloadButton = DonwloadButton;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    class PreviewWindowUi {
-        constructor(width, height) {
-            this.canvas_ = document.createElement("canvas");
-            this.canvas_.width = width;
-            this.canvas_.height = height;
-            this.canvas_.style.margin = "auto";
-            this.canvas_frame_ = document.createElement("div");
-            this.canvas_frame_.style.display = "flex";
-            this.canvas_frame_.appendChild(this.canvas_);
-            this.scale_selector_ = document.createElement("select");
-            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-            for (let scale of scale_array) {
-                const scale_option = document.createElement("option");
-                scale_option.value = scale.toString();
-                scale_option.innerText = `x${scale}`;
-                this.scale_selector_.appendChild(scale_option);
-            }
-            this.command_frame_ = document.createElement("div");
-            this.command_frame_.style.textAlign = "right";
-            this.command_frame_.innerText = "表示倍率";
-            this.command_frame_.appendChild(this.scale_selector_);
-            this.holder_ = document.createElement("div");
-            this.holder_.appendChild(this.command_frame_);
-            this.holder_.appendChild(this.canvas_frame_);
-        }
-        get node() {
-            return this.holder_;
-        }
-        Draw(pixels, color_table, width, height) {
-            const view_scale = parseInt(this.scale_selector_.value);
-            if (this.canvas_.width !== width * view_scale) {
-                this.canvas_.width = width * view_scale;
-            }
-            if (this.canvas_.height !== height * view_scale) {
-                this.canvas_.height = height * view_scale;
-            }
-            const context = this.canvas_.getContext("2d");
-            context.imageSmoothingEnabled = false;
-            context.setTransform(1, 0, 0, 1, 0, 0);
-            context.scale(view_scale, view_scale);
-            for (let h = 0; h < height; h++) {
-                for (let w = 0; w < width; w++) {
-                    const color_index = pixels[h][w];
-                    context.fillStyle = color_table[color_index];
-                    context.fillRect(w, h, 1, 1);
-                }
-            }
-        }
-    }
-    UiParts.PreviewWindowUi = PreviewWindowUi;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    const CreateLeftBox = function () {
-        const div = document.createElement("div");
-        div.style.float = "left";
-        return div;
+
+
+/***/ }),
+
+/***/ "./built/windows_bitmap.js":
+/*!*********************************!*\
+  !*** ./built/windows_bitmap.js ***!
+  \*********************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "WindowsIndexColorBitmap": () => (/* binding */ WindowsIndexColorBitmap)
+/* harmony export */ });
+/* harmony import */ var _misc__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./misc */ "./built/misc.js");
+
+var WindowsIndexColorBitmap;
+(function (WindowsIndexColorBitmap) {
+    const bmp_file_header_size = 14;
+    const bmp_info_header_size = 40;
+    const palette_size = 4 * 256;
+    const pixels_offset = bmp_file_header_size + bmp_info_header_size + palette_size;
+    const Store16LE = function (bytes, offset, value) {
+        bytes[offset + 0] = value & 0x00ff;
+        bytes[offset + 1] = (value >> 8) & 0x00ff;
     };
-    const CreateRightBox = function () {
-        const div = document.createElement("div");
-        div.style.float = "right";
-        return div;
+    const Store32LE = function (bytes, offset, value) {
+        bytes[offset + 0] = value & 0x000000ff;
+        bytes[offset + 1] = (value >> 8) & 0x000000ff;
+        bytes[offset + 2] = (value >> 16) & 0x000000ff;
+        bytes[offset + 3] = (value >> 24) & 0x000000ff;
     };
-    const CreateText = function (text) {
-        const span = document.createElement("span");
-        span.innerText = text;
-        return span;
+    const Load16LE = function (bytes, offset) {
+        return (bytes[offset + 0] & 0x00ff) | ((bytes[offset + 1] << 8) & 0xff00);
     };
-    class SpriteAnimationPreviewWindowUi {
-        constructor(width, height) {
-            this.sprite_width_ = document.createElement("input");
-            this.sprite_height_ = document.createElement("input");
-            this.sprite_width_.type = "number";
-            this.sprite_height_.type = "number";
-            this.sprite_width_.min = "1";
-            this.sprite_height_.min = "1";
-            this.sprite_width_.value = width.toString();
-            this.sprite_height_.value = height.toString();
-            this.scale_selector_ = document.createElement("select");
-            const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-            for (let scale of scale_array) {
-                const scale_option = document.createElement("option");
-                scale_option.value = scale.toString();
-                scale_option.innerText = `x${scale}`;
-                this.scale_selector_.appendChild(scale_option);
-            }
-            this.scale_selector_holder_ = CreateRightBox();
-            this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
-            this.scale_selector_holder_.appendChild(this.scale_selector_);
-            this.size_frame_ = document.createElement("div");
-            this.size_frame_.appendChild(CreateText("サイズ"));
-            this.size_frame_.appendChild(this.sprite_width_);
-            this.size_frame_.appendChild(CreateText("x"));
-            this.size_frame_.appendChild(this.sprite_height_);
-            this.size_frame_.appendChild(this.scale_selector_holder_);
-            this.animation_step_par_frame_ = document.createElement("input");
-            this.animation_step_par_frame_.type = "number";
-            this.animation_step_par_frame_.min = "1";
-            this.animation_step_par_frame_.value = "1";
-            this.animation_playback_button_ = document.createElement("button");
-            this.animation_playback_button_.innerText = "▶︎";
-            this.is_playing_ = false;
-            this.animation_playback_button_.addEventListener('click', (event) => {
-                const button = event.target;
-                button.innerText = this.is_playing_ === true ? "▶︎" : "■";
-                this.is_playing_ = !this.is_playing_;
-            });
-            this.command_frame_ = document.createElement("div");
-            this.command_frame_.appendChild(this.animation_step_par_frame_);
-            this.command_frame_.appendChild(CreateText("/１コマ"));
-            this.command_frame_.appendChild(this.animation_playback_button_);
-            this.canvas_ = document.createElement("canvas");
-            this.canvas_.width = width;
-            this.canvas_.height = height;
-            this.canvas_.style.margin = "auto";
-            this.canvas_frame_ = document.createElement("div");
-            this.canvas_frame_.style.display = "flex";
-            this.canvas_frame_.appendChild(this.canvas_);
-            this.sprite_animation_indices_ = new Array(0);
-            this.sprite_indices_ = document.createElement("textarea");
-            this.sprite_indices_.style.height = "1.4em";
-            this.sprite_indices_.innerText = "0";
-            this.settings_frame_ = document.createElement("div");
-            this.settings_frame_.appendChild(this.sprite_indices_);
-            this.holder_ = document.createElement("div");
-            this.holder_.appendChild(this.size_frame_);
-            this.holder_.appendChild(this.command_frame_);
-            this.holder_.appendChild(this.canvas_frame_);
-            this.holder_.appendChild(this.settings_frame_);
+    const Load32LE = function (bytes, offset) {
+        return (bytes[offset + 0] & 0x000000ff)
+            | ((bytes[offset + 1] << 8) & 0x0000ff00)
+            | ((bytes[offset + 2] << 16) & 0x00ff0000)
+            | ((bytes[offset + 3] << 14) & 0xff000000);
+    };
+    const RgbStringToRgbValues = function (rgb_string) {
+        const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
+        return [Number(r_string), Number(g_string), Number(b_string)];
+    };
+    function Serialize(color_palette, pixels, width, height) {
+        const bmp_width = Math.ceil(width / 4) * 4;
+        const pixels_size = bmp_width * height;
+        const binary_size = bmp_file_header_size + bmp_info_header_size + palette_size + pixels_size;
+        const buffer = new ArrayBuffer(binary_size);
+        const bytes = new Uint8Array(buffer);
+        bytes[0] = 0x42;
+        bytes[1] = 0x4d;
+        /* Bitmap File Header */
+        Store32LE(bytes, 2, binary_size);
+        Store16LE(bytes, 6, 0);
+        Store16LE(bytes, 8, 0);
+        Store32LE(bytes, 10, pixels_offset);
+        /* Bitmap Info Header */
+        Store32LE(bytes, 14, 40);
+        Store32LE(bytes, 18, width);
+        Store32LE(bytes, 22, height);
+        Store16LE(bytes, 26, 1);
+        Store16LE(bytes, 28, 8);
+        Store32LE(bytes, 30, 0);
+        Store32LE(bytes, 34, pixels_size);
+        Store32LE(bytes, 38, 0);
+        Store32LE(bytes, 42, 0);
+        Store32LE(bytes, 46, 256);
+        Store32LE(bytes, 50, 256);
+        /* Color palette */
+        for (let i = 0; i < 256; i++) {
+            const [r, g, b] = RgbStringToRgbValues(color_palette[i]);
+            bytes[54 + 4 * i + 0] = b;
+            bytes[54 + 4 * i + 1] = g;
+            bytes[54 + 4 * i + 2] = r;
+            bytes[54 + 4 * i + 3] = 0;
         }
-        UpdateSpriteIndicesArray() {
-            const index_strings = this.sprite_indices_.value.split(',');
-            this.sprite_animation_indices_.length = 0;
-            for (let index_string of index_strings) {
-                const parsed = parseInt(index_string);
-                if (!isNaN(parsed)) {
-                    this.sprite_animation_indices_.push(parsed);
-                }
+        /* pixels */
+        /* ラスタ座標系から数学座標系に入れ替えて出力する */
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+                bytes[offset] = pixels[h][w];
             }
         }
-        get node() {
-            return this.holder_;
-        }
-        Draw(pixels, color_table, width, height, frame_count) {
-            if (!this.is_playing_) {
-                return;
-            }
-            this.UpdateSpriteIndicesArray();
-            const num_indeices = this.sprite_animation_indices_.length;
-            if (0 === num_indeices) {
-                return;
-            }
-            const step_par_frame = Math.max(1, this.animation_step_par_frame_.valueAsNumber);
-            const frame_number = Math.floor(frame_count / step_par_frame) % num_indeices;
-            const sprite_index = this.sprite_animation_indices_[frame_number];
-            const sprite_w = Math.max(1, Math.min(width, this.sprite_width_.valueAsNumber));
-            const sprite_h = Math.max(1, Math.min(height, this.sprite_height_.valueAsNumber));
-            const sprite_count_in_w = Math.floor(width / sprite_w);
-            const sprite_count_in_h = Math.floor(height / sprite_h);
-            const max_sprite_index = sprite_count_in_w * sprite_count_in_h;
-            if (max_sprite_index <= sprite_index) {
-                return;
-            }
-            const pixel_w_offset = Math.floor(sprite_index % sprite_count_in_w) * sprite_w;
-            const pixel_h_offset = Math.floor(sprite_index / sprite_count_in_w) * sprite_h;
-            const max_w = Math.min(pixel_w_offset + sprite_w, width);
-            const max_h = Math.min(pixel_h_offset + sprite_h, height);
-            const view_scale = parseInt(this.scale_selector_.value);
-            if (this.canvas_.width !== sprite_w * view_scale) {
-                this.canvas_.width = sprite_w * view_scale;
-            }
-            if (this.canvas_.height !== sprite_h * view_scale) {
-                this.canvas_.height = sprite_h * view_scale;
-            }
-            const context = this.canvas_.getContext('2d');
-            context.imageSmoothingEnabled = false;
-            context.setTransform(1, 0, 0, 1, 0, 0);
-            context.scale(view_scale, view_scale);
-            for (let h = pixel_h_offset; h < max_h; h++) {
-                for (let w = pixel_w_offset; w < max_w; w++) {
-                    const color_index = pixels[h][w];
-                    context.fillStyle = color_table[color_index];
-                    context.fillRect(w - pixel_w_offset, h - pixel_h_offset, 1, 1);
-                }
-            }
-            return;
-        }
+        return bytes;
     }
-    UiParts.SpriteAnimationPreviewWindowUi = SpriteAnimationPreviewWindowUi;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    class LayerUi {
-        constructor(parent, order, name, color, user_value) {
-            this.parent_ = parent;
-            this.user_value_ = user_value;
-            this.layer_frame_ = document.createElement("div");
-            this.layer_frame_.style.display = "flex";
-            this.layer_frame_.style.alignItems = "center";
-            this.tab_ = document.createElement("div");
-            this.tab_.style.width = (40).toString();
-            this.tab_.style.height = (32).toString();
-            this.tab_.style.backgroundColor = color;
-            this.tab_.style.display = "flex";
-            this.tab_.style.justifyContent = "center";
-            this.tab_.style.alignItems = "center";
-            this.thumbnail_ = document.createElement("canvas");
-            this.layer_lock_checkbox_ = document.createElement("input");
-            this.layer_view_checkbox_ = document.createElement("input");
-            this.layer_name_ = document.createElement("input");
-            this.thumbnail_.width = 16;
-            this.thumbnail_.height = 16;
-            this.layer_lock_checkbox_.type = "checkbox";
-            this.layer_lock_checkbox_.checked = false;
-            this.layer_view_checkbox_.type = "checkbox";
-            this.layer_view_checkbox_.checked = true;
-            this.layer_name_.type = "text";
-            this.layer_name_.value = name;
-            this.layer_name_.style.height = '1em';
-            this.layer_name_.style.paddingTop = (8).toString();
-            this.layer_name_.style.paddingBottom = (8).toString();
-            this.tab_.appendChild(this.thumbnail_);
-            this.layer_frame_.appendChild(this.tab_);
-            this.layer_frame_.appendChild(this.layer_lock_checkbox_);
-            this.layer_frame_.appendChild(this.layer_view_checkbox_);
-            this.layer_frame_.appendChild(this.layer_name_);
-            this.order_ = order;
-            this.layer_frame_.style.order = this.order_.toString();
-            this.layer_frame_.tabIndex = 0;
-            this.layer_frame_.style.backgroundColor = "rgb(255,255,255)";
-            this.parent_.appendChild(this.layer_frame_);
+    WindowsIndexColorBitmap.Serialize = Serialize;
+    function Deserialize(buffer) {
+        const bytes = new Uint8Array(buffer);
+        console.log(bytes[0]);
+        console.log(bytes[1]);
+        if (bytes[0] !== 0x42) {
+            return null;
         }
-        Destruct() {
-            this.parent_.removeChild(this.layer_frame_);
-            return this.user_value_;
+        if (bytes[1] !== 0x4d) {
+            return null;
         }
-        FocusIn() {
-            this.layer_frame_.style.backgroundColor = 'rgb(0, 0, 255)';
-            this.layer_frame_.style.boxShadow = "0px 0px 0px 0px";
-            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
-            this.Update(this.update_state_callback_, true, false);
+        if (Load32LE(bytes, 10) !== pixels_offset) {
+            return null;
         }
-        FocusOut() {
-            this.layer_frame_.style.backgroundColor = 'rgb(255, 255, 255)';
-            this.layer_frame_.style.boxShadow = "0px 8px 16px -2px rgba(10,10,10,0.1), 2px 2px 3px 0px rgba(0,0,0,0.48) inset";
-            this.tab_.style.boxShadow = this.layer_frame_.style.boxShadow;
-            this.Update(this.update_state_callback_, false, true);
+        if (Load16LE(bytes, 26) !== 1) {
+            return null;
         }
-        Update(callback, is_focusin, is_focusout) {
-            callback(this.user_value_, this.order_, this.layer_name_.value, this.tab_.style.backgroundColor, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, is_focusin, is_focusout, this.thumbnail_.getContext('2d'));
+        if (Load16LE(bytes, 28) !== 8) {
+            return null;
         }
-        DrawThumbnail(callback) {
-            callback(this.user_value_, this.order_, this.layer_lock_checkbox_.checked, this.layer_view_checkbox_.checked, this.thumbnail_.getContext('2d'));
+        const width = Load32LE(bytes, 18);
+        const height = Load32LE(bytes, 22);
+        const bmp_width = Math.ceil(width / 4) * 4;
+        const color_palette = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            const b = bytes[54 + 4 * i + 0];
+            const g = bytes[54 + 4 * i + 1];
+            const r = bytes[54 + 4 * i + 2];
+            color_palette[i] = `rgb(${r},${g},${b})`;
         }
-        AddFoucsinCallback(callback) {
-            this.layer_frame_.addEventListener('focusin', (event) => {
-                callback(this);
-            });
-        }
-        AddUpdateStateCallback(callback) {
-            this.layer_lock_checkbox_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.layer_view_checkbox_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.layer_name_.addEventListener('change', (event) => {
-                this.Update(callback, false, false);
-            });
-            this.update_state_callback_ = callback;
-        }
-        get order() {
-            return this.order_;
-        }
-        set order(new_order) {
-            if (new_order < 0) {
-                return;
+        /* pixels */
+        /* 数学座標系からラスタ座標系に入れ替えて読みこむ */
+        const pixels = _misc__WEBPACK_IMPORTED_MODULE_0__.Misc.Make2dArray(width, height, 0);
+        for (let h = 0; h < height; h++) {
+            for (let w = 0; w < width; w++) {
+                let offset = pixels_offset + bmp_width * (height - h - 1) + w;
+                pixels[h][w] = bytes[offset];
             }
-            this.order_ = new_order;
-            this.layer_frame_.style.order = this.order_.toString();
-            this.Update(this.update_state_callback_, false, false);
         }
+        return [color_palette, pixels, width, height];
     }
-    UiParts.LayerUi = LayerUi;
-    class LayerPaneUi {
-        constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
-            this.layers_ = new Array(0);
-            this.frame_ = document.createElement("div");
-            this.command_holder_ = document.createElement("div");
-            this.new_layer_button_ = document.createElement("button");
-            this.up_layer_button_ = document.createElement("button");
-            this.down_layer_button_ = document.createElement("button");
-            this.delete_layer_button_ = document.createElement("button");
-            this.layer_holder_ = document.createElement("div");
-            this.current_layer_ = null;
-            this.command_holder_.style.display = "flex";
-            this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
-            this.layer_holder_.style.display = "flex";
-            this.layer_holder_.style.flexDirection = "column-reverse";
-            this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
-            this.new_layer_button_.innerText = "＋";
-            this.up_layer_button_.innerText = "▲";
-            this.down_layer_button_.innerText = "▼";
-            this.delete_layer_button_.innerText = "×";
-            this.new_layer_button_.addEventListener('click', (event) => {
-                const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
-                const [layer_name, color, user_value] = this.register_callback_(registration_order);
-                this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
-            });
-            this.up_layer_button_.addEventListener('click', (event) => {
-                this.UpLayer(this.current_layer_.order);
-            });
-            this.down_layer_button_.addEventListener('click', (event) => {
-                this.DownLayer(this.current_layer_.order);
-            });
-            this.delete_layer_button_.addEventListener('click', (event) => {
-                if (1 < this.layers_.length) {
-                    this.DeleteCurrentLayer();
-                }
-            });
-            this.register_callback_ = register_callback;
-            this.removed_callback_ = destructed_callback;
-            this.swap_callback_ = swap_callback;
-            this.updated_state_callback_ = updated_state_callback;
-            this.draw_thumbnail_callback_ = draw_thumbnail_callback;
-            this.command_holder_.appendChild(this.new_layer_button_);
-            this.command_holder_.appendChild(this.up_layer_button_);
-            this.command_holder_.appendChild(this.down_layer_button_);
-            this.command_holder_.appendChild(this.delete_layer_button_);
-            this.frame_.appendChild(this.command_holder_);
-            this.frame_.appendChild(this.layer_holder_);
-            return;
-        }
-        ChangeFocus(focus_in_layer) {
-            if (focus_in_layer === this.current_layer_) {
-                return;
-            }
-            focus_in_layer.FocusIn();
-            if (this.current_layer_ !== null) {
-                this.current_layer_.FocusOut();
-            }
-            this.current_layer_ = focus_in_layer;
-            return;
-        }
-        SwapLayer(lh_order, rh_order) {
-            let lh_layer = null;
-            let rh_layer = null;
-            for (let layer of this.layers_) {
-                if (layer.order === lh_order) {
-                    lh_layer = layer;
-                }
-                if (layer.order === rh_order) {
-                    rh_layer = layer;
-                }
-                if ((lh_layer !== null) && (rh_layer !== null)) {
-                    break;
-                }
-            }
-            if (lh_layer === null) {
-                return false;
-            }
-            if (rh_layer === null) {
-                return false;
-            }
-            const tmp_order = lh_layer.order;
-            lh_layer.order = rh_layer.order;
-            rh_layer.order = tmp_order;
-            return true;
-        }
-        CalculateRegistrationOrder(insert_target_order) {
-            if (this.layers_.length === 0) {
-                return 0;
-            }
-            return Math.min(insert_target_order, this.layers_.length - 1) + 1;
-        }
-        CreateNewLayer(insert_target_order, layer_name, color, user_value) {
-            const registration_order = this.CalculateRegistrationOrder(insert_target_order);
-            if (0 < registration_order) {
-                for (let layer of this.layers_) {
-                    if (registration_order <= layer.order) {
-                        layer.order++;
-                    }
-                }
-                insert_target_order += 1;
-            }
-            const new_layer = new LayerUi(this.layer_holder_, insert_target_order, layer_name, color, user_value);
-            new_layer.AddFoucsinCallback((focus_in_layer) => { this.ChangeFocus(focus_in_layer); });
-            new_layer.AddUpdateStateCallback(this.updated_state_callback_);
-            this.layers_.push(new_layer);
-            this.ChangeFocus(new_layer);
-            return;
-        }
-        DeleteCurrentLayer() {
-            if (this.current_layer_ === null) {
-                return;
-            }
-            if (this.layers_.length === 1) {
-                const destructed_order = this.current_layer_.order;
-                const user_value = this.current_layer_.Destruct();
-                this.removed_callback_(user_value, destructed_order);
-                this.current_layer_ = null;
-                this.layers_.splice(0, 1);
-                return;
-            }
-            let target_index;
-            for (target_index = 0; target_index < this.layers_.length; target_index++) {
-                if (this.layers_[target_index] === this.current_layer_) {
-                    break;
-                }
-            }
-            this.layers_.splice(target_index, 1);
-            const current_order = Math.min(this.current_layer_.order, this.layers_.length - 1);
-            for (let layer of this.layers_) {
-                if (current_order < layer.order) {
-                    layer.order--;
-                }
-                if (current_order === layer.order) {
-                    const destructed_order = this.current_layer_.order;
-                    const user_value = this.current_layer_.Destruct();
-                    this.removed_callback_(user_value, destructed_order);
-                    this.current_layer_ = layer;
-                }
-            }
-            this.current_layer_.FocusIn();
-            return;
-        }
-        DeleteAll() {
-            const num_layers = this.layers_.length;
-            for (let i = 0; i < num_layers; i++) {
-                this.DeleteCurrentLayer();
-            }
-        }
-        CreateNewLayers(creation_parameters) {
-            const ordered_parameters = Array(creation_parameters.length);
-            for (let parameter of creation_parameters) {
-                ordered_parameters[parameter[0]] = parameter;
-            }
-            for (let parameter of ordered_parameters) {
-                parameter[0] = Math.max(0, parameter[0] - 1);
-                this.CreateNewLayer(...parameter);
-            }
-        }
-        UpLayer(target_order) {
-            if (this.SwapLayer(target_order, target_order + 1)) {
-                this.swap_callback_(target_order, target_order + 1);
-            }
-            return;
-        }
-        DownLayer(target_order) {
-            if (this.SwapLayer(target_order, target_order - 1)) {
-                this.swap_callback_(target_order, target_order - 1);
-            }
-            return;
-        }
-        Draw() {
-            for (let layer of this.layers_) {
-                layer.DrawThumbnail(this.draw_thumbnail_callback_);
-            }
-        }
-        get node() {
-            return this.frame_;
-        }
-    }
-    UiParts.LayerPaneUi = LayerPaneUi;
-})(UiParts || (UiParts = {}));
-var UiParts;
-(function (UiParts) {
-    class TabPaneUi {
-        constructor() {
-            if (TabPaneUi.tab_content_class_style_ === null) {
-                const style = document.createElement("style");
-                style.innerText
-                    = `.tab_content {`
-                        + `display: none;`
-                        + `clear: both;`
-                        + `overflow: scroll;`
-                        + `resize: both;`
-                        + `}`
-                        + `input[name="tab_tags"] {`
-                        + `display: none;`
-                        + `}`
-                        + `.tab_tag {`
-                        + `text-align: center;`
-                        + `display: block;`
-                        + `float: left;`
-                        + `order: -1;`
-                        + `margin: 2px 2px 0px;`
-                        + `}`
-                        + `input:checked + .tab_tag + .tab_content {`
-                        + `display: block;`
-                        + `}`;
-                document.getElementsByTagName("head").item(0).appendChild(style);
-                TabPaneUi.tab_content_class_style_ = style;
-            }
-            this.tab_frame_ = document.createElement("div");
-            this.tab_frame_.style.display = "grid";
-            //this.tab_frame_.style.gridAutoColumns = "max-content";
-            this.tab_frame_.style.gridAutoColumns = "1fr";
-            this.tab_frame_.style.gridAutoRows = "max-content";
-            this.tab_frame_.style.gridTemplateAreas = `"t0" "c"`;
-            this.current_tab_ = null;
-            this.local_tab_count_ = 0;
-        }
-        FitSize() {
-            if (!("width" in this.current_tab_.style)) {
-                return;
-            }
-            const contents = this.tab_frame_.getElementsByClassName("tab_content");
-            const length = contents.length;
-            for (let i = 0; i < length; i++) {
-                contents[i].style.width = this.current_tab_.style.width;
-                contents[i].style.height = this.current_tab_.style.height;
-            }
-            return;
-        }
-        AddTab(content, tab_title) {
-            const tag_id = `tab_${TabPaneUi.global_tab_count_}_tag`;
-            const tab_radio = document.createElement("input");
-            tab_radio.type = "radio";
-            tab_radio.id = tag_id;
-            tab_radio.name = "tab_tags";
-            const tab_label = document.createElement("label");
-            tab_label.htmlFor = tag_id;
-            tab_label.innerText = tab_title;
-            tab_label.className = "tab_tag";
-            tab_label.style.backgroundColor = content.style.backgroundColor;
-            tab_label.style.gridArea = `t${this.local_tab_count_}`;
-            const content_frame = document.createElement("div");
-            content_frame.appendChild(content);
-            content_frame.className = "tab_content";
-            content_frame.style.backgroundColor = content.style.backgroundColor;
-            content_frame.style.order = "1";
-            content_frame.style.gridArea = "c";
-            if (this.tab_frame_.childElementCount === 0) {
-                tab_radio.checked = true;
-                this.current_tab_ = content_frame;
-            }
-            tab_radio.addEventListener("change", (event) => {
-                this.FitSize();
-                this.current_tab_ = content_frame;
-            });
-            this.local_tab_count_++;
-            const tag_grids = new Array(this.local_tab_count_);
-            const content_grids = new Array(this.local_tab_count_);
-            for (let i = 0; i < this.local_tab_count_; i++) {
-                tag_grids[i] = `t${i}`;
-                content_grids[i] = "c";
-            }
-            this.tab_frame_.style.gridTemplateAreas = `"${tag_grids.join(" ")}" "${content_grids.join(" ")}"`;
-            this.tab_frame_.appendChild(tab_radio);
-            this.tab_frame_.appendChild(tab_label);
-            this.tab_frame_.appendChild(content_frame);
-            TabPaneUi.global_tab_count_++;
-            return;
-        }
-        get node() {
-            return this.tab_frame_;
-        }
-    }
-    TabPaneUi.tab_content_class_style_ = null;
-    TabPaneUi.global_tab_count_ = 0;
-    UiParts.TabPaneUi = TabPaneUi;
-})(UiParts || (UiParts = {}));
-/// <reference path="./windows_bitmap.ts" />
-/// <reference path="./misc.ts" />
-/// <reference path="./browser.ts" />
-/// <reference path="./gui/canvas.ts" />
-/// <reference path="./gui/color_palette.ts" />
-/// <reference path="./gui/download_button.ts" />
-/// <reference path="./gui/preview_window.ts" />
-/// <reference path="./gui/sprite_animation_preview_window.ts" />
-/// <reference path="./gui/layer.ts" />
-/// <reference path="./gui/tab_pane.ts" />
-/// <reference path="./canvas_tools.ts" />
+    WindowsIndexColorBitmap.Deserialize = Deserialize;
+})(WindowsIndexColorBitmap || (WindowsIndexColorBitmap = {}));
+
+
+/***/ })
+
+/******/ 	});
+/************************************************************************/
+/******/ 	// The module cache
+/******/ 	var __webpack_module_cache__ = {};
+/******/ 	
+/******/ 	// The require function
+/******/ 	function __webpack_require__(moduleId) {
+/******/ 		// Check if module is in cache
+/******/ 		var cachedModule = __webpack_module_cache__[moduleId];
+/******/ 		if (cachedModule !== undefined) {
+/******/ 			return cachedModule.exports;
+/******/ 		}
+/******/ 		// Create a new module (and put it into the cache)
+/******/ 		var module = __webpack_module_cache__[moduleId] = {
+/******/ 			// no module.id needed
+/******/ 			// no module.loaded needed
+/******/ 			exports: {}
+/******/ 		};
+/******/ 	
+/******/ 		// Execute the module function
+/******/ 		__webpack_modules__[moduleId](module, module.exports, __webpack_require__);
+/******/ 	
+/******/ 		// Return the exports of the module
+/******/ 		return module.exports;
+/******/ 	}
+/******/ 	
+/************************************************************************/
+/******/ 	/* webpack/runtime/define property getters */
+/******/ 	(() => {
+/******/ 		// define getter functions for harmony exports
+/******/ 		__webpack_require__.d = (exports, definition) => {
+/******/ 			for(var key in definition) {
+/******/ 				if(__webpack_require__.o(definition, key) && !__webpack_require__.o(exports, key)) {
+/******/ 					Object.defineProperty(exports, key, { enumerable: true, get: definition[key] });
+/******/ 				}
+/******/ 			}
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/hasOwnProperty shorthand */
+/******/ 	(() => {
+/******/ 		__webpack_require__.o = (obj, prop) => (Object.prototype.hasOwnProperty.call(obj, prop))
+/******/ 	})();
+/******/ 	
+/******/ 	/* webpack/runtime/make namespace object */
+/******/ 	(() => {
+/******/ 		// define __esModule on exports
+/******/ 		__webpack_require__.r = (exports) => {
+/******/ 			if(typeof Symbol !== 'undefined' && Symbol.toStringTag) {
+/******/ 				Object.defineProperty(exports, Symbol.toStringTag, { value: 'Module' });
+/******/ 			}
+/******/ 			Object.defineProperty(exports, '__esModule', { value: true });
+/******/ 		};
+/******/ 	})();
+/******/ 	
+/************************************************************************/
+var __webpack_exports__ = {};
+// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
+(() => {
+/*!***********************!*\
+  !*** ./built/main.js ***!
+  \***********************/
+__webpack_require__.r(__webpack_exports__);
+/* harmony import */ var _windows_bitmap__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ./windows_bitmap */ "./built/windows_bitmap.js");
+/* harmony import */ var _misc__WEBPACK_IMPORTED_MODULE_1__ = __webpack_require__(/*! ./misc */ "./built/misc.js");
+/* harmony import */ var _browser__WEBPACK_IMPORTED_MODULE_2__ = __webpack_require__(/*! ./browser */ "./built/browser.js");
+/* harmony import */ var _gui_canvas__WEBPACK_IMPORTED_MODULE_3__ = __webpack_require__(/*! ./gui/canvas */ "./built/gui/canvas.js");
+/* harmony import */ var _gui_color_palette__WEBPACK_IMPORTED_MODULE_4__ = __webpack_require__(/*! ./gui/color_palette */ "./built/gui/color_palette.js");
+/* harmony import */ var _gui_download_button__WEBPACK_IMPORTED_MODULE_5__ = __webpack_require__(/*! ./gui/download_button */ "./built/gui/download_button.js");
+/* harmony import */ var _gui_preview_window__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./gui/preview_window */ "./built/gui/preview_window.js");
+/* harmony import */ var _gui_sprite_animation_preview_window__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./gui/sprite_animation_preview_window */ "./built/gui/sprite_animation_preview_window.js");
+/* harmony import */ var _gui_layer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./gui/layer */ "./built/gui/layer.js");
+/* harmony import */ var _gui_tab_pane__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./gui/tab_pane */ "./built/gui/tab_pane.js");
+/* harmony import */ var _canvas_tools__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./canvas_tools */ "./built/canvas_tools.js");
+
+
+
+
+
+
+
+
+
+
+
 class RgbColor {
     constructor(r = 0, g = 0, b = 0) {
         this.r = r;
@@ -2053,26 +2278,6 @@ class RgbColor {
     }
     SetColorString(color_string) {
         return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
-    }
-}
-class PixelPoint {
-    constructor(w, h) {
-        this.w = w;
-        this.h = h;
-    }
-    ToIndex(width) {
-        return width * this.h + this.w;
-    }
-    static IndexToPixelPoint(index, width) {
-        const w = Math.floor(index % width);
-        const h = Math.floor(index / width);
-        return new PixelPoint(w, h);
-    }
-    static IndexToPixelPointW(index, width) {
-        return Math.floor(index % width);
-    }
-    static IndexToPixelPointH(index, width) {
-        return Math.floor(index / width);
     }
 }
 const data_format_version = 1;
@@ -2136,7 +2341,7 @@ const MargeMultiLayerIndexColorBitmapToIndexBitmap = function (mlbmp) {
     const max_w = mlbmp.width;
     const max_h = mlbmp.height;
     const bg_ci = default_bg_color;
-    const marged_pixels = Misc.Make2dArray(max_w, max_h, 0);
+    const marged_pixels = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_w, max_h, 0);
     for (let h = 0; h < max_h; h++) {
         for (let w = 0; w < max_w; w++) {
             for (let i = 0; i < sorted_layers.length; i++) {
@@ -2157,7 +2362,7 @@ const MargeMultiLayerIndexColorBitmapToIndexBitmap = function (mlbmp) {
 };
 class PixelLayer {
     constructor(order, name, tag_color, max_width, max_height) {
-        this.pixels = Misc.Make2dArray(max_width, max_height, 0);
+        this.pixels = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, 0);
         this.order = order;
         this.name = name;
         this.tag_color = tag_color;
@@ -2171,10 +2376,10 @@ class Data {
         this.edit_height_ = default_height;
         this.current_pixel_layer_ = null;
         this.pixel_layers_ = new Map();
-        this.pixels_clipboard_ = Misc.Make2dArray(max_width, max_height, 0);
+        this.pixels_clipboard_ = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, 0);
         this.clipboard_stored_width_ = 0;
         this.clipboard_stored_height_ = 0;
-        this.pixels_mask_ = Misc.Make2dArray(max_width, max_height, false);
+        this.pixels_mask_ = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, false);
         this.selected_color_index_ = 0;
         this.selected_bg_color_index_ = 0;
         this.color_palette_ = new Array(256);
@@ -2330,7 +2535,7 @@ class Data {
             save_layer.order = layer.order;
             save_layer.name = layer.name;
             save_layer.tag_color = layer.tag_color;
-            save_layer.pixels = Misc.Make2dArray(edit_w_count, edit_h_count, 0);
+            save_layer.pixels = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(edit_w_count, edit_h_count, 0);
             for (let h = 0; h < edit_h_count; h++) {
                 for (let w = 0; w < edit_w_count; w++) {
                     save_layer.pixels[h][w] = layer.pixels[h][w];
@@ -2513,7 +2718,7 @@ class RectangleTargetPixels {
 const data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
 let canvas_ui = null;
-const canvas_tools = new CanvasTools.CanvasTools((x, y) => {
+const canvas_tools = new _canvas_tools__WEBPACK_IMPORTED_MODULE_10__.CanvasTools.CanvasTools((x, y) => {
     return !data.IsMasked(x, y);
 }, (x, y) => {
     if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
@@ -2598,7 +2803,7 @@ const TryReadEditDataByJson = function (bytes) {
     return true;
 };
 const LoadEditData = function (bytes) {
-    const bmp_data = WindowsIndexColorBitmap.Deserialize(bytes);
+    const bmp_data = _windows_bitmap__WEBPACK_IMPORTED_MODULE_0__.WindowsIndexColorBitmap.Deserialize(bytes);
     if (bmp_data !== null) {
         const [color_palette, pixels, width, height] = bmp_data;
         const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
@@ -2663,12 +2868,12 @@ const ChengeCurrentColor = function (new_color_index) {
     color_table.SelectColorCell(new_color_index);
 };
 const AutoSave = function () {
-    if (Browser.isStorageAvailable('localStorage')) {
+    if (_browser__WEBPACK_IMPORTED_MODULE_2__.Browser.isStorageAvailable('localStorage')) {
         window.localStorage.setItem('data', JSON.stringify(data.MakeSaveData()));
     }
 };
 const AutoLoad = function () {
-    if (Browser.isStorageAvailable('localStorage') == false) {
+    if (_browser__WEBPACK_IMPORTED_MODULE_2__.Browser.isStorageAvailable('localStorage') == false) {
         return false;
     }
     const data_json = window.localStorage.getItem('data');
@@ -2711,29 +2916,29 @@ function Initialize() {
     dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
         canvas_tools.tool_kind = "rectangle_select";
     });
-    const dl_button = new UiParts.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
+    const dl_button = new _gui_download_button__WEBPACK_IMPORTED_MODULE_5__.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
         const basename = dom.edit_data_name.value;
         const save_format = GetHtmlElement('edit_save_format').value;
         return MakeSaveData(basename, save_format);
     });
     edit_reader.addEventListener('load', (event) => {
-        const basename = Misc.ExtractBaseName(dom.edit_filepath.value);
+        const basename = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.ExtractBaseName(dom.edit_filepath.value);
         dom.edit_data_name.value = basename;
         LoadEditData(event.target.result);
     });
     let creation_count = 0;
     const MakeLayerDefaultName = function () {
         const hue = (creation_count * 79) % 360;
-        const color = new RgbColor(...Misc.HsvToRgb(hue, 0.375, 0.75));
+        const color = new RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
         const name = `new layer #${creation_count}`;
         creation_count++;
         return [name, color.ToHexColor()];
     };
-    color_table = new UiParts.ColorPaletteTableUi(16, 16, 16, 0, [
-        { caption: "HSV 16色", colors: Misc.MakeHSVBalancedColorList(1) },
-        { caption: "HSV 16色2彩度", colors: Misc.MakeHSVBalancedColorList(2) },
-        { caption: "HSV 16色4彩度", colors: Misc.MakeHSVBalancedColorList(4) },
-        { caption: "Webセーフカラー", colors: Misc.MakeWebSafeColorList() },
+    color_table = new _gui_color_palette__WEBPACK_IMPORTED_MODULE_4__.ColorPaletteTableUi(16, 16, 16, 0, [
+        { caption: "HSV 16色", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeHSVBalancedColorList(1) },
+        { caption: "HSV 16色2彩度", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeHSVBalancedColorList(2) },
+        { caption: "HSV 16色4彩度", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeHSVBalancedColorList(4) },
+        { caption: "Webセーフカラー", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeWebSafeColorList() },
     ], (color_index) => {
         data.selected_color_index = color_index;
     }, (src_i, src_cc, dst_i, dst_cc) => {
@@ -2749,7 +2954,7 @@ function Initialize() {
     }
     ApplyView();
     if (canvas_ui === null) {
-        canvas_ui = new UiParts.CanvasUi(data.edit_width, data.edit_height, (width, height) => {
+        canvas_ui = new _gui_canvas__WEBPACK_IMPORTED_MODULE_3__.CanvasUi(data.edit_width, data.edit_height, (width, height) => {
             data.edit_width = width;
             data.edit_height = height;
         });
@@ -2800,7 +3005,7 @@ function Initialize() {
         ApplyColorPalette();
     });
     const layers = document.getElementById("layerblock");
-    layer_pane_ui = new UiParts.LayerPaneUi((order) => {
+    layer_pane_ui = new _gui_layer__WEBPACK_IMPORTED_MODULE_8__.LayerPaneUi((order) => {
         const param = MakeLayerDefaultName();
         const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
         data.AppendLayer(new_pixel_layer);
@@ -2841,9 +3046,9 @@ function Initialize() {
     });
     layers.appendChild(layer_pane_ui.node);
     ApplyLayerUi();
-    preview_tab_pane = new UiParts.TabPaneUi();
-    preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
-    animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
+    preview_tab_pane = new _gui_tab_pane__WEBPACK_IMPORTED_MODULE_9__.TabPaneUi();
+    preview_window = new _gui_preview_window__WEBPACK_IMPORTED_MODULE_6__.PreviewWindowUi(data.edit_width, data.edit_height);
+    animation_window = new _gui_sprite_animation_preview_window__WEBPACK_IMPORTED_MODULE_7__.SpriteAnimationPreviewWindowUi(16, 16);
     preview_window.node.style.backgroundColor = "darkgoldenrod";
     animation_window.node.style.backgroundColor = "olive";
     preview_tab_pane.AddTab(preview_window.node, "プレビュー");
@@ -2888,7 +3093,7 @@ function Initialize() {
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
     const save_data = data.MakeSaveData();
     const index_bmp = MargeMultiLayerIndexColorBitmapToIndexBitmap(save_data);
-    const bmp_bytes = WindowsIndexColorBitmap.Serialize(index_bmp.color_palette, index_bmp.pixels, index_bmp.width, index_bmp.height);
+    const bmp_bytes = _windows_bitmap__WEBPACK_IMPORTED_MODULE_0__.WindowsIndexColorBitmap.Serialize(index_bmp.color_palette, index_bmp.pixels, index_bmp.width, index_bmp.height);
     const save_data_blob = new Blob([bmp_bytes]);
     return save_data_blob;
 };
@@ -2910,6 +3115,8 @@ const MakeSaveData = function (basename, save_format) {
     }
 };
 Initialize();
+
+})();
 
 /******/ })()
 ;</script></body>

@@ -1,4 +1,5 @@
-namespace WindowsIndexColorBitmap {
+import { Misc } from "./misc";
+export namespace WindowsIndexColorBitmap {
 	const bmp_file_header_size = 14;
 	const bmp_info_header_size = 40;
 	const palette_size = 4 * 256;

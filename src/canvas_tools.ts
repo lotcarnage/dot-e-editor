@@ -1,4 +1,29 @@
-namespace CanvasTools {
+import { Misc } from "./misc";
+export class PixelPoint {
+	public w: number;
+	public h: number;
+	public constructor(w: number, h: number) {
+		this.w = w;
+		this.h = h;
+	}
+	ToIndex(width: number): number {
+		return width * this.h + this.w;
+	}
+	static IndexToPixelPoint(index: number, width: number): PixelPoint {
+		const w = Math.floor(index % width);
+		const h = Math.floor(index / width);
+		return new PixelPoint(w, h);
+	}
+	static IndexToPixelPointW(index: number, width: number): number {
+		return Math.floor(index % width);
+	}
+	static IndexToPixelPointH(index: number, width: number): number {
+		return Math.floor(index / width);
+	}
+}
+
+
+export namespace CanvasTools {
 	export class Tool {
 		public LeftButtonDown(pixel_w: number, pixel_h: number) { };
 		public LeftButtonUp(pixel_w: number, pixel_h: number) { };

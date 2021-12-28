@@ -1,4 +1,4 @@
-namespace Misc {
+export namespace Misc {
 	export function Make2dArray<T>(width: number, height: number, initial_value: T): T[][] {
 		return JSON.parse(JSON.stringify((new Array<Array<T>>(height)).fill((new Array<T>(width)).fill(initial_value))));
 	}

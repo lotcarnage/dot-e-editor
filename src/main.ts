@@ -1,14 +1,14 @@
-/// <reference path="./windows_bitmap.ts" />
-/// <reference path="./misc.ts" />
-/// <reference path="./browser.ts" />
-/// <reference path="./gui/canvas.ts" />
-/// <reference path="./gui/color_palette.ts" />
-/// <reference path="./gui/download_button.ts" />
-/// <reference path="./gui/preview_window.ts" />
-/// <reference path="./gui/sprite_animation_preview_window.ts" />
-/// <reference path="./gui/layer.ts" />
-/// <reference path="./gui/tab_pane.ts" />
-/// <reference path="./canvas_tools.ts" />
+import { WindowsIndexColorBitmap } from "./windows_bitmap"
+import { Misc } from "./misc"
+import { Browser } from "./browser"
+import { CanvasUi } from "./gui/canvas"
+import { ColorPaletteTableUi } from "./gui/color_palette"
+import { DonwloadButton } from "./gui/download_button"
+import { PreviewWindowUi } from "./gui/preview_window"
+import { SpriteAnimationPreviewWindowUi } from "./gui/sprite_animation_preview_window"
+import { LayerPaneUi } from "./gui/layer"
+import { TabPaneUi } from "./gui/tab_pane"
+import { CanvasTools, PixelPoint } from "./canvas_tools";
 
 class RgbColor {
 	r: number;
@@ -48,29 +48,6 @@ class RgbColor {
 	}
 	public SetColorString(color_string: string): boolean {
 		return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
-	}
-}
-
-class PixelPoint {
-	public w: number;
-	public h: number;
-	public constructor(w: number, h: number) {
-		this.w = w;
-		this.h = h;
-	}
-	ToIndex(width: number): number {
-		return width * this.h + this.w;
-	}
-	static IndexToPixelPoint(index: number, width: number): PixelPoint {
-		const w = Math.floor(index % width);
-		const h = Math.floor(index / width);
-		return new PixelPoint(w, h);
-	}
-	static IndexToPixelPointW(index: number, width: number): number {
-		return Math.floor(index % width);
-	}
-	static IndexToPixelPointH(index: number, width: number): number {
-		return Math.floor(index / width);
 	}
 }
 
@@ -561,7 +538,7 @@ class RectangleTargetPixels {
 
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
-let canvas_ui: UiParts.CanvasUi | null = null;
+let canvas_ui: CanvasUi | null = null;
 const canvas_tools = new CanvasTools.CanvasTools(
 	(x, y) => {
 		return !data.IsMasked(x, y);
@@ -600,12 +577,12 @@ const canvas_tools = new CanvasTools.CanvasTools(
 	() => { }
 );
 
-let layer_pane_ui: UiParts.LayerPaneUi<PixelLayer> | null = null;
+let layer_pane_ui: LayerPaneUi<PixelLayer> | null = null;
 let target_pixels: RectangleTargetPixels | null = null;
-let color_table: UiParts.ColorPaletteTableUi | null = null;
-let preview_window: UiParts.PreviewWindowUi | null = null;
-let animation_window: UiParts.SpriteAnimationPreviewWindowUi | null = null;
-let preview_tab_pane: UiParts.TabPaneUi | null = null;
+let color_table: ColorPaletteTableUi | null = null;
+let preview_window: PreviewWindowUi | null = null;
+let animation_window: SpriteAnimationPreviewWindowUi | null = null;
+let preview_tab_pane: TabPaneUi | null = null;
 
 const MargeLayers = function (): void {
 	const sorted_layers = data.GetDescendingOrderedLayers();
@@ -807,7 +784,7 @@ function Initialize() {
 	dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
 		canvas_tools.tool_kind = "rectangle_select";
 	});
-	const dl_button = new UiParts.DonwloadButton(
+	const dl_button = new DonwloadButton(
 		GetHtmlElement<HTMLDivElement>("edit_command"), "保存（ダウンロード）", () => {
 			const basename = dom.edit_data_name.value;
 			const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;
@@ -827,7 +804,7 @@ function Initialize() {
 		creation_count++;
 		return [name, color.ToHexColor()];
 	}
-	color_table = new UiParts.ColorPaletteTableUi(
+	color_table = new ColorPaletteTableUi(
 		16, 16, 16,
 		0,
 		[
@@ -854,7 +831,7 @@ function Initialize() {
 	}
 	ApplyView();
 	if (canvas_ui === null) {
-		canvas_ui = new UiParts.CanvasUi(data.edit_width, data.edit_height, (width, height) => {
+		canvas_ui = new CanvasUi(data.edit_width, data.edit_height, (width, height) => {
 			data.edit_width = width;
 			data.edit_height = height;
 		});
@@ -907,7 +884,7 @@ function Initialize() {
 		ApplyColorPalette();
 	});
 	const layers = document.getElementById("layerblock");
-	layer_pane_ui = new UiParts.LayerPaneUi<PixelLayer>(
+	layer_pane_ui = new LayerPaneUi<PixelLayer>(
 		(order) => {
 			const param = MakeLayerDefaultName();
 			const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
@@ -952,9 +929,9 @@ function Initialize() {
 		});
 	layers.appendChild(layer_pane_ui.node);
 	ApplyLayerUi();
-	preview_tab_pane = new UiParts.TabPaneUi();
-	preview_window = new UiParts.PreviewWindowUi(data.edit_width, data.edit_height);
-	animation_window = new UiParts.SpriteAnimationPreviewWindowUi(16, 16);
+	preview_tab_pane = new TabPaneUi();
+	preview_window = new PreviewWindowUi(data.edit_width, data.edit_height);
+	animation_window = new SpriteAnimationPreviewWindowUi(16, 16);
 	preview_window.node.style.backgroundColor = "darkgoldenrod";
 	animation_window.node.style.backgroundColor = "olive";
 	preview_tab_pane.AddTab(preview_window.node, "プレビュー");

@@ -1,4 +1,4 @@
-namespace Browser {
+export namespace Browser {
 	export function isStorageAvailable(type: string) {
 		let storage: Storage;
 		try {
