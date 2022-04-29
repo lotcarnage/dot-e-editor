@@ -276,6 +276,13 @@ class Data {
 	public GetUnorderedLayersIterator(): IterableIterator<PixelLayer> {
 		return this.pixel_layers_.values();
 	}
+	public CreateLayerCreationParameters(): Array<[number, string, string, PixelLayer]> {
+		const creation_parameters = new Array<[number, string, string, PixelLayer]>(0);
+		for (const pixel_layer of this.pixel_layers_.values()) {
+			creation_parameters.push([pixel_layer.order, pixel_layer.name, pixel_layer.tag_color, pixel_layer]);
+		}
+		return creation_parameters;
+	}
 
 	public MakeSaveData(): MultiLayerIndexColorBitmap {
 		const edit_w_count = this.edit_width_;
@@ -346,9 +353,6 @@ class Data {
 		}
 		return;
 	}
-	public ApplyView(): void {
-		ApplyLayerUi();
-	}
 
 	public CopyToClipBoard(left: number, top: number, right: number, bottom: number): void {
 		const copy_w = right - left + 1;
@@ -392,7 +396,7 @@ class Data {
 		this.logger_.PushRedoLog(current_data);
 		const undo_data = this.logger_.PopUndoLog();
 		this.CopyFromMultiLayerIndexColorBitmap(undo_data);
-		this.ApplyView();
+		layer_pane_ui.CreateBrandNewLayers(this.CreateLayerCreationParameters());
 	}
 	public Redo() {
 		if (this.logger_.IsRedoLogEmpty()) {
@@ -402,17 +406,12 @@ class Data {
 		this.logger_.PushUndoLog(current_data);
 		const redo_data = this.logger_.PopRedoLog();
 		this.CopyFromMultiLayerIndexColorBitmap(redo_data);
-		this.ApplyView();
+		layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
 	}
 }
 
-const ApplyColorPalette = function (): void {
-	const hex_color_table = data.GetColorTable();
-	color_table.SetColorTable(hex_color_table);
-}
-
 const ApplyView = function (): void {
-	ApplyColorPalette();
+	color_table.SetColorTable(data.GetColorTable());
 	if (canvas_ui !== null) {
 		canvas_ui.canvas_width = data.edit_width;
 		canvas_ui.canvas_height = data.edit_height;
@@ -585,7 +584,7 @@ const FitDivHeight = function (modify_div_id: string, referencet_div_id: string)
 const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as MultiLayerIndexColorBitmap;
 	data.CopyFromMultiLayerIndexColorBitmap(read_data);
-	data.ApplyView();
+	layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
 	ApplyView();
 	return true;
 }
@@ -596,7 +595,7 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 		const [color_palette, pixels, width, height] = bmp_data as [string[], number[][], number, number];
 		const raw_data = new IndexColorBitmap(width, height, color_palette, pixels);
 		data.CopyFromIndexColorBitmap(raw_data, dom.edit_data_name.value);
-		data.ApplyView();
+		layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
 		ApplyView();
 		return true;
 	}
@@ -708,15 +707,6 @@ const AutoLoad = function (): boolean {
 	return true;
 }
 
-const ApplyLayerUi = function (): void {
-	layer_pane_ui.DeleteAll();
-	const creation_parameters = new Array<[number, string, string, PixelLayer]>(0);
-	for (let pixel_layer of data.GetUnorderedLayersIterator()) {
-		creation_parameters.push([pixel_layer.order, pixel_layer.name, pixel_layer.tag_color, pixel_layer]);
-	}
-	layer_pane_ui.CreateNewLayers(creation_parameters);
-	return;
-}
 function Initialize() {
 	dom.Initialize();
 	const edit_reader: FileReader = new FileReader();
@@ -829,7 +819,7 @@ function Initialize() {
 	});
 	dom.delete_all_unused_colors_button.addEventListener('click', (event) => {
 		data.DeleteAllUnusedColors();
-		ApplyColorPalette();
+		color_table.SetColorTable(data.GetColorTable());
 	});
 	const layers = document.getElementById("layerblock");
 	layer_pane_ui = new LayerPaneUi<PixelLayer>(
@@ -876,7 +866,7 @@ function Initialize() {
 			}
 		});
 	layers.appendChild(layer_pane_ui.node);
-	ApplyLayerUi();
+	layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
 	preview_tab_pane = new TabPaneUi();
 	preview_window = new PreviewWindowUi(data.edit_width, data.edit_height);
 	animation_window = new SpriteAnimationPreviewWindowUi(16, 16);

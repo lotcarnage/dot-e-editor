@@ -300,6 +300,19 @@ export class LayerPaneUi<UserType> {
 			this.CreateNewLayer(...parameter);
 		}
 	}
+
+	public CreateBrandNewLayers(creation_parameters: Array<[number, string, string, UserType]>) {
+		this.DeleteAll();
+		const ordered_parameters: [number, string, string, UserType][] = Array<[number, string, string, UserType]>(creation_parameters.length);
+		for (let parameter of creation_parameters) {
+			ordered_parameters[parameter[0]] = parameter;
+		}
+		for (let parameter of ordered_parameters) {
+			parameter[0] = Math.max(0, parameter[0] - 1);
+			this.CreateNewLayer(...parameter);
+		}
+	}
+
 	public UpLayer(target_order: number): void {
 		if (this.SwapLayer(target_order, target_order + 1)) {
 			this.swap_callback_(target_order, target_order + 1);
