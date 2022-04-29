@@ -30,14 +30,10 @@ export class ColorPaletteTableUi {
 	private preset_color_palettes_: PresetColorPalette[];
 
 	private static SetUnselectedColorCellStyle(color_cell: HTMLTableDataCellElement) {
-		color_cell.style.borderStyle = "solid";
 		color_cell.style.borderColor = "#000000";
-		color_cell.style.borderWidth = "1";
 	}
 	private static SetSelectedColorCellStyle(color_cell: HTMLTableDataCellElement) {
-		color_cell.style.borderStyle = "solid";
 		color_cell.style.borderColor = "#00ff00";
-		color_cell.style.borderWidth = "1";
 	}
 	private static RgbStringToHexColor(rgb_string: string) {
 		const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
@@ -82,6 +78,9 @@ export class ColorPaletteTableUi {
 			const color_cell = document.createElement("td");
 			color_cell.draggable = true;
 			color_cell.style.backgroundColor = initiali_color_palette[i];
+			color_cell.style.borderStyle = "solid";
+			color_cell.style.borderWidth = "1px";
+			color_cell.style.lineHeight = "1px";
 			color_cell.appendChild(this.dummy_canvas_array_[i]);
 			ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
 			this.color_cells_[i] = color_cell;
