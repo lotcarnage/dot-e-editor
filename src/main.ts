@@ -317,7 +317,7 @@ class Data {
 			this.color_palette_.SetColorByString(i, bmp_data.color_palette[i]);
 		}
 		this.pixel_layers_.clear();
-		const layer = new PixelLayer(0, name, '#202020', max_edit_width, max_edit_height);
+		const layer = new PixelLayer(0, name, '#90b080', max_edit_width, max_edit_height);
 		for (let h = 0; h < edit_h; h++) {
 			for (let w = 0; w < edit_w; w++) {
 				layer.pixels[h][w] = bmp_data.pixels[h][w];
