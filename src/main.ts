@@ -227,6 +227,13 @@ class Data {
 	public GetRgbColorFromPalette(index: number): RgbColor {
 		return this.color_palette_.GetColor(index);
 	}
+	public GetColorTable(): string[] {
+		const color_table = new Array<string>(256);
+		for (let i = 0; i < 256; i++) {
+			color_table[i] = this.color_palette_.GetColor(i).ToHexColor();
+		}
+		return color_table;
+	}
 	public DeleteAllUnusedColors(): void {
 		const histogram = new Array<number>(256).fill(0);
 		for (let h = 0; h < this.edit_height_; h++) {
@@ -400,9 +407,8 @@ class Data {
 }
 
 const ApplyColorPalette = function (): void {
-	for (let i = 0; i < 256; i++) {
-		color_table.SetColor(i, data.GetRgbColorFromPalette(i).ToHexColor());
-	}
+	const hex_color_table = data.GetColorTable();
+	color_table.SetColorTable(hex_color_table);
 }
 
 const ApplyView = function (): void {
@@ -652,10 +658,7 @@ var frame_count = 0;
 const UpdateView = function () {
 	MargeLayers();
 	layer_pane_ui.Draw();
-	const color_table = new Array<string>(256);
-	for (let i = 0; i < 256; i++) {
-		color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
-	}
+	const color_table = data.GetColorTable();
 	if (preview_window !== null) {
 		preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
 	}
