@@ -9,47 +9,7 @@ import { SpriteAnimationPreviewWindowUi } from "./gui/sprite_animation_preview_w
 import { LayerPaneUi } from "./gui/layer"
 import { TabPaneUi } from "./gui/tab_pane"
 import { CanvasTools, PixelPoint } from "./canvas_tools";
-
-class RgbColor {
-	r: number;
-	g: number;
-	b: number;
-	public constructor(r = 0, g = 0, b = 0) {
-		this.r = r;
-		this.g = g;
-		this.b = b;
-	}
-	public ToHexColor(): string {
-		const r_hex = ('00' + this.r.toString(16)).slice(-2);
-		const g_hex = ('00' + this.g.toString(16)).slice(-2);
-		const b_hex = ('00' + this.b.toString(16)).slice(-2);
-		return `#${r_hex}${g_hex}${b_hex}`;
-	}
-	public ToRgbString(): string {
-		return `rgb(${this.r},${this.g},${this.b})`;
-	}
-	public SetHexColor(hex_color: string): boolean {
-		const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex_color);
-		if (result) {
-			this.r = parseInt(result[1], 16);
-			this.g = parseInt(result[2], 16);
-			this.b = parseInt(result[3], 16);
-		}
-		return !!(result);
-	}
-	public SetRgbString(rgb_string: string): boolean {
-		const result = /^rgb\s*\(\s*([\d]+)\s*,\s*([\d]+)\s*,\s*([\d]+)\s*\)/i.exec(rgb_string);
-		if (result) {
-			this.r = Number(result[1]);
-			this.g = Number(result[2]);
-			this.b = Number(result[3]);
-		}
-		return !!(result);
-	}
-	public SetColorString(color_string: string): boolean {
-		return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
-	}
-}
+import { RgbColor, RgbColorPalette } from "./rgb_color_palette";
 
 const data_format_version: number = 1;
 const view_font_size: number = 8;
@@ -172,7 +132,7 @@ class Data {
 	private edit_width_: number;
 	private edit_height_: number;
 	private selected_color_index_: number;
-	private color_palette_: RgbColor[];
+	private color_palette_: RgbColorPalette;
 	private logger_: EditLogger;
 	private pixels_clipboard_: number[][];
 	private clipboard_stored_width_: number;
@@ -189,10 +149,7 @@ class Data {
 		this.pixels_mask_ = Misc.Make2dArray<boolean>(max_width, max_height, false);
 		this.selected_color_index_ = 0;
 		this.selected_bg_color_index_ = 0;
-		this.color_palette_ = new Array<RgbColor>(256);
-		for (let i = 0; i < 256; i++) {
-			this.color_palette_[i] = new RgbColor();
-		}
+		this.color_palette_ = new RgbColorPalette();
 		this.logger_ = new EditLogger();
 	}
 	public SetCurrentPixelLayer(pixel_layer: PixelLayer): void {
@@ -267,13 +224,8 @@ class Data {
 	public GetWrittenColorIndex(w: number, h: number): number {
 		return this.current_pixel_layer_.pixels[h][w];
 	}
-	public SetRgbColorToPalette(index: number, color: RgbColor) {
-		this.color_palette_[index].r = color.r;
-		this.color_palette_[index].g = color.g;
-		this.color_palette_[index].b = color.b;
-	}
 	public GetRgbColorFromPalette(index: number): RgbColor {
-		return this.color_palette_[index];
+		return this.color_palette_.GetColor(index);
 	}
 	public DeleteAllUnusedColors(): void {
 		const histogram = new Array<number>(256).fill(0);
@@ -284,9 +236,7 @@ class Data {
 		}
 		for (let i = 0; i < 256; i++) {
 			if (histogram[i] === 0) {
-				data.color_palette_[i].r = 0;
-				data.color_palette_[i].g = 0;
-				data.color_palette_[i].b = 0;
+				data.color_palette_.SetPresetColor(i, "black");
 			}
 		}
 	}
@@ -305,9 +255,7 @@ class Data {
 				}
 			}
 		}
-		const tmp_color = this.color_palette_[lh_index];
-		this.color_palette_[lh_index] = this.color_palette_[rh_index];
-		this.color_palette_[rh_index] = tmp_color;
+		this.color_palette_.SwapColor(lh_index, rh_index);
 		return;
 	}
 	public GetDescendingOrderedLayers(): PixelLayer[] {
@@ -331,7 +279,7 @@ class Data {
 		}
 		const color_palette = new Array<RgbColor>(256);
 		for (var i = 0; i < 256; i++) {
-			color_palette[i] = this.color_palette_[i];
+			color_palette[i] = this.color_palette_.GetColor(i);
 		}
 		const save_data = new MultiLayerIndexColorBitmap();
 		save_data.width = edit_w_count;
@@ -359,7 +307,7 @@ class Data {
 		this.edit_width_ = edit_w;
 		this.edit_height_ = edit_h;
 		for (let i = 0; i < 256; i++) {
-			this.color_palette_[i].SetRgbString(bmp_data.color_palette[i]);
+			this.color_palette_.SetColorByString(i, bmp_data.color_palette[i]);
 		}
 		this.pixel_layers_.clear();
 		const layer = new PixelLayer(0, name, '#202020', max_edit_width, max_edit_height);
@@ -377,9 +325,7 @@ class Data {
 		this.edit_width_ = edit_w;
 		this.edit_height_ = edit_h;
 		for (let i = 0; i < 256; i++) {
-			this.color_palette_[i].r = raw_data.color_palette[i].r;
-			this.color_palette_[i].g = raw_data.color_palette[i].g;
-			this.color_palette_[i].b = raw_data.color_palette[i].b;
+			this.color_palette_.SetColor(i, raw_data.color_palette[i]);
 		}
 		this.pixel_layers_.clear();
 		for (let raw_layer of raw_data.layers) {
