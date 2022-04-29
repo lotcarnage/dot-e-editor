@@ -116,38 +116,37 @@ class MultiLayerIndexColorBitmap {
 	height: number;
 	color_palette: RgbColor[];
 	layers: IndexColorBitmapLayer[];
-}
-
-const MargeMultiLayerIndexColorBitmapToIndexBitmap = function (mlbmp: MultiLayerIndexColorBitmap) {
-	const num_layers = mlbmp.layers.length;
-	const sorted_layers = new Array<IndexColorBitmapLayer>(num_layers);
-	for (let layer of mlbmp.layers) {
-		sorted_layers[num_layers - layer.order - 1] = layer;
-	}
-	const default_bg_color = 0;
-	const max_w = mlbmp.width;
-	const max_h = mlbmp.height;
-	const bg_ci = default_bg_color;
-	const marged_pixels = Misc.Make2dArray<number>(max_w, max_h, 0);
-	for (let h = 0; h < max_h; h++) {
-		for (let w = 0; w < max_w; w++) {
-			for (let i = 0; i < sorted_layers.length; i++) {
-				const source_layer = sorted_layers[i];
-				const src_ci = source_layer.pixels[h][w];
-				if (src_ci !== bg_ci) {
-					marged_pixels[h][w] = src_ci;
-					break;
+	Marge(): IndexColorBitmap {
+		const num_layers = this.layers.length;
+		const sorted_layers = new Array<IndexColorBitmapLayer>(num_layers);
+		for (let layer of this.layers) {
+			sorted_layers[num_layers - layer.order - 1] = layer;
+		}
+		const default_bg_color = 0;
+		const max_w = this.width;
+		const max_h = this.height;
+		const bg_ci = default_bg_color;
+		const marged_pixels = Misc.Make2dArray<number>(max_w, max_h, 0);
+		for (let h = 0; h < max_h; h++) {
+			for (let w = 0; w < max_w; w++) {
+				for (let i = 0; i < sorted_layers.length; i++) {
+					const source_layer = sorted_layers[i];
+					const src_ci = source_layer.pixels[h][w];
+					if (src_ci !== bg_ci) {
+						marged_pixels[h][w] = src_ci;
+						break;
+					}
 				}
 			}
 		}
+		const color_palette = new Array<string>(256);
+		for (let i = 0; i < 256; i++) {
+			color_palette[i] = this.color_palette[i].ToRgbString();
+		}
+		return new IndexColorBitmap(max_w, max_h, color_palette, marged_pixels);
 	}
-	const color_palette = new Array<string>(256);
-	for (let i = 0; i < 256; i++) {
-		color_palette[i] = mlbmp.color_palette[i].ToRgbString();
-	}
-	return new IndexColorBitmap(max_w, max_h, color_palette, marged_pixels);
-}
 
+}
 
 class PixelLayer {
 	pixels: number[][];
@@ -964,16 +963,14 @@ function Initialize() {
 	window.requestAnimationFrame(UpdateView);
 }
 
-const MakeSaveDataBlobAsWindowsIndexColorBitmap = function () {
-	const save_data = data.MakeSaveData();
-	const index_bmp = MargeMultiLayerIndexColorBitmapToIndexBitmap(save_data);
+const MakeSaveDataBlobAsWindowsIndexColorBitmap = function (save_data: MultiLayerIndexColorBitmap) {
+	const index_bmp = save_data.Marge();
 	const bmp_bytes = WindowsIndexColorBitmap.Serialize(index_bmp.color_palette, index_bmp.pixels, index_bmp.width, index_bmp.height);
 	const save_data_blob = new Blob([bmp_bytes]);
 	return save_data_blob;
 };
 
-const MakeSaveDataBlobAsJson = function () {
-	const save_data = data.MakeSaveData();
+const MakeSaveDataBlobAsJson = function (save_data: MultiLayerIndexColorBitmap) {
 	const save_data_json = JSON.stringify(save_data);
 	const save_data_blob = new Blob([save_data_json], {
 		type: 'application/json'
@@ -984,10 +981,10 @@ const MakeSaveDataBlobAsJson = function () {
 const MakeSaveData = function (basename: string, save_format: string): [string, Blob] {
 	switch (save_format) {
 		case "WindowsIndexColorBitmap":
-			return [`${basename}.bmp`, MakeSaveDataBlobAsWindowsIndexColorBitmap()];
+			return [`${basename}.bmp`, MakeSaveDataBlobAsWindowsIndexColorBitmap(data.MakeSaveData())];
 		case "JSON":
 		default:
-			return [`${basename}.json`, MakeSaveDataBlobAsJson()];
+			return [`${basename}.json`, MakeSaveDataBlobAsJson(data.MakeSaveData())];
 	}
 };
 
