@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html lang="ja">
 
 <head>
@@ -1072,6 +1073,9 @@ class ColorPaletteTableUi {
             const color_cell = document.createElement("td");
             color_cell.draggable = true;
             color_cell.style.backgroundColor = initiali_color_palette[i];
+            color_cell.style.borderStyle = "solid";
+            color_cell.style.borderWidth = "1px";
+            color_cell.style.lineHeight = "1px";
             color_cell.appendChild(this.dummy_canvas_array_[i]);
             ColorPaletteTableUi.SetUnselectedColorCellStyle(color_cell);
             this.color_cells_[i] = color_cell;
@@ -1177,14 +1181,10 @@ class ColorPaletteTableUi {
         return;
     }
     static SetUnselectedColorCellStyle(color_cell) {
-        color_cell.style.borderStyle = "solid";
         color_cell.style.borderColor = "#000000";
-        color_cell.style.borderWidth = "1";
     }
     static SetSelectedColorCellStyle(color_cell) {
-        color_cell.style.borderStyle = "solid";
         color_cell.style.borderColor = "#00ff00";
-        color_cell.style.borderWidth = "1";
     }
     static RgbStringToHexColor(rgb_string) {
         const [r_string, g_string, b_string] = rgb_string.split('(')[1].split(')')[0].split(',');
@@ -1289,8 +1289,8 @@ class LayerUi {
         this.layer_frame_.style.display = "flex";
         this.layer_frame_.style.alignItems = "center";
         this.tab_ = document.createElement("div");
-        this.tab_.style.width = (40).toString();
-        this.tab_.style.height = (32).toString();
+        this.tab_.style.width = "40px";
+        this.tab_.style.height = "32px";
         this.tab_.style.backgroundColor = color;
         this.tab_.style.display = "flex";
         this.tab_.style.justifyContent = "center";
@@ -2027,6 +2027,89 @@ var Misc;
 
 /***/ }),
 
+/***/ "./built/rgb_color_palette.js":
+/*!************************************!*\
+  !*** ./built/rgb_color_palette.js ***!
+  \************************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "RgbColor": () => (/* binding */ RgbColor),
+/* harmony export */   "RgbColorPalette": () => (/* binding */ RgbColorPalette)
+/* harmony export */ });
+class RgbColor {
+    constructor(r = 0, g = 0, b = 0) {
+        this.r = r;
+        this.g = g;
+        this.b = b;
+    }
+    ToHexColor() {
+        const r_hex = ('00' + this.r.toString(16)).slice(-2);
+        const g_hex = ('00' + this.g.toString(16)).slice(-2);
+        const b_hex = ('00' + this.b.toString(16)).slice(-2);
+        return `#${r_hex}${g_hex}${b_hex}`;
+    }
+    ToRgbString() {
+        return `rgb(${this.r},${this.g},${this.b})`;
+    }
+    SetHexColor(hex_color) {
+        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex_color);
+        if (result) {
+            this.r = parseInt(result[1], 16);
+            this.g = parseInt(result[2], 16);
+            this.b = parseInt(result[3], 16);
+        }
+        return !!(result);
+    }
+    SetRgbString(rgb_string) {
+        const result = /^rgb\s*\(\s*([\d]+)\s*,\s*([\d]+)\s*,\s*([\d]+)\s*\)/i.exec(rgb_string);
+        if (result) {
+            this.r = Number(result[1]);
+            this.g = Number(result[2]);
+            this.b = Number(result[3]);
+        }
+        return !!(result);
+    }
+    SetColorString(color_string) {
+        return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
+    }
+}
+class RgbColorPalette {
+    constructor() {
+        this.colors_ = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            this.colors_[i] = new RgbColor();
+        }
+    }
+    SetPresetColor(index, preset_color) {
+        if (preset_color == "black") {
+            this.colors_[index].r = 0;
+            this.colors_[index].g = 0;
+            this.colors_[index].b = 0;
+        }
+    }
+    SetColor(index, color) {
+        this.colors_[index].r = color.r;
+        this.colors_[index].g = color.g;
+        this.colors_[index].b = color.b;
+    }
+    SetColorByString(index, color) {
+        this.colors_[index].SetRgbString(color);
+    }
+    GetColor(index) {
+        return this.colors_[index];
+    }
+    SwapColor(index_a, index_b) {
+        const tmp_color = this.colors_[index_a];
+        this.colors_[index_a] = this.colors_[index_b];
+        this.colors_[index_b] = tmp_color;
+    }
+}
+
+
+/***/ }),
+
 /***/ "./built/windows_bitmap.js":
 /*!*********************************!*\
   !*** ./built/windows_bitmap.js ***!
@@ -2232,6 +2315,7 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _gui_layer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./gui/layer */ "./built/gui/layer.js");
 /* harmony import */ var _gui_tab_pane__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./gui/tab_pane */ "./built/gui/tab_pane.js");
 /* harmony import */ var _canvas_tools__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./canvas_tools */ "./built/canvas_tools.js");
+/* harmony import */ var _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./rgb_color_palette */ "./built/rgb_color_palette.js");
 
 
 
@@ -2243,43 +2327,7 @@ __webpack_require__.r(__webpack_exports__);
 
 
 
-class RgbColor {
-    constructor(r = 0, g = 0, b = 0) {
-        this.r = r;
-        this.g = g;
-        this.b = b;
-    }
-    ToHexColor() {
-        const r_hex = ('00' + this.r.toString(16)).slice(-2);
-        const g_hex = ('00' + this.g.toString(16)).slice(-2);
-        const b_hex = ('00' + this.b.toString(16)).slice(-2);
-        return `#${r_hex}${g_hex}${b_hex}`;
-    }
-    ToRgbString() {
-        return `rgb(${this.r},${this.g},${this.b})`;
-    }
-    SetHexColor(hex_color) {
-        const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex_color);
-        if (result) {
-            this.r = parseInt(result[1], 16);
-            this.g = parseInt(result[2], 16);
-            this.b = parseInt(result[3], 16);
-        }
-        return !!(result);
-    }
-    SetRgbString(rgb_string) {
-        const result = /^rgb\s*\(\s*([\d]+)\s*,\s*([\d]+)\s*,\s*([\d]+)\s*\)/i.exec(rgb_string);
-        if (result) {
-            this.r = Number(result[1]);
-            this.g = Number(result[2]);
-            this.b = Number(result[3]);
-        }
-        return !!(result);
-    }
-    SetColorString(color_string) {
-        return this.SetHexColor(color_string) ? true : this.SetRgbString(color_string);
-    }
-}
+
 const data_format_version = 1;
 const view_font_size = 8;
 const max_edit_width = 512;
@@ -2382,10 +2430,7 @@ class Data {
         this.pixels_mask_ = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, false);
         this.selected_color_index_ = 0;
         this.selected_bg_color_index_ = 0;
-        this.color_palette_ = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            this.color_palette_[i] = new RgbColor();
-        }
+        this.color_palette_ = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColorPalette();
         this.logger_ = new EditLogger();
     }
     SetCurrentPixelLayer(pixel_layer) {
@@ -2460,13 +2505,15 @@ class Data {
     GetWrittenColorIndex(w, h) {
         return this.current_pixel_layer_.pixels[h][w];
     }
-    SetRgbColorToPalette(index, color) {
-        this.color_palette_[index].r = color.r;
-        this.color_palette_[index].g = color.g;
-        this.color_palette_[index].b = color.b;
-    }
     GetRgbColorFromPalette(index) {
-        return this.color_palette_[index];
+        return this.color_palette_.GetColor(index);
+    }
+    GetColorTable() {
+        const color_table = new Array(256);
+        for (let i = 0; i < 256; i++) {
+            color_table[i] = this.color_palette_.GetColor(i).ToHexColor();
+        }
+        return color_table;
     }
     DeleteAllUnusedColors() {
         const histogram = new Array(256).fill(0);
@@ -2477,9 +2524,7 @@ class Data {
         }
         for (let i = 0; i < 256; i++) {
             if (histogram[i] === 0) {
-                data.color_palette_[i].r = 0;
-                data.color_palette_[i].g = 0;
-                data.color_palette_[i].b = 0;
+                data.color_palette_.SetPresetColor(i, "black");
             }
         }
     }
@@ -2498,9 +2543,7 @@ class Data {
                 }
             }
         }
-        const tmp_color = this.color_palette_[lh_index];
-        this.color_palette_[lh_index] = this.color_palette_[rh_index];
-        this.color_palette_[rh_index] = tmp_color;
+        this.color_palette_.SwapColor(lh_index, rh_index);
         return;
     }
     GetDescendingOrderedLayers() {
@@ -2523,7 +2566,7 @@ class Data {
         }
         const color_palette = new Array(256);
         for (var i = 0; i < 256; i++) {
-            color_palette[i] = this.color_palette_[i];
+            color_palette[i] = this.color_palette_.GetColor(i);
         }
         const save_data = new MultiLayerIndexColorBitmap();
         save_data.width = edit_w_count;
@@ -2551,10 +2594,10 @@ class Data {
         this.edit_width_ = edit_w;
         this.edit_height_ = edit_h;
         for (let i = 0; i < 256; i++) {
-            this.color_palette_[i].SetRgbString(bmp_data.color_palette[i]);
+            this.color_palette_.SetColorByString(i, bmp_data.color_palette[i]);
         }
         this.pixel_layers_.clear();
-        const layer = new PixelLayer(0, name, '#202020', max_edit_width, max_edit_height);
+        const layer = new PixelLayer(0, name, '#90b080', max_edit_width, max_edit_height);
         for (let h = 0; h < edit_h; h++) {
             for (let w = 0; w < edit_w; w++) {
                 layer.pixels[h][w] = bmp_data.pixels[h][w];
@@ -2569,9 +2612,7 @@ class Data {
         this.edit_width_ = edit_w;
         this.edit_height_ = edit_h;
         for (let i = 0; i < 256; i++) {
-            this.color_palette_[i].r = raw_data.color_palette[i].r;
-            this.color_palette_[i].g = raw_data.color_palette[i].g;
-            this.color_palette_[i].b = raw_data.color_palette[i].b;
+            this.color_palette_.SetColor(i, raw_data.color_palette[i]);
         }
         this.pixel_layers_.clear();
         for (let raw_layer of raw_data.layers) {
@@ -2642,9 +2683,8 @@ class Data {
     }
 }
 const ApplyColorPalette = function () {
-    for (let i = 0; i < 256; i++) {
-        color_table.SetColor(i, data.GetRgbColorFromPalette(i).ToHexColor());
-    }
+    const hex_color_table = data.GetColorTable();
+    color_table.SetColorTable(hex_color_table);
 };
 const ApplyView = function () {
     ApplyColorPalette();
@@ -2847,10 +2887,7 @@ var frame_count = 0;
 const UpdateView = function () {
     MargeLayers();
     layer_pane_ui.Draw();
-    const color_table = new Array(256);
-    for (let i = 0; i < 256; i++) {
-        color_table[i] = data.GetRgbColorFromPalette(i).ToHexColor();
-    }
+    const color_table = data.GetColorTable();
     if (preview_window !== null) {
         preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
     }
@@ -2929,7 +2966,7 @@ function Initialize() {
     let creation_count = 0;
     const MakeLayerDefaultName = function () {
         const hue = (creation_count * 79) % 360;
-        const color = new RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
+        const color = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
         const name = `new layer #${creation_count}`;
         creation_count++;
         return [name, color.ToHexColor()];
