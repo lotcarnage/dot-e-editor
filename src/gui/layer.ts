@@ -27,8 +27,8 @@ export class LayerUi<UserType> {
 		this.layer_frame_.style.display = "flex";
 		this.layer_frame_.style.alignItems = "center";
 		this.tab_ = document.createElement("div");
-		this.tab_.style.width = (40).toString();
-		this.tab_.style.height = (32).toString();
+		this.tab_.style.width = "40px";
+		this.tab_.style.height = "32px";
 		this.tab_.style.backgroundColor = color;
 		this.tab_.style.display = "flex";
 		this.tab_.style.justifyContent = "center";
