@@ -123,6 +123,35 @@ class PixelLayer {
 		this.is_locked = false;
 		this.is_locked = true;
 	}
+	CalculateHistogram(width: number, height: number): number[] {
+		const histogram = new Array<number>(256).fill(0);
+		const max_height = this.pixels.length;
+		const max_width = this.pixels[0].length;
+		const actual_height = ((height < max_height) ? height : max_height);
+		const actual_width = ((width < max_width) ? width : max_width);
+		for (let h = 0; h < actual_height; h++) {
+			for (let w = 0; w < actual_width; w++) {
+				histogram[this.pixels[h][w]]++;
+			}
+		}
+		return histogram;
+	}
+	SwapColor(lh_index: number, rh_index: number): void {
+		const max_height = this.pixels.length;
+		const max_width = this.pixels[0].length;
+		for (let h = 0; h < max_height; h++) {
+			for (let w = 0; w < max_width; w++) {
+				const color_index = this.pixels[h][w];
+				if (color_index === lh_index) {
+					this.pixels[h][w] = rh_index;
+				}
+				if (color_index === rh_index) {
+					this.pixels[h][w] = lh_index;
+				}
+			}
+		}
+		return;
+	}
 }
 
 class Data {
@@ -235,12 +264,7 @@ class Data {
 		return color_table;
 	}
 	public DeleteAllUnusedColors(): void {
-		const histogram = new Array<number>(256).fill(0);
-		for (let h = 0; h < this.edit_height_; h++) {
-			for (let w = 0; w < this.edit_width_; w++) {
-				histogram[this.current_pixel_layer_.pixels[h][w]]++;
-			}
-		}
+		const histogram = this.current_pixel_layer_.CalculateHistogram(this.edit_width_, this.edit_height_);
 		for (let i = 0; i < 256; i++) {
 			if (histogram[i] === 0) {
 				data.color_palette_.SetPresetColor(i, "black");
@@ -251,17 +275,7 @@ class Data {
 		if (lh_index === rh_index) {
 			return;
 		}
-		for (let h = 0; h < this.edit_height_; h++) {
-			for (let w = 0; w < this.edit_width_; w++) {
-				const color_index = this.current_pixel_layer_.pixels[h][w];
-				if (color_index === lh_index) {
-					this.current_pixel_layer_.pixels[h][w] = rh_index;
-				}
-				if (color_index === rh_index) {
-					this.current_pixel_layer_.pixels[h][w] = lh_index;
-				}
-			}
-		}
+		this.current_pixel_layer_.SwapColor(lh_index, rh_index);
 		this.color_palette_.SwapColor(lh_index, rh_index);
 		return;
 	}
