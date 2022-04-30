@@ -329,6 +329,40 @@ class Data {
 		}
 		return save_data;
 	}
+	ConstructViewPixelsForViewInplace(pixels_for_view: number[][]): void {
+		const sorted_layers = this.GetDescendingOrderedLayers();
+		const max_w = this.edit_width;
+		const max_h = this.edit_height;
+		const bg_ci = this.selected_bg_color_index;
+		const lowest_layer_index = sorted_layers.length - 1;
+		for (let h = 0; h < max_h; h++) {
+			for (let w = 0; w < max_w; w++) {
+				let is_written = false;
+				const dst_ci = pixels_for_view[h][w];
+				for (let i = 0; i < sorted_layers.length - 1; i++) {
+					const source_layer = sorted_layers[i];
+					if (source_layer.is_visible === false) {
+						continue;
+					}
+					const src_ci = source_layer.pixels[h][w];
+					if (src_ci !== bg_ci) {
+						pixels_for_view[h][w] = src_ci;
+						is_written = true;
+						break;
+					}
+				}
+				if (!is_written) {
+					if (sorted_layers[lowest_layer_index].is_visible) {
+						pixels_for_view[h][w] = sorted_layers[lowest_layer_index].pixels[h][w];
+					} else {
+						pixels_for_view[h][w] = bg_ci;
+					}
+				}
+			}
+		}
+		return;
+	}
+
 	public CopyFromIndexColorBitmap(bmp_data: IndexColorBitmap, name: string): void {
 		const edit_w = bmp_data.width;
 		const edit_h = bmp_data.height;
@@ -501,7 +535,7 @@ class RectangleTargetPixels {
 }
 
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
-const marged_pixel_layer = new PixelLayer(0, "test", '#000000', max_edit_width, max_edit_height);
+const marged_pixels_for_view = Misc.Make2dArray(max_edit_width, max_edit_height, 0);
 let canvas_ui: CanvasUi | null = null;
 const canvas_tools = new CanvasTools.CanvasTools(
 	(x, y) => {
@@ -547,40 +581,6 @@ let color_table: ColorPaletteTableUi | null = null;
 let preview_window: PreviewWindowUi | null = null;
 let animation_window: SpriteAnimationPreviewWindowUi | null = null;
 let preview_tab_pane: TabPaneUi | null = null;
-
-const MargeLayers = function (): void {
-	const sorted_layers = data.GetDescendingOrderedLayers();
-	const max_w = data.edit_width;
-	const max_h = data.edit_height;
-	const bg_ci = data.selected_bg_color_index;
-	const lowest_layer_index = sorted_layers.length - 1;
-	for (let h = 0; h < max_h; h++) {
-		for (let w = 0; w < max_w; w++) {
-			let is_written = false;
-			const dst_ci = marged_pixel_layer.pixels[h][w];
-			for (let i = 0; i < sorted_layers.length - 1; i++) {
-				const source_layer = sorted_layers[i];
-				if (source_layer.is_visible === false) {
-					continue;
-				}
-				const src_ci = source_layer.pixels[h][w];
-				if (src_ci !== bg_ci) {
-					marged_pixel_layer.pixels[h][w] = src_ci;
-					is_written = true;
-					break;
-				}
-			}
-			if (!is_written) {
-				if (sorted_layers[lowest_layer_index].is_visible) {
-					marged_pixel_layer.pixels[h][w] = sorted_layers[lowest_layer_index].pixels[h][w];
-				} else {
-					marged_pixel_layer.pixels[h][w] = bg_ci;
-				}
-			}
-		}
-	}
-	return;
-}
 
 function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
@@ -669,18 +669,18 @@ const dom = new Dom();
 
 var frame_count = 0;
 const UpdateView = function () {
-	MargeLayers();
+	data.ConstructViewPixelsForViewInplace(marged_pixels_for_view);
 	layer_pane_ui.Draw();
 	const color_table = data.GetColorTable();
 	if (preview_window !== null) {
-		preview_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height);
+		preview_window.Draw(marged_pixels_for_view, color_table, data.edit_width, data.edit_height);
 	}
 	if (animation_window !== null) {
-		animation_window.Draw(marged_pixel_layer.pixels, color_table, data.edit_width, data.edit_height, frame_count);
+		animation_window.Draw(marged_pixels_for_view, color_table, data.edit_width, data.edit_height, frame_count);
 	}
 	if (canvas_ui !== null) {
 		canvas_ui.Draw(
-			marged_pixel_layer.pixels, data.pixels_mask, color_table,
+			marged_pixels_for_view, data.pixels_mask, color_table,
 			dom.grid_color.value,
 			dom.large_grid_width.valueAsNumber, dom.large_grid_height.valueAsNumber, large_grid_color,
 			((target_pixels !== null) ? target_pixels.rectangle : null),
