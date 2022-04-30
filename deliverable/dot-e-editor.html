@@ -576,6 +576,42 @@ var Dom;
         return selector;
     }
     Dom.CreateSelector = CreateSelector;
+    function CreateText(text) {
+        const span = document.createElement("span");
+        span.innerText = text;
+        return span;
+    }
+    Dom.CreateText = CreateText;
+    function CreateButton(caption, ClickEventCallback) {
+        const button = document.createElement("button");
+        button.innerText = caption;
+        button.addEventListener('click', (event) => {
+            const buttonElement = event.target;
+            ClickEventCallback(buttonElement);
+            return;
+        });
+        return button;
+    }
+    Dom.CreateButton = CreateButton;
+    function CreateCheckBox(checkbox_id, label_content) {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = checkbox_id;
+        const label = document.createElement("label");
+        label.htmlFor = checkbox.id;
+        label.appendChild(label_content);
+        return [checkbox, label];
+    }
+    Dom.CreateCheckBox = CreateCheckBox;
+    function CreateNumberInput(minimum, maximum, value) {
+        const element = document.createElement("input");
+        element.type = "number";
+        element.min = minimum.toString();
+        element.max = maximum.toString();
+        element.value = value.toString();
+        return element;
+    }
+    Dom.CreateNumberInput = CreateNumberInput;
 })(Dom || (Dom = {}));
 ;
 
@@ -597,17 +633,15 @@ __webpack_require__.r(__webpack_exports__);
 class CanvasUi {
     constructor(width, height, resize_cb) {
         /* for Canvas Size */
-        this.canvas_width_spin_ = CanvasUi.CreateNumberInput(1, 512);
-        this.canvas_height_spin_ = CanvasUi.CreateNumberInput(1, 512);
-        this.canvas_width_spin_.value = width.toString();
-        this.canvas_height_spin_.value = height.toString();
+        this.canvas_width_spin_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateNumberInput(1, 512, width);
+        this.canvas_height_spin_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateNumberInput(1, 512, height);
         /* 最初の描画のために必ず差分が発生するように初期化しておく */
         this.last_width_ = 0;
         this.last_height_ = 0;
         /* view grid checkbox */
-        [this.small_grid_view_, this.small_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, CanvasUi.CreateSmallGridIcon(24));
-        [this.large_grid_view_, this.large_grid_label_] = CanvasUi.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, CanvasUi.CreateLargeGridIcon(24));
-        [this.color_index_view_, this.color_index_label_] = CanvasUi.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, CanvasUi.CreateText("色番号"));
+        [this.small_grid_view_, this.small_grid_label_] = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateCheckBox(`canvasui_sg_${CanvasUi.count_}`, CanvasUi.CreateSmallGridIcon(24));
+        [this.large_grid_view_, this.large_grid_label_] = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateCheckBox(`canvasui_lg_${CanvasUi.count_}`, CanvasUi.CreateLargeGridIcon(24));
+        [this.color_index_view_, this.color_index_label_] = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateCheckBox(`canvasui_ci_${CanvasUi.count_}`, _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateText("色番号"));
         this.last_small_grid_view_ = false;
         this.last_large_grid_view_ = false;
         this.last_color_index_view_ = false;
@@ -672,22 +706,6 @@ class CanvasUi {
             }
         });
     }
-    static CreateNumberInput(minimum, maximum) {
-        const element = document.createElement("input");
-        element.type = "number";
-        element.min = minimum.toString();
-        element.max = maximum.toString();
-        return element;
-    }
-    static CreateCheckBox(checkbox_id, label_content) {
-        const checkbox = document.createElement("input");
-        checkbox.type = "checkbox";
-        checkbox.id = checkbox_id;
-        const label = document.createElement("label");
-        label.htmlFor = checkbox.id;
-        label.appendChild(label_content);
-        return [checkbox, label];
-    }
     static DrawLine(canvas_context, start_x, start_y, end_x, end_y) {
         canvas_context.moveTo(start_x, start_y);
         canvas_context.lineTo(end_x, end_y);
@@ -722,11 +740,6 @@ class CanvasUi {
         }
         icon_context.stroke();
         return icon;
-    }
-    static CreateText(text) {
-        const span = document.createElement("span");
-        span.innerText = text;
-        return span;
     }
     get node() {
         return this.holder_;
@@ -1305,6 +1318,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */   "LayerUi": () => (/* binding */ LayerUi),
 /* harmony export */   "LayerPaneUi": () => (/* binding */ LayerPaneUi)
 /* harmony export */ });
+/* harmony import */ var _dom_dom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../dom/dom */ "./built/dom/dom.js");
+
 class LayerUi {
     constructor(parent, order, name, color, user_value) {
         this.parent_ = parent;
@@ -1401,10 +1416,6 @@ class LayerPaneUi {
         this.layers_ = new Array(0);
         this.frame_ = document.createElement("div");
         this.command_holder_ = document.createElement("div");
-        this.new_layer_button_ = document.createElement("button");
-        this.up_layer_button_ = document.createElement("button");
-        this.down_layer_button_ = document.createElement("button");
-        this.delete_layer_button_ = document.createElement("button");
         this.layer_holder_ = document.createElement("div");
         this.current_layer_ = null;
         this.command_holder_.style.display = "flex";
@@ -1412,22 +1423,18 @@ class LayerPaneUi {
         this.layer_holder_.style.display = "flex";
         this.layer_holder_.style.flexDirection = "column-reverse";
         this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
-        this.new_layer_button_.innerText = "＋";
-        this.up_layer_button_.innerText = "▲";
-        this.down_layer_button_.innerText = "▼";
-        this.delete_layer_button_.innerText = "×";
-        this.new_layer_button_.addEventListener('click', (event) => {
+        this.new_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("＋", (buttonElement) => {
             const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
             const [layer_name, color, user_value] = this.register_callback_(registration_order);
             this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
         });
-        this.up_layer_button_.addEventListener('click', (event) => {
+        this.up_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("▲", (buttonElement) => {
             this.UpLayer(this.current_layer_.order);
         });
-        this.down_layer_button_.addEventListener('click', (event) => {
+        this.down_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("▼", (buttonElement) => {
             this.DownLayer(this.current_layer_.order);
         });
-        this.delete_layer_button_.addEventListener('click', (event) => {
+        this.delete_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("×", (buttonElement) => {
             if (1 < this.layers_.length) {
                 this.DeleteCurrentLayer();
             }
@@ -1665,46 +1672,29 @@ const CreateRightBox = function () {
     div.style.float = "right";
     return div;
 };
-const CreateText = function (text) {
-    const span = document.createElement("span");
-    span.innerText = text;
-    return span;
-};
 class SpriteAnimationPreviewWindowUi {
     constructor(width, height) {
-        this.sprite_width_ = document.createElement("input");
-        this.sprite_height_ = document.createElement("input");
-        this.sprite_width_.type = "number";
-        this.sprite_height_.type = "number";
-        this.sprite_width_.min = "1";
-        this.sprite_height_.min = "1";
-        this.sprite_width_.value = width.toString();
-        this.sprite_height_.value = height.toString();
+        this.sprite_width_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateNumberInput(1, 512, width);
+        this.sprite_height_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateNumberInput(1, 512, height);
         this.scale_selector_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateSelector([1, 2, 3, 4, 6, 8, 12, 16, 24], (index, item) => { return `x${item}`; }, 0);
         this.scale_selector_holder_ = CreateRightBox();
-        this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
+        this.scale_selector_holder_.appendChild(_dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateText("表示倍率"));
         this.scale_selector_holder_.appendChild(this.scale_selector_);
         this.size_frame_ = document.createElement("div");
-        this.size_frame_.appendChild(CreateText("サイズ"));
+        this.size_frame_.appendChild(_dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateText("サイズ"));
         this.size_frame_.appendChild(this.sprite_width_);
-        this.size_frame_.appendChild(CreateText("x"));
+        this.size_frame_.appendChild(_dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateText("x"));
         this.size_frame_.appendChild(this.sprite_height_);
         this.size_frame_.appendChild(this.scale_selector_holder_);
-        this.animation_step_par_frame_ = document.createElement("input");
-        this.animation_step_par_frame_.type = "number";
-        this.animation_step_par_frame_.min = "1";
-        this.animation_step_par_frame_.value = "1";
-        this.animation_playback_button_ = document.createElement("button");
-        this.animation_playback_button_.innerText = "▶︎";
+        this.animation_step_par_frame_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateNumberInput(1, 1000, 1);
         this.is_playing_ = false;
-        this.animation_playback_button_.addEventListener('click', (event) => {
-            const button = event.target;
-            button.innerText = this.is_playing_ === true ? "▶︎" : "■";
+        this.animation_playback_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("▶︎", (buttonElement) => {
+            buttonElement.innerText = this.is_playing_ === true ? "▶︎" : "■";
             this.is_playing_ = !this.is_playing_;
         });
         this.command_frame_ = document.createElement("div");
         this.command_frame_.appendChild(this.animation_step_par_frame_);
-        this.command_frame_.appendChild(CreateText("/１コマ"));
+        this.command_frame_.appendChild(_dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateText("/１コマ"));
         this.command_frame_.appendChild(this.animation_playback_button_);
         this.canvas_ = document.createElement("canvas");
         this.canvas_.width = width;
@@ -2898,7 +2888,7 @@ const LoadEditData = function (bytes) {
     }
     return false;
 };
-class Dom {
+class GlobalDom {
     Initialize() {
         this.blank_frame = GetHtmlElement('blank_frame');
         this.edit_block = GetHtmlElement('editblock');
@@ -2922,7 +2912,7 @@ class Dom {
         this.delete_all_unused_colors_button = GetHtmlElement('delete_all_unused_colors_button');
     }
 }
-const dom = new Dom();
+const dom = new GlobalDom();
 var frame_count = 0;
 const UpdateView = function () {
     data.ConstructViewPixelsForViewInplace(marged_pixels_for_view);

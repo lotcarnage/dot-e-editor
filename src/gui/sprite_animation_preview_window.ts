@@ -5,11 +5,6 @@ const CreateRightBox = function (): HTMLDivElement {
 	div.style.float = "right";
 	return div;
 }
-const CreateText = function (text: string): HTMLSpanElement {
-	const span = document.createElement("span");
-	span.innerText = text;
-	return span;
-}
 
 export class SpriteAnimationPreviewWindowUi {
 	private sprite_width_: HTMLInputElement;
@@ -28,46 +23,33 @@ export class SpriteAnimationPreviewWindowUi {
 	private sprite_animation_indices_: number[];
 	private holder_: HTMLDivElement;
 	constructor(width: number, height: number) {
-		this.sprite_width_ = document.createElement("input");
-		this.sprite_height_ = document.createElement("input");
-		this.sprite_width_.type = "number";
-		this.sprite_height_.type = "number";
-		this.sprite_width_.min = "1";
-		this.sprite_height_.min = "1";
-		this.sprite_width_.value = width.toString();
-		this.sprite_height_.value = height.toString();
+		this.sprite_width_ = Dom.CreateNumberInput(1, 512, width);
+		this.sprite_height_ = Dom.CreateNumberInput(1, 512, height);
 		this.scale_selector_ = Dom.CreateSelector<number>(
 			[1, 2, 3, 4, 6, 8, 12, 16, 24],
 			(index, item) => { return `x${item}`; },
 			0);
 		this.scale_selector_holder_ = CreateRightBox();
-		this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
+		this.scale_selector_holder_.appendChild(Dom.CreateText("表示倍率"));
 		this.scale_selector_holder_.appendChild(this.scale_selector_);
 
 		this.size_frame_ = document.createElement("div");
-		this.size_frame_.appendChild(CreateText("サイズ"));
+		this.size_frame_.appendChild(Dom.CreateText("サイズ"));
 		this.size_frame_.appendChild(this.sprite_width_);
-		this.size_frame_.appendChild(CreateText("x"));
+		this.size_frame_.appendChild(Dom.CreateText("x"));
 		this.size_frame_.appendChild(this.sprite_height_);
 		this.size_frame_.appendChild(this.scale_selector_holder_);
 
-		this.animation_step_par_frame_ = document.createElement("input");
-		this.animation_step_par_frame_.type = "number";
-		this.animation_step_par_frame_.min = "1";
-		this.animation_step_par_frame_.value = "1";
-
-		this.animation_playback_button_ = document.createElement("button");
-		this.animation_playback_button_.innerText = "▶︎";
+		this.animation_step_par_frame_ = Dom.CreateNumberInput(1, 1000, 1);
 		this.is_playing_ = false;
-		this.animation_playback_button_.addEventListener('click', (event) => {
-			const button = (<HTMLButtonElement>event.target);
-			button.innerText = this.is_playing_ === true ? "▶︎" : "■";
+		this.animation_playback_button_ = Dom.CreateButton("▶︎", (buttonElement) => {
+			buttonElement.innerText = this.is_playing_ === true ? "▶︎" : "■";
 			this.is_playing_ = !this.is_playing_;
 		});
 
 		this.command_frame_ = document.createElement("div");
 		this.command_frame_.appendChild(this.animation_step_par_frame_);
-		this.command_frame_.appendChild(CreateText("/１コマ"));
+		this.command_frame_.appendChild(Dom.CreateText("/１コマ"));
 		this.command_frame_.appendChild(this.animation_playback_button_);
 
 		this.canvas_ = document.createElement("canvas");

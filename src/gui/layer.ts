@@ -1,3 +1,5 @@
+import { Dom } from "../dom/dom";
+
 type SwapCallback = (lh_order: number, rh_order: number) => void;
 export type RegisterUserValueCallback<UserType> = (registration_order: number) => [string, string, UserType];
 export type RemovedCallback<UserType> = (target: UserType, order: number) => void;
@@ -141,10 +143,6 @@ export class LayerPaneUi<UserType> {
 		this.layers_ = new Array<LayerUi<UserType>>(0);
 		this.frame_ = document.createElement("div");
 		this.command_holder_ = document.createElement("div");
-		this.new_layer_button_ = document.createElement("button");
-		this.up_layer_button_ = document.createElement("button");
-		this.down_layer_button_ = document.createElement("button");
-		this.delete_layer_button_ = document.createElement("button");
 		this.layer_holder_ = document.createElement("div");
 		this.current_layer_ = null;
 
@@ -153,23 +151,19 @@ export class LayerPaneUi<UserType> {
 		this.layer_holder_.style.display = "flex";
 		this.layer_holder_.style.flexDirection = "column-reverse";
 		this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
-		this.new_layer_button_.innerText = "＋";
-		this.up_layer_button_.innerText = "▲";
-		this.down_layer_button_.innerText = "▼";
-		this.delete_layer_button_.innerText = "×";
 
-		this.new_layer_button_.addEventListener('click', (event) => {
+		this.new_layer_button_ = Dom.CreateButton("＋", (buttonElement) => {
 			const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
 			const [layer_name, color, user_value] = this.register_callback_(registration_order);
 			this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
 		});
-		this.up_layer_button_.addEventListener('click', (event) => {
+		this.up_layer_button_ = Dom.CreateButton("▲", (buttonElement) => {
 			this.UpLayer(this.current_layer_.order);
 		});
-		this.down_layer_button_.addEventListener('click', (event) => {
+		this.down_layer_button_ = Dom.CreateButton("▼", (buttonElement) => {
 			this.DownLayer(this.current_layer_.order);
 		});
-		this.delete_layer_button_.addEventListener('click', (event) => {
+		this.delete_layer_button_ = Dom.CreateButton("×", (buttonElement) => {
 			if (1 < this.layers_.length) {
 				this.DeleteCurrentLayer();
 			}

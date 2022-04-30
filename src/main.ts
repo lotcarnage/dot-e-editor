@@ -622,7 +622,7 @@ const LoadEditData = function (bytes: string | ArrayBuffer) {
 	return false;
 }
 
-class Dom {
+class GlobalDom {
 	blank_frame: HTMLDivElement;
 	edit_block: HTMLDivElement;
 	edit_filepath: HTMLInputElement;
@@ -667,7 +667,7 @@ class Dom {
 	}
 }
 
-const dom = new Dom();
+const dom = new GlobalDom();
 
 var frame_count = 0;
 const UpdateView = function () {

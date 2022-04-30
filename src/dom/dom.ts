@@ -12,4 +12,40 @@ export namespace Dom {
         return selector;
     }
 
+    export function CreateText(text: string): HTMLSpanElement {
+        const span = document.createElement("span");
+        span.innerText = text;
+        return span;
+    }
+
+    export function CreateButton(caption: string, ClickEventCallback: (element: HTMLButtonElement) => void): HTMLButtonElement {
+        const button = document.createElement("button");
+        button.innerText = caption;
+        button.addEventListener('click', (event) => {
+            const buttonElement = (<HTMLButtonElement>event.target);
+            ClickEventCallback(buttonElement);
+            return;
+        });
+        return button;
+    }
+
+    export function CreateCheckBox(checkbox_id: string, label_content: HTMLElement): [HTMLInputElement, HTMLLabelElement] {
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.id = checkbox_id;
+        const label = document.createElement("label");
+        label.htmlFor = checkbox.id;
+        label.appendChild(label_content);
+        return [checkbox, label];
+    }
+
+    export function CreateNumberInput(minimum: number, maximum: number, value: number): HTMLInputElement {
+        const element = document.createElement("input");
+        element.type = "number";
+        element.min = minimum.toString();
+        element.max = maximum.toString();
+        element.value = value.toString();
+        return element;
+    }
+
 };
