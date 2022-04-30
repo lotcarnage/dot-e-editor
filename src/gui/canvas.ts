@@ -1,3 +1,5 @@
+import { Dom } from "../dom/dom";
+
 type Rectangle = { left: number, top: number; right: number; bottom: number };
 type ResizeCanvasCallback = (width: number, height: number) => void;
 export class CanvasUi {
@@ -109,15 +111,10 @@ export class CanvasUi {
 		this.last_small_grid_color_ = '#000000';
 
 		/* for Scale selector */
-		this.scale_selector_ = document.createElement("select");
-		const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
-		for (let i = 0; i < scales.length; i++) {
-			const preset_option = document.createElement("option");
-			preset_option.value = scales[i].toString();
-			preset_option.innerText = `x${scales[i]}`;
-			this.scale_selector_.append(preset_option);
-		}
-		this.scale_selector_.selectedIndex = 0;
+		this.scale_selector_ = Dom.CreateSelector<number>(
+			[1, 2, 4, 8, 12, 16, 20, 24, 28, 32],
+			(index, item) => { return `x${item}`; },
+			0);
 		this.last_scale_ = 1;
 
 		/* settings holder */

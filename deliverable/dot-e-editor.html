@@ -552,6 +552,36 @@ var CanvasTools;
 
 /***/ }),
 
+/***/ "./built/dom/dom.js":
+/*!**************************!*\
+  !*** ./built/dom/dom.js ***!
+  \**************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "Dom": () => (/* binding */ Dom)
+/* harmony export */ });
+var Dom;
+(function (Dom) {
+    function CreateSelector(items, ToCaptionCallback, selected_index) {
+        const selector = document.createElement("select");
+        for (let i = 0; i < items.length; i++) {
+            const preset_option = document.createElement("option");
+            preset_option.value = items[i].toString();
+            preset_option.innerText = ToCaptionCallback(i, items[i]);
+            selector.append(preset_option);
+        }
+        selector.selectedIndex = selected_index;
+        return selector;
+    }
+    Dom.CreateSelector = CreateSelector;
+})(Dom || (Dom = {}));
+;
+
+
+/***/ }),
+
 /***/ "./built/gui/canvas.js":
 /*!*****************************!*\
   !*** ./built/gui/canvas.js ***!
@@ -562,6 +592,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "CanvasUi": () => (/* binding */ CanvasUi)
 /* harmony export */ });
+/* harmony import */ var _dom_dom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../dom/dom */ "./built/dom/dom.js");
+
 class CanvasUi {
     constructor(width, height, resize_cb) {
         /* for Canvas Size */
@@ -583,15 +615,7 @@ class CanvasUi {
         this.last_large_grid_height_ = 0;
         this.last_small_grid_color_ = '#000000';
         /* for Scale selector */
-        this.scale_selector_ = document.createElement("select");
-        const scales = [1, 2, 4, 8, 12, 16, 20, 24, 28, 32];
-        for (let i = 0; i < scales.length; i++) {
-            const preset_option = document.createElement("option");
-            preset_option.value = scales[i].toString();
-            preset_option.innerText = `x${scales[i]}`;
-            this.scale_selector_.append(preset_option);
-        }
-        this.scale_selector_.selectedIndex = 0;
+        this.scale_selector_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateSelector([1, 2, 4, 8, 12, 16, 20, 24, 28, 32], (index, item) => { return `x${item}`; }, 0);
         this.last_scale_ = 1;
         /* settings holder */
         this.settings_holder_ = document.createElement("div");
@@ -637,14 +661,14 @@ class CanvasUi {
             const width = event.target.valueAsNumber;
             const height = this.canvas_height_spin_.valueAsNumber;
             if (!isNaN(width) && !isNaN(height)) {
-                resize_cb(width, height);
+                this.resize_cb_(width, height);
             }
         });
         this.canvas_height_spin_.addEventListener("input", (event) => {
             const height = event.target.valueAsNumber;
             const width = this.canvas_width_spin_.valueAsNumber;
             if (!isNaN(width) && !isNaN(height)) {
-                resize_cb(width, height);
+                this.resize_cb_(width, height);
             }
         });
     }
@@ -1576,6 +1600,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "PreviewWindowUi": () => (/* binding */ PreviewWindowUi)
 /* harmony export */ });
+/* harmony import */ var _dom_dom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../dom/dom */ "./built/dom/dom.js");
+
 class PreviewWindowUi {
     constructor(width, height) {
         this.canvas_ = document.createElement("canvas");
@@ -1585,14 +1611,7 @@ class PreviewWindowUi {
         this.canvas_frame_ = document.createElement("div");
         this.canvas_frame_.style.display = "flex";
         this.canvas_frame_.appendChild(this.canvas_);
-        this.scale_selector_ = document.createElement("select");
-        const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-        for (let scale of scale_array) {
-            const scale_option = document.createElement("option");
-            scale_option.value = scale.toString();
-            scale_option.innerText = `x${scale}`;
-            this.scale_selector_.appendChild(scale_option);
-        }
+        this.scale_selector_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateSelector([1, 2, 3, 4, 6, 8, 12, 16, 24], (index, item) => { return `x${item}`; }, 0);
         this.command_frame_ = document.createElement("div");
         this.command_frame_.style.textAlign = "right";
         this.command_frame_.innerText = "表示倍率";
@@ -1639,11 +1658,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony export */ __webpack_require__.d(__webpack_exports__, {
 /* harmony export */   "SpriteAnimationPreviewWindowUi": () => (/* binding */ SpriteAnimationPreviewWindowUi)
 /* harmony export */ });
-const CreateLeftBox = function () {
-    const div = document.createElement("div");
-    div.style.float = "left";
-    return div;
-};
+/* harmony import */ var _dom_dom__WEBPACK_IMPORTED_MODULE_0__ = __webpack_require__(/*! ../dom/dom */ "./built/dom/dom.js");
+
 const CreateRightBox = function () {
     const div = document.createElement("div");
     div.style.float = "right";
@@ -1664,14 +1680,7 @@ class SpriteAnimationPreviewWindowUi {
         this.sprite_height_.min = "1";
         this.sprite_width_.value = width.toString();
         this.sprite_height_.value = height.toString();
-        this.scale_selector_ = document.createElement("select");
-        const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-        for (let scale of scale_array) {
-            const scale_option = document.createElement("option");
-            scale_option.value = scale.toString();
-            scale_option.innerText = `x${scale}`;
-            this.scale_selector_.appendChild(scale_option);
-        }
+        this.scale_selector_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateSelector([1, 2, 3, 4, 6, 8, 12, 16, 24], (index, item) => { return `x${item}`; }, 0);
         this.scale_selector_holder_ = CreateRightBox();
         this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
         this.scale_selector_holder_.appendChild(this.scale_selector_);
@@ -1963,7 +1972,6 @@ var Misc;
         const other_colors = Array(0);
         const blank_colors = Array(256 - (6 * 6 * 6)).fill('#000000');
         const c = ['00', '33', '66', '99', 'cc', 'ff'];
-        let i = 0;
         for (let b = 0; b < 6; b++) {
             for (let g = 0; g < 6; g++) {
                 for (let r = 0; r < 6; r++) {
@@ -2348,7 +2356,6 @@ __webpack_require__.r(__webpack_exports__);
 
 
 const data_format_version = 1;
-const view_font_size = 8;
 const max_edit_width = 512;
 const max_edit_height = 512;
 const default_edit_width = 32;
@@ -2614,10 +2621,6 @@ class Data {
     MakeSaveData() {
         const edit_w_count = this.edit_width_;
         const edit_h_count = this.edit_height_;
-        const save_pixels = new Array(edit_h_count);
-        for (var h = 0; h < edit_h_count; h++) {
-            save_pixels[h] = this.current_pixel_layer_.pixels[h].slice(0, edit_w_count);
-        }
         const color_palette = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.GenerateArray(256, (i) => {
             return this.color_palette_.GetColor(i);
         });
@@ -2650,7 +2653,6 @@ class Data {
         for (let h = 0; h < max_h; h++) {
             for (let w = 0; w < max_w; w++) {
                 let is_written = false;
-                const dst_ci = pixels_for_view[h][w];
                 for (let i = 0; i < sorted_layers.length - 1; i++) {
                     const source_layer = sorted_layers[i];
                     if (source_layer.is_visible === false) {
@@ -2873,14 +2875,6 @@ let preview_tab_pane = null;
 function GetHtmlElement(element_id) {
     return document.getElementById(element_id);
 }
-const FitDivWidth = function (modify_div_id, referencet_div_id) {
-    const new_width = GetHtmlElement(referencet_div_id).clientWidth;
-    GetHtmlElement(modify_div_id).style.width = `${new_width}px`;
-};
-const FitDivHeight = function (modify_div_id, referencet_div_id) {
-    const new_height = GetHtmlElement(referencet_div_id).clientHeight;
-    GetHtmlElement(modify_div_id).style.height = `${new_height}px`;
-};
 const TryReadEditDataByJson = function (bytes) {
     const read_data = JSON.parse(bytes);
     data.CopyFromMultiLayerIndexColorBitmap(read_data);
@@ -2990,7 +2984,7 @@ function Initialize() {
     dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
         canvas_tools.tool_kind = "rectangle_select";
     });
-    const dl_button = new _gui_download_button__WEBPACK_IMPORTED_MODULE_5__.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
+    new _gui_download_button__WEBPACK_IMPORTED_MODULE_5__.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
         const basename = dom.edit_data_name.value;
         const save_format = GetHtmlElement('edit_save_format').value;
         return MakeSaveData(basename, save_format);

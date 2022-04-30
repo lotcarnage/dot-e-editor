@@ -1,3 +1,5 @@
+import { Dom } from "../dom/dom";
+
 export class PreviewWindowUi {
 	private canvas_: HTMLCanvasElement;
 	private canvas_frame_: HTMLDivElement;
@@ -12,14 +14,11 @@ export class PreviewWindowUi {
 		this.canvas_frame_ = document.createElement("div");
 		this.canvas_frame_.style.display = "flex";
 		this.canvas_frame_.appendChild(this.canvas_);
-		this.scale_selector_ = document.createElement("select");
-		const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-		for (let scale of scale_array) {
-			const scale_option = document.createElement("option")
-			scale_option.value = scale.toString();
-			scale_option.innerText = `x${scale}`;
-			this.scale_selector_.appendChild(scale_option);
-		}
+
+		this.scale_selector_ = Dom.CreateSelector<number>(
+			[1, 2, 3, 4, 6, 8, 12, 16, 24],
+			(index, item) => { return `x${item}`; },
+			0);
 		this.command_frame_ = document.createElement("div");
 		this.command_frame_.style.textAlign = "right";
 		this.command_frame_.innerText = "表示倍率";

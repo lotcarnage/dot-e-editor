@@ -1,3 +1,5 @@
+import { Dom } from "../dom/dom";
+
 const CreateRightBox = function (): HTMLDivElement {
 	const div = document.createElement("div");
 	div.style.float = "right";
@@ -34,15 +36,10 @@ export class SpriteAnimationPreviewWindowUi {
 		this.sprite_height_.min = "1";
 		this.sprite_width_.value = width.toString();
 		this.sprite_height_.value = height.toString();
-
-		this.scale_selector_ = document.createElement("select");
-		const scale_array = [1, 2, 3, 4, 6, 8, 12, 16, 24];
-		for (let scale of scale_array) {
-			const scale_option = document.createElement("option")
-			scale_option.value = scale.toString();
-			scale_option.innerText = `x${scale}`;
-			this.scale_selector_.appendChild(scale_option);
-		}
+		this.scale_selector_ = Dom.CreateSelector<number>(
+			[1, 2, 3, 4, 6, 8, 12, 16, 24],
+			(index, item) => { return `x${item}`; },
+			0);
 		this.scale_selector_holder_ = CreateRightBox();
 		this.scale_selector_holder_.appendChild(CreateText("表示倍率"));
 		this.scale_selector_holder_.appendChild(this.scale_selector_);
