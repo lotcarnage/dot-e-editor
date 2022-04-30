@@ -1,8 +1,3 @@
-const CreateLeftBox = function (): HTMLDivElement {
-	const div = document.createElement("div");
-	div.style.float = "left";
-	return div;
-}
 const CreateRightBox = function (): HTMLDivElement {
 	const div = document.createElement("div");
 	div.style.float = "right";

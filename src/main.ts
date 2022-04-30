@@ -12,7 +12,6 @@ import { CanvasTools, PixelPoint } from "./canvas_tools";
 import { RgbColor, RgbColorPalette } from "./rgb_color_palette";
 
 const data_format_version: number = 1;
-const view_font_size: number = 8;
 const max_edit_width: number = 512;
 const max_edit_height: number = 512;
 const default_edit_width: number = 32;
@@ -318,11 +317,6 @@ class Data {
 	public MakeSaveData(): MultiLayerIndexColorBitmap {
 		const edit_w_count = this.edit_width_;
 		const edit_h_count = this.edit_height_;
-		const save_pixels = new Array<number[]>(edit_h_count);
-		for (var h = 0; h < edit_h_count; h++) {
-			save_pixels[h] = this.current_pixel_layer_.pixels[h].slice(0, edit_w_count);
-		}
-
 		const color_palette = Misc.GenerateArray<RgbColor>(256, (i: number) => {
 			return this.color_palette_.GetColor(i);
 		});
@@ -356,7 +350,6 @@ class Data {
 		for (let h = 0; h < max_h; h++) {
 			for (let w = 0; w < max_w; w++) {
 				let is_written = false;
-				const dst_ci = pixels_for_view[h][w];
 				for (let i = 0; i < sorted_layers.length - 1; i++) {
 					const source_layer = sorted_layers[i];
 					if (source_layer.is_visible === false) {
@@ -604,15 +597,6 @@ function GetHtmlElement<T extends HTMLElement>(element_id: string): T {
 	return <T>document.getElementById(element_id);
 }
 
-const FitDivWidth = function (modify_div_id: string, referencet_div_id: string) {
-	const new_width = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientWidth;
-	GetHtmlElement<HTMLDivElement>(modify_div_id).style.width = `${new_width}px`;
-};
-const FitDivHeight = function (modify_div_id: string, referencet_div_id: string) {
-	const new_height = GetHtmlElement<HTMLDivElement>(referencet_div_id).clientHeight;
-	GetHtmlElement<HTMLDivElement>(modify_div_id).style.height = `${new_height}px`;
-};
-
 const TryReadEditDataByJson = function (bytes: string) {
 	const read_data = JSON.parse(bytes) as MultiLayerIndexColorBitmap;
 	data.CopyFromMultiLayerIndexColorBitmap(read_data);
@@ -754,7 +738,7 @@ function Initialize() {
 	dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
 		canvas_tools.tool_kind = "rectangle_select";
 	});
-	const dl_button = new DonwloadButton(
+	new DonwloadButton(
 		GetHtmlElement<HTMLDivElement>("edit_command"), "保存（ダウンロード）", () => {
 			const basename = dom.edit_data_name.value;
 			const save_format = GetHtmlElement<HTMLSelectElement>('edit_save_format').value;

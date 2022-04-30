@@ -58,7 +58,6 @@ export namespace Misc {
 		const other_colors = Array<string>(0);
 		const blank_colors = Array<string>(256 - (6 * 6 * 6)).fill('#000000');
 		const c = ['00', '33', '66', '99', 'cc', 'ff'];
-		let i = 0;
 		for (let b = 0; b < 6; b++) {
 			for (let g = 0; g < 6; g++) {
 				for (let r = 0; r < 6; r++) {

@@ -168,14 +168,14 @@ export class CanvasUi {
 			const width = (<HTMLInputElement>event.target).valueAsNumber;
 			const height = this.canvas_height_spin_.valueAsNumber;
 			if (!isNaN(width) && !isNaN(height)) {
-				resize_cb(width, height);
+				this.resize_cb_(width, height);
 			}
 		});
 		this.canvas_height_spin_.addEventListener("input", (event) => {
 			const height = (<HTMLInputElement>event.target).valueAsNumber;
 			const width = this.canvas_width_spin_.valueAsNumber;
 			if (!isNaN(width) && !isNaN(height)) {
-				resize_cb(width, height);
+				this.resize_cb_(width, height);
 			}
 		});
 	}
