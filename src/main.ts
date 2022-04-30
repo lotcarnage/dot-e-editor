@@ -99,10 +99,9 @@ class MultiLayerIndexColorBitmap {
 				}
 			}
 		}
-		const color_palette = new Array<string>(256);
-		for (let i = 0; i < 256; i++) {
-			color_palette[i] = this.color_palette[i].ToRgbString();
-		}
+		const color_palette = Misc.GenerateArray<string>(256, (i: number) => {
+			return this.color_palette[i].ToRgbString();
+		})
 		return new IndexColorBitmap(max_w, max_h, color_palette, marged_pixels);
 	}
 
@@ -276,10 +275,9 @@ class Data {
 		return this.color_palette_.GetColor(index);
 	}
 	public GetColorTable(): string[] {
-		const color_table = new Array<string>(256);
-		for (let i = 0; i < 256; i++) {
-			color_table[i] = this.color_palette_.GetColor(i).ToHexColor();
-		}
+		const color_table = Misc.GenerateArray<string>(256, (i: number) => {
+			return this.color_palette_.GetColor(i).ToHexColor();
+		});
 		return color_table;
 	}
 	public DeleteAllUnusedColors(): void {
@@ -324,10 +322,11 @@ class Data {
 		for (var h = 0; h < edit_h_count; h++) {
 			save_pixels[h] = this.current_pixel_layer_.pixels[h].slice(0, edit_w_count);
 		}
-		const color_palette = new Array<RgbColor>(256);
-		for (var i = 0; i < 256; i++) {
-			color_palette[i] = this.color_palette_.GetColor(i);
-		}
+
+		const color_palette = Misc.GenerateArray<RgbColor>(256, (i: number) => {
+			return this.color_palette_.GetColor(i);
+		});
+
 		const save_data = new MultiLayerIndexColorBitmap();
 		save_data.width = edit_w_count;
 		save_data.height = edit_h_count;

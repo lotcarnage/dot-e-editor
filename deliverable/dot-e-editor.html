@@ -1902,6 +1902,14 @@ var Misc;
         return JSON.parse(JSON.stringify((new Array(height)).fill((new Array(width)).fill(initial_value))));
     }
     Misc.Make2dArray = Make2dArray;
+    function GenerateArray(num_elements, CreateElementsCallback) {
+        const new_array = new Array(num_elements);
+        for (let i = 0; i < num_elements; i++) {
+            new_array[i] = CreateElementsCallback(i);
+        }
+        return new_array;
+    }
+    Misc.GenerateArray = GenerateArray;
     function LineTo2d(x0, y0, x1, y1, PixelOnLineCallback) {
         const dx = (x0 < x1) ? x1 - x0 : x0 - x1;
         const dy = (y0 < y1) ? y1 - y0 : y0 - y1;
@@ -2412,10 +2420,9 @@ class MultiLayerIndexColorBitmap {
                 }
             }
         }
-        const color_palette = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            color_palette[i] = this.color_palette[i].ToRgbString();
-        }
+        const color_palette = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.GenerateArray(256, (i) => {
+            return this.color_palette[i].ToRgbString();
+        });
         return new IndexColorBitmap(max_w, max_h, color_palette, marged_pixels);
     }
 }
@@ -2565,10 +2572,9 @@ class Data {
         return this.color_palette_.GetColor(index);
     }
     GetColorTable() {
-        const color_table = new Array(256);
-        for (let i = 0; i < 256; i++) {
-            color_table[i] = this.color_palette_.GetColor(i).ToHexColor();
-        }
+        const color_table = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.GenerateArray(256, (i) => {
+            return this.color_palette_.GetColor(i).ToHexColor();
+        });
         return color_table;
     }
     DeleteAllUnusedColors() {
@@ -2612,10 +2618,9 @@ class Data {
         for (var h = 0; h < edit_h_count; h++) {
             save_pixels[h] = this.current_pixel_layer_.pixels[h].slice(0, edit_w_count);
         }
-        const color_palette = new Array(256);
-        for (var i = 0; i < 256; i++) {
-            color_palette[i] = this.color_palette_.GetColor(i);
-        }
+        const color_palette = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.GenerateArray(256, (i) => {
+            return this.color_palette_.GetColor(i);
+        });
         const save_data = new MultiLayerIndexColorBitmap();
         save_data.width = edit_w_count;
         save_data.height = edit_h_count;

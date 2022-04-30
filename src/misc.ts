@@ -2,6 +2,13 @@ export namespace Misc {
 	export function Make2dArray<T>(width: number, height: number, initial_value: T): T[][] {
 		return JSON.parse(JSON.stringify((new Array<Array<T>>(height)).fill((new Array<T>(width)).fill(initial_value))));
 	}
+	export function GenerateArray<ElementType>(num_elements: number, CreateElementsCallback: (index: number) => ElementType) {
+		const new_array = new Array<ElementType>(num_elements);
+		for (let i = 0; i < num_elements; i++) {
+			new_array[i] = CreateElementsCallback(i);
+		}
+		return new_array;
+	}
 	export function LineTo2d(x0: number, y0: number, x1: number, y1: number, PixelOnLineCallback: (x: number, y: number) => void) {
 		const dx = (x0 < x1) ? x1 - x0 : x0 - x1;
 		const dy = (y0 < y1) ? y1 - y0 : y0 - y1;
