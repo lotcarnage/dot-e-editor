@@ -160,6 +160,8 @@ class Data {
 	private pixels_mask_: boolean[][];
 	private edit_width_: number;
 	private edit_height_: number;
+	private readonly max_width_: number;
+	private readonly max_height_: number;
 	private selected_color_index_: number;
 	private color_palette_: RgbColorPalette;
 	private logger_: EditLogger;
@@ -167,9 +169,12 @@ class Data {
 	private clipboard_stored_width_: number;
 	private clipboard_stored_height_: number;
 	private selected_bg_color_index_: number;
+	private created_layer_count_: number;
 	public constructor(default_width: number, default_height: number, max_width: number, max_height: number) {
 		this.edit_width_ = default_width;
 		this.edit_height_ = default_height;
+		this.max_width_ = max_width;
+		this.max_height_ = max_height;
 		this.current_pixel_layer_ = null;
 		this.pixel_layers_ = new Map<PixelLayer, PixelLayer>();
 		this.pixels_clipboard_ = Misc.Make2dArray<number>(max_width, max_height, 0);
@@ -180,6 +185,14 @@ class Data {
 		this.selected_bg_color_index_ = 0;
 		this.color_palette_ = new RgbColorPalette();
 		this.logger_ = new EditLogger();
+		this.created_layer_count_ = 0;
+	}
+	private AutoCreateLayerDefaultParameters(): [string, string] {
+		const hue = (this.created_layer_count_ * 79) % 360;
+		const color = new RgbColor(...Misc.HsvToRgb(hue, 0.375, 0.75))
+		const name = `new layer #${this.created_layer_count_}`;
+		this.created_layer_count_++;
+		return [name, color.ToHexColor()];
 	}
 	public SetCurrentPixelLayer(pixel_layer: PixelLayer): void {
 		this.current_pixel_layer_ = pixel_layer;
@@ -207,6 +220,12 @@ class Data {
 	}
 	public get selected_bg_color_index(): number {
 		return this.selected_bg_color_index_;
+	}
+	public InsertNewLayer(order: number): [string, string, PixelLayer] {
+		const layer_params = this.AutoCreateLayerDefaultParameters();
+		const new_pixel_layer = new PixelLayer(order, ...layer_params, this.max_width_, this.max_height_);
+		data.AppendLayer(new_pixel_layer);
+		return [...layer_params, new_pixel_layer];
 	}
 	public AppendLayer(pixel_layer: PixelLayer): void {
 		this.pixel_layers_.set(pixel_layer, pixel_layer);
@@ -748,14 +767,6 @@ function Initialize() {
 		LoadEditData((<FileReader>event.target).result);
 	});
 
-	let creation_count = 0;
-	const MakeLayerDefaultName = function (): [string, string] {
-		const hue = (creation_count * 79) % 360;
-		const color = new RgbColor(...Misc.HsvToRgb(hue, 0.375, 0.75))
-		const name = `new layer #${creation_count}`;
-		creation_count++;
-		return [name, color.ToHexColor()];
-	}
 	color_table = new ColorPaletteTableUi(
 		16, 16, 16,
 		0,
@@ -778,8 +789,7 @@ function Initialize() {
 	document.getElementById("colorpalette").appendChild(color_table.node);
 	if (!AutoLoad()) {
 		data.RemoveAllLayers();
-		const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
-		data.AppendLayer(pixel_layer);
+		data.InsertNewLayer(0);
 	}
 	ApplyView();
 	if (canvas_ui === null) {
@@ -838,10 +848,7 @@ function Initialize() {
 	const layers = document.getElementById("layerblock");
 	layer_pane_ui = new LayerPaneUi<PixelLayer>(
 		(order) => {
-			const param = MakeLayerDefaultName();
-			const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
-			data.AppendLayer(new_pixel_layer);
-			return [...param, new_pixel_layer];
+			return data.InsertNewLayer(order)
 		},
 		(pixel_layer, order) => {
 			data.RemoveLayer(pixel_layer);

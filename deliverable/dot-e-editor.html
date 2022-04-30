@@ -2462,6 +2462,8 @@ class Data {
     constructor(default_width, default_height, max_width, max_height) {
         this.edit_width_ = default_width;
         this.edit_height_ = default_height;
+        this.max_width_ = max_width;
+        this.max_height_ = max_height;
         this.current_pixel_layer_ = null;
         this.pixel_layers_ = new Map();
         this.pixels_clipboard_ = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, 0);
@@ -2472,6 +2474,14 @@ class Data {
         this.selected_bg_color_index_ = 0;
         this.color_palette_ = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColorPalette();
         this.logger_ = new EditLogger();
+        this.created_layer_count_ = 0;
+    }
+    AutoCreateLayerDefaultParameters() {
+        const hue = (this.created_layer_count_ * 79) % 360;
+        const color = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
+        const name = `new layer #${this.created_layer_count_}`;
+        this.created_layer_count_++;
+        return [name, color.ToHexColor()];
     }
     SetCurrentPixelLayer(pixel_layer) {
         this.current_pixel_layer_ = pixel_layer;
@@ -2499,6 +2509,12 @@ class Data {
     }
     get selected_bg_color_index() {
         return this.selected_bg_color_index_;
+    }
+    InsertNewLayer(order) {
+        const layer_params = this.AutoCreateLayerDefaultParameters();
+        const new_pixel_layer = new PixelLayer(order, ...layer_params, this.max_width_, this.max_height_);
+        data.AppendLayer(new_pixel_layer);
+        return [...layer_params, new_pixel_layer];
     }
     AppendLayer(pixel_layer) {
         this.pixel_layers_.set(pixel_layer, pixel_layer);
@@ -2979,14 +2995,6 @@ function Initialize() {
         dom.edit_data_name.value = basename;
         LoadEditData(event.target.result);
     });
-    let creation_count = 0;
-    const MakeLayerDefaultName = function () {
-        const hue = (creation_count * 79) % 360;
-        const color = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
-        const name = `new layer #${creation_count}`;
-        creation_count++;
-        return [name, color.ToHexColor()];
-    };
     color_table = new _gui_color_palette__WEBPACK_IMPORTED_MODULE_4__.ColorPaletteTableUi(16, 16, 16, 0, [
         { caption: "HSV 16色", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeHSVBalancedColorList(1) },
         { caption: "HSV 16色2彩度", colors: _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.MakeHSVBalancedColorList(2) },
@@ -3002,8 +3010,7 @@ function Initialize() {
     document.getElementById("colorpalette").appendChild(color_table.node);
     if (!AutoLoad()) {
         data.RemoveAllLayers();
-        const pixel_layer = new PixelLayer(0, ...MakeLayerDefaultName(), max_edit_width, max_edit_height);
-        data.AppendLayer(pixel_layer);
+        data.InsertNewLayer(0);
     }
     ApplyView();
     if (canvas_ui === null) {
@@ -3059,10 +3066,7 @@ function Initialize() {
     });
     const layers = document.getElementById("layerblock");
     layer_pane_ui = new _gui_layer__WEBPACK_IMPORTED_MODULE_8__.LayerPaneUi((order) => {
-        const param = MakeLayerDefaultName();
-        const new_pixel_layer = new PixelLayer(order, ...param, max_edit_width, max_edit_height);
-        data.AppendLayer(new_pixel_layer);
-        return [...param, new_pixel_layer];
+        return data.InsertNewLayer(order);
     }, (pixel_layer, order) => {
         data.RemoveLayer(pixel_layer);
     }, (lh_order, rh_order) => { }, (pixel_layer, order, name, tag_color, is_locked, is_visible, is_focusin, is_focusout, thumbnail_context) => {
