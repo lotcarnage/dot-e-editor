@@ -182,6 +182,7 @@ export class ColorPaletteTableUi {
 		this.color_table_holder_.style.clear = "both";
 		this.color_edit_holder_.style.clear = "both";
 		this.holder_.style.clear = "both";
+		this.holder_.style.width = "min-content";
 
 		this.preset_command_holder_.appendChild(this.preset_palette_selector_);
 		this.preset_command_holder_.appendChild(this.reset_color_palette_button_);

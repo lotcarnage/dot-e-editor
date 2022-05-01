@@ -21,11 +21,11 @@
 
         div.layout {
             display: grid;
-            grid-auto-columns: max-content;
-            grid-auto-rows: max-content;
+            grid-template-columns: max-content auto auto max-content;
+            grid-template-rows: max-content 340px;
             grid-template-areas:
                 "a b b b"
-                "c e e g"
+                "d e e c"
                 "d e e g"
                 "d e e g";
         }
@@ -67,6 +67,7 @@
         div#paletteblock {
             grid-area: c;
             background-color: darkseagreen;
+            height: max-content;
         }
 
         div#viewblock {
@@ -138,7 +139,7 @@
         <div id="paletteblock">
             <div class="hbox" id="colorpalette">
             </div>
-            <div class="hbox">
+            <div class="rightvbox">
                 <button id="delete_all_unused_colors_button">未使用色を全削除</button>
             </div>
         </div>

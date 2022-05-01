@@ -21,11 +21,11 @@
 
         div.layout {
             display: grid;
-            grid-auto-columns: max-content;
-            grid-auto-rows: max-content;
+            grid-template-columns: max-content auto auto max-content;
+            grid-template-rows: max-content 340px;
             grid-template-areas:
                 "a b b b"
-                "c e e g"
+                "d e e c"
                 "d e e g"
                 "d e e g";
         }
@@ -67,6 +67,7 @@
         div#paletteblock {
             grid-area: c;
             background-color: darkseagreen;
+            height: max-content;
         }
 
         div#viewblock {
@@ -119,31 +120,18 @@
         <div id="toolsblock">
             <div class="vbox">
                 <div class="hbox">
-                    <input type="radio" name="tools" id="pen_tool" value="pen_tool" checked>
-                    <label for="pen_tool">ペン</label>
-                </div>
-                <div class="hbox">
-                    <input type="radio" name="tools" id="paint_tool" value="paint_tool">
-                    <label for="paint_tool">塗りつぶし</label>
-                </div>
-                <div class="hbox">
-                    <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
-                    <label for="rectangle_select_tool">矩形選択</label>
                     <button id="rectangle_fill_button">矩形塗り潰し</button>
                     <button id="v_turn_button">上下反転</button>
                     <button id="h_turn_button">左右反転</button>
                     <button id="break_to_mask_button">マスク化</button>
+                    <button id="turn_mask_button">マスク反転</button>
+                    <button id="delete_mask_button">マスク消去</button>
                     <button id="release_targetting_button">選択解除</button>
                 </div>
-            </div>
-            <div class="vbox">
+                <div id="toolpanel"></div>
                 <div class="hbox">
                     <button id="undo_button">Undo</button>
                     <button id="redo_button">Redo</button>
-                </div>
-                <div class="hbox">
-                    <button id="turn_mask_button">マスク反転</button>
-                    <button id="delete_mask_button">マスク消去</button>
                 </div>
             </div>
         </div>
@@ -151,7 +139,7 @@
         <div id="paletteblock">
             <div class="hbox" id="colorpalette">
             </div>
-            <div class="hbox">
+            <div class="rightvbox">
                 <button id="delete_all_unused_colors_button">未使用色を全削除</button>
             </div>
         </div>
@@ -1207,6 +1195,7 @@ class ColorPaletteTableUi {
         this.color_table_holder_.style.clear = "both";
         this.color_edit_holder_.style.clear = "both";
         this.holder_.style.clear = "both";
+        this.holder_.style.width = "min-content";
         this.preset_command_holder_.appendChild(this.preset_palette_selector_);
         this.preset_command_holder_.appendChild(this.reset_color_palette_button_);
         this.color_table_holder_.appendChild(this.table_);
@@ -1885,6 +1874,69 @@ TabPaneUi.global_tab_count_ = 0;
 
 /***/ }),
 
+/***/ "./built/gui/toolbox.js":
+/*!******************************!*\
+  !*** ./built/gui/toolbox.js ***!
+  \******************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "ToolBoxUi": () => (/* binding */ ToolBoxUi)
+/* harmony export */ });
+function CreatePanel(name, title, base64icon, size) {
+    const tool_id = `tool_panel_${name}`;
+    const input_radio = document.createElement("input");
+    input_radio.type = "radio";
+    input_radio.id = tool_id;
+    input_radio.name = "tool panels";
+    input_radio.style.display = `none`;
+    const input_label = document.createElement("label");
+    input_label.htmlFor = tool_id;
+    input_label.style.margin = `0px`;
+    input_label.style.padding = `0px`;
+    input_label.style.alignContent = `center`;
+    input_label.style.lineHeight = `1px`;
+    const icon = document.createElement("img");
+    icon.width = size;
+    icon.height = size;
+    icon.style.imageRendering = `crisp-edges`;
+    icon.src = base64icon;
+    icon.title = title;
+    icon.style.outlineOffset = '-2px';
+    input_label.appendChild(icon);
+    return [input_radio, input_label, icon];
+}
+class ToolBoxUi {
+    constructor(tool_list, SelectCallback) {
+        this.holder_ = document.createElement("div");
+        for (let i = 0; i < tool_list.length; i++) {
+            const [input_radio, input_label, icon] = CreatePanel(tool_list[i].kind, tool_list[i].title, tool_list[i].base64icon, 32);
+            if (i == 0) {
+                icon.style.outline = ToolBoxUi.outline_style_;
+                this.current_icon_ = icon;
+                this.current_kind_ = tool_list[0].kind;
+            }
+            input_radio.addEventListener("change", (event) => {
+                SelectCallback(this.current_kind_, tool_list[i].kind);
+                this.current_icon_.style.outline = 'none';
+                icon.style.outline = ToolBoxUi.outline_style_;
+                this.current_icon_ = icon;
+                this.current_kind_ = tool_list[i].kind;
+            });
+            this.holder_.appendChild(input_radio);
+            this.holder_.appendChild(input_label);
+        }
+    }
+    get node() {
+        return this.holder_;
+    }
+}
+ToolBoxUi.outline_style_ = `2px solid rgb(255,0,0)`;
+
+
+/***/ }),
+
 /***/ "./built/misc.js":
 /*!***********************!*\
   !*** ./built/misc.js ***!
@@ -2040,6 +2092,26 @@ var Misc;
     }
     Misc.MakeHSVBalancedColorList = MakeHSVBalancedColorList;
 })(Misc || (Misc = {}));
+
+
+/***/ }),
+
+/***/ "./built/resources.js":
+/*!****************************!*\
+  !*** ./built/resources.js ***!
+  \****************************/
+/***/ ((__unused_webpack_module, __webpack_exports__, __webpack_require__) => {
+
+__webpack_require__.r(__webpack_exports__);
+/* harmony export */ __webpack_require__.d(__webpack_exports__, {
+/* harmony export */   "Resources": () => (/* binding */ Resources)
+/* harmony export */ });
+var Resources;
+(function (Resources) {
+    Resources.tool_icon_pen = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIBAMAAAA2IaO4AAAAD1BMVEUAAAC2trbnsJFFYFN8m4OF5U+bAAAAKklEQVR42mMQFBRkZhAUFDABEszODIICKgZAgokRSDAIMjAwCgoCJQQFATB6AjfliEb8AAAAAElFTkSuQmCC";
+    Resources.tool_icon_select = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAQMAAAD+wSzIAAAABlBMVEUAAAC2trb0KSTqAAAAFUlEQVR42mNQZfjLUM9QCyY9Gf4DACQuBOOudRsBAAAAAElFTkSuQmCC";
+    Resources.tool_icon_fill = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAIAgMAAAC5YVYYAAAADFBMVEUAAABLZeq2trb///89RsdCAAAAIUlEQVR42mNYZc+w4j/DClGGZa0MyxYyLFvBsGwVQ2goAG87CQjKFv9LAAAAAElFTkSuQmCC";
+})(Resources || (Resources = {}));
 
 
 /***/ }),
@@ -2330,9 +2402,13 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _gui_preview_window__WEBPACK_IMPORTED_MODULE_6__ = __webpack_require__(/*! ./gui/preview_window */ "./built/gui/preview_window.js");
 /* harmony import */ var _gui_sprite_animation_preview_window__WEBPACK_IMPORTED_MODULE_7__ = __webpack_require__(/*! ./gui/sprite_animation_preview_window */ "./built/gui/sprite_animation_preview_window.js");
 /* harmony import */ var _gui_layer__WEBPACK_IMPORTED_MODULE_8__ = __webpack_require__(/*! ./gui/layer */ "./built/gui/layer.js");
-/* harmony import */ var _gui_tab_pane__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./gui/tab_pane */ "./built/gui/tab_pane.js");
-/* harmony import */ var _canvas_tools__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./canvas_tools */ "./built/canvas_tools.js");
-/* harmony import */ var _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./rgb_color_palette */ "./built/rgb_color_palette.js");
+/* harmony import */ var _gui_toolbox__WEBPACK_IMPORTED_MODULE_9__ = __webpack_require__(/*! ./gui/toolbox */ "./built/gui/toolbox.js");
+/* harmony import */ var _gui_tab_pane__WEBPACK_IMPORTED_MODULE_10__ = __webpack_require__(/*! ./gui/tab_pane */ "./built/gui/tab_pane.js");
+/* harmony import */ var _canvas_tools__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./canvas_tools */ "./built/canvas_tools.js");
+/* harmony import */ var _rgb_color_palette__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./rgb_color_palette */ "./built/rgb_color_palette.js");
+/* harmony import */ var _resources__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./resources */ "./built/resources.js");
+
+
 
 
 
@@ -2476,13 +2552,13 @@ class Data {
         this.pixels_mask_ = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_width, max_height, false);
         this.selected_color_index_ = 0;
         this.selected_bg_color_index_ = 0;
-        this.color_palette_ = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColorPalette();
+        this.color_palette_ = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_12__.RgbColorPalette();
         this.logger_ = new EditLogger();
         this.created_layer_count_ = 0;
     }
     AutoCreateLayerDefaultParameters() {
         const hue = (this.created_layer_count_ * 79) % 360;
-        const color = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_11__.RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
+        const color = new _rgb_color_palette__WEBPACK_IMPORTED_MODULE_12__.RgbColor(..._misc__WEBPACK_IMPORTED_MODULE_1__.Misc.HsvToRgb(hue, 0.375, 0.75));
         const name = `new layer #${this.created_layer_count_}`;
         this.created_layer_count_++;
         return [name, color.ToHexColor()];
@@ -2830,7 +2906,7 @@ class RectangleTargetPixels {
 const data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixels_for_view = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_edit_width, max_edit_height, 0);
 let canvas_ui = null;
-const canvas_tools = new _canvas_tools__WEBPACK_IMPORTED_MODULE_10__.CanvasTools.CanvasTools((x, y) => {
+const canvas_tools = new _canvas_tools__WEBPACK_IMPORTED_MODULE_11__.CanvasTools.CanvasTools((x, y) => {
     return !data.IsMasked(x, y);
 }, (x, y) => {
     if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
@@ -2895,9 +2971,6 @@ class GlobalDom {
         this.edit_filepath = GetHtmlElement('edit_filepath');
         this.large_grid_width = GetHtmlElement('large_grid_width');
         this.large_grid_height = GetHtmlElement('large_grid_height');
-        this.dom_pen_tool = GetHtmlElement('pen_tool');
-        this.dom_paint_tool = GetHtmlElement('paint_tool');
-        this.dom_rectangle_select_tool = GetHtmlElement('rectangle_select_tool');
         this.grid_color = GetHtmlElement('grid_color');
         this.edit_data_name = GetHtmlElement('edit_data_name');
         this.undo_button = GetHtmlElement('undo_button');
@@ -2964,15 +3037,6 @@ function Initialize() {
     const edit_reader = new FileReader();
     dom.edit_filepath.addEventListener('change', (event) => {
         edit_reader.readAsArrayBuffer(event.target.files[0]);
-    });
-    dom.dom_pen_tool.addEventListener('change', (event) => {
-        canvas_tools.tool_kind = "pen";
-    });
-    dom.dom_paint_tool.addEventListener('change', (event) => {
-        canvas_tools.tool_kind = "paint";
-    });
-    dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
-        canvas_tools.tool_kind = "rectangle_select";
     });
     new _gui_download_button__WEBPACK_IMPORTED_MODULE_5__.DonwloadButton(GetHtmlElement("edit_command"), "保存（ダウンロード）", () => {
         const basename = dom.edit_data_name.value;
@@ -3092,7 +3156,7 @@ function Initialize() {
     });
     layers.appendChild(layer_pane_ui.node);
     layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
-    preview_tab_pane = new _gui_tab_pane__WEBPACK_IMPORTED_MODULE_9__.TabPaneUi();
+    preview_tab_pane = new _gui_tab_pane__WEBPACK_IMPORTED_MODULE_10__.TabPaneUi();
     preview_window = new _gui_preview_window__WEBPACK_IMPORTED_MODULE_6__.PreviewWindowUi(data.edit_width, data.edit_height);
     animation_window = new _gui_sprite_animation_preview_window__WEBPACK_IMPORTED_MODULE_7__.SpriteAnimationPreviewWindowUi(16, 16);
     preview_window.node.style.backgroundColor = "darkgoldenrod";
@@ -3134,6 +3198,15 @@ function Initialize() {
             }
         }
     });
+    const toolsblock = GetHtmlElement("toolpanel");
+    const toolbox = new _gui_toolbox__WEBPACK_IMPORTED_MODULE_9__.ToolBoxUi([
+        { kind: "pen", title: "ペン", base64icon: _resources__WEBPACK_IMPORTED_MODULE_13__.Resources.tool_icon_pen },
+        { kind: "paint", title: "塗り潰し", base64icon: _resources__WEBPACK_IMPORTED_MODULE_13__.Resources.tool_icon_fill },
+        { kind: "rectangle_select", title: "矩形選択", base64icon: _resources__WEBPACK_IMPORTED_MODULE_13__.Resources.tool_icon_select },
+    ], (pre, post) => {
+        canvas_tools.tool_kind = post;
+    });
+    toolsblock.appendChild(toolbox.node);
     window.requestAnimationFrame(UpdateView);
 }
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function (save_data) {
