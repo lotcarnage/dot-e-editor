@@ -119,31 +119,18 @@
         <div id="toolsblock">
             <div class="vbox">
                 <div class="hbox">
-                    <input type="radio" name="tools" id="pen_tool" value="pen_tool" checked>
-                    <label for="pen_tool">ペン</label>
-                </div>
-                <div class="hbox">
-                    <input type="radio" name="tools" id="paint_tool" value="paint_tool">
-                    <label for="paint_tool">塗りつぶし</label>
-                </div>
-                <div class="hbox">
-                    <input type="radio" name="tools" id="rectangle_select_tool" value="rectangle_select_tool">
-                    <label for="rectangle_select_tool">矩形選択</label>
                     <button id="rectangle_fill_button">矩形塗り潰し</button>
                     <button id="v_turn_button">上下反転</button>
                     <button id="h_turn_button">左右反転</button>
                     <button id="break_to_mask_button">マスク化</button>
+                    <button id="turn_mask_button">マスク反転</button>
+                    <button id="delete_mask_button">マスク消去</button>
                     <button id="release_targetting_button">選択解除</button>
                 </div>
-            </div>
-            <div class="vbox">
+                <div id="toolpanel"></div>
                 <div class="hbox">
                     <button id="undo_button">Undo</button>
                     <button id="redo_button">Redo</button>
-                </div>
-                <div class="hbox">
-                    <button id="turn_mask_button">マスク反転</button>
-                    <button id="delete_mask_button">マスク消去</button>
                 </div>
             </div>
         </div>

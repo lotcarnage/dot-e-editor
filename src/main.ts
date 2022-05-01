@@ -7,9 +7,11 @@ import { DonwloadButton } from "./gui/download_button"
 import { PreviewWindowUi } from "./gui/preview_window"
 import { SpriteAnimationPreviewWindowUi } from "./gui/sprite_animation_preview_window"
 import { LayerPaneUi } from "./gui/layer"
+import { ToolBoxUi } from "./gui/toolbox";
 import { TabPaneUi } from "./gui/tab_pane"
 import { CanvasTools, PixelPoint } from "./canvas_tools";
 import { RgbColor, RgbColorPalette } from "./rgb_color_palette";
+import { Resources } from "./resources";
 
 const data_format_version: number = 1;
 const max_edit_width: number = 512;
@@ -628,9 +630,6 @@ class GlobalDom {
 	edit_filepath: HTMLInputElement;
 	large_grid_width: HTMLInputElement;
 	large_grid_height: HTMLInputElement;
-	dom_pen_tool: HTMLInputElement;
-	dom_paint_tool: HTMLInputElement;
-	dom_rectangle_select_tool: HTMLInputElement;
 	grid_color: HTMLInputElement;
 	edit_data_name: HTMLInputElement;
 	undo_button: HTMLButtonElement;
@@ -649,9 +648,6 @@ class GlobalDom {
 		this.edit_filepath = GetHtmlElement<HTMLInputElement>('edit_filepath');
 		this.large_grid_width = GetHtmlElement<HTMLInputElement>('large_grid_width');
 		this.large_grid_height = GetHtmlElement<HTMLInputElement>('large_grid_height');
-		this.dom_pen_tool = GetHtmlElement<HTMLInputElement>('pen_tool');
-		this.dom_paint_tool = GetHtmlElement<HTMLInputElement>('paint_tool');
-		this.dom_rectangle_select_tool = GetHtmlElement<HTMLInputElement>('rectangle_select_tool');
 		this.grid_color = GetHtmlElement<HTMLInputElement>('grid_color');
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
@@ -729,15 +725,6 @@ function Initialize() {
 	dom.edit_filepath.addEventListener('change', (event) => {
 		edit_reader.readAsArrayBuffer((<HTMLInputElement>event.target).files[0]);
 	})
-	dom.dom_pen_tool.addEventListener('change', (event) => {
-		canvas_tools.tool_kind = "pen";
-	});
-	dom.dom_paint_tool.addEventListener('change', (event) => {
-		canvas_tools.tool_kind = "paint";
-	});
-	dom.dom_rectangle_select_tool.addEventListener('change', (event) => {
-		canvas_tools.tool_kind = "rectangle_select";
-	});
 	new DonwloadButton(
 		GetHtmlElement<HTMLDivElement>("edit_command"), "保存（ダウンロード）", () => {
 			const basename = dom.edit_data_name.value;
@@ -902,6 +889,19 @@ function Initialize() {
 			}
 		}
 	})
+
+	const toolsblock = GetHtmlElement<HTMLDivElement>("toolpanel");
+	const toolbox = new ToolBoxUi(
+		[
+			{ kind: "pen", title: "ペン", base64icon: Resources.tool_icon_pen },
+			{ kind: "paint", title: "塗り潰し", base64icon: Resources.tool_icon_fill },
+			{ kind: "rectangle_select", title: "矩形選択", base64icon: Resources.tool_icon_select },
+		],
+		(pre, post) => {
+			canvas_tools.tool_kind = post;
+		}
+	);
+	toolsblock.appendChild(toolbox.node);
 
 	window.requestAnimationFrame(UpdateView);
 }
