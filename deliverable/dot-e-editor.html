@@ -134,6 +134,9 @@
                     <button id="redo_button">Redo</button>
                 </div>
             </div>
+            <div class="vbox">
+                <div id="tooloptions"></div>
+            </div>
         </div>
 
         <div id="paletteblock">
@@ -2418,6 +2421,8 @@ __webpack_require__.r(__webpack_exports__);
 /* harmony import */ var _canvas_tools__WEBPACK_IMPORTED_MODULE_11__ = __webpack_require__(/*! ./canvas_tools */ "./built/canvas_tools.js");
 /* harmony import */ var _rgb_color_palette__WEBPACK_IMPORTED_MODULE_12__ = __webpack_require__(/*! ./rgb_color_palette */ "./built/rgb_color_palette.js");
 /* harmony import */ var _resources__WEBPACK_IMPORTED_MODULE_13__ = __webpack_require__(/*! ./resources */ "./built/resources.js");
+/* harmony import */ var _dom_dom__WEBPACK_IMPORTED_MODULE_14__ = __webpack_require__(/*! ./dom/dom */ "./built/dom/dom.js");
+
 
 
 
@@ -2923,13 +2928,54 @@ class RectangleTargetPixels {
 const data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixels_for_view = _misc__WEBPACK_IMPORTED_MODULE_1__.Misc.Make2dArray(max_edit_width, max_edit_height, 0);
 let canvas_ui = null;
+const DrawPen1px = function (x, y) {
+    data.WriteMap(x, y, data.selected_color_index);
+};
+const DrawPen2px = function (x, y) {
+    const color_index = data.selected_color_index;
+    data.WriteMap(x, y, color_index);
+    if (0 < x) {
+        data.WriteMap(x - 1, y, color_index);
+    }
+    if (0 < y) {
+        data.WriteMap(x, y - 1, color_index);
+    }
+    if ((0 < x) && (0 < y)) {
+        data.WriteMap(x - 1, y - 1, color_index);
+    }
+};
+const DrawPen3px = function (x, y) {
+    const color_index = data.selected_color_index;
+    data.WriteMap(x, y, color_index);
+    if (0 < x) {
+        data.WriteMap(x - 1, y, color_index);
+        if (0 < y) {
+            data.WriteMap(x, y - 1, color_index);
+            data.WriteMap(x - 1, y - 1, color_index);
+        }
+        if (y < canvas_ui.canvas_height - 1) {
+            data.WriteMap(x, y + 1, color_index);
+            data.WriteMap(x - 1, y + 1, color_index);
+        }
+    }
+    if (x < canvas_ui.canvas_width - 1) {
+        data.WriteMap(x + 1, y, color_index);
+        if (0 < y) {
+            data.WriteMap(x + 1, y - 1, color_index);
+        }
+        if (y < canvas_ui.canvas_height - 1) {
+            data.WriteMap(x + 1, y + 1, color_index);
+        }
+    }
+};
+let DrawPen = DrawPen1px;
 const canvas_tools = new _canvas_tools__WEBPACK_IMPORTED_MODULE_11__.CanvasTools.CanvasTools((x, y) => {
     return !data.IsMasked(x, y);
 }, (x, y) => {
     if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
         return;
     }
-    data.WriteMap(x, y, data.selected_color_index);
+    DrawPen(x, y);
 }, (x, y) => {
     return data.GetWrittenColorIndex(x, y);
 }, () => {
@@ -3224,6 +3270,26 @@ function Initialize() {
         canvas_tools.tool_kind = post;
     });
     toolsblock.appendChild(toolbox.node);
+    const tooloptions = GetHtmlElement("tooloptions");
+    const pen_width_selector = _dom_dom__WEBPACK_IMPORTED_MODULE_14__.Dom.CreateSelector([1, 2, 3], (index, item) => { return `${item}px`; }, 0);
+    pen_width_selector.addEventListener("change", (event) => {
+        const pen_width = parseInt(event.target.value);
+        switch (pen_width) {
+            case 1:
+                DrawPen = DrawPen1px;
+                break;
+            case 2:
+                DrawPen = DrawPen2px;
+                break;
+            case 3:
+                DrawPen = DrawPen3px;
+                break;
+        }
+    });
+    const pen_width_holder = document.createElement("div");
+    pen_width_holder.appendChild(_dom_dom__WEBPACK_IMPORTED_MODULE_14__.Dom.CreateText("ペンの太さ"));
+    pen_width_holder.appendChild(pen_width_selector);
+    tooloptions.appendChild(pen_width_holder);
     window.requestAnimationFrame(UpdateView);
 }
 const MakeSaveDataBlobAsWindowsIndexColorBitmap = function (save_data) {

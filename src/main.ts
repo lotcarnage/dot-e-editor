@@ -12,6 +12,7 @@ import { TabPaneUi } from "./gui/tab_pane"
 import { CanvasTools, PixelPoint } from "./canvas_tools";
 import { RgbColor, RgbColorPalette } from "./rgb_color_palette";
 import { Resources } from "./resources";
+import { Dom } from "./dom/dom"
 
 const data_format_version: number = 1;
 const max_edit_width: number = 512;
@@ -556,6 +557,49 @@ class RectangleTargetPixels {
 const data: Data = new Data(default_edit_width, default_edit_height, max_edit_width, max_edit_height);
 const marged_pixels_for_view = Misc.Make2dArray(max_edit_width, max_edit_height, 0);
 let canvas_ui: CanvasUi | null = null;
+
+const DrawPen1px = function (x: number, y: number): void {
+	data.WriteMap(x, y, data.selected_color_index);
+}
+const DrawPen2px = function (x: number, y: number): void {
+	const color_index = data.selected_color_index;
+	data.WriteMap(x, y, color_index);
+	if (0 < x) {
+		data.WriteMap(x - 1, y, color_index);
+	}
+	if (0 < y) {
+		data.WriteMap(x, y - 1, color_index);
+	}
+	if ((0 < x) && (0 < y)) {
+		data.WriteMap(x - 1, y - 1, color_index);
+	}
+}
+const DrawPen3px = function (x: number, y: number): void {
+	const color_index = data.selected_color_index;
+	data.WriteMap(x, y, color_index);
+	if (0 < x) {
+		data.WriteMap(x - 1, y, color_index);
+		if (0 < y) {
+			data.WriteMap(x, y - 1, color_index);
+			data.WriteMap(x - 1, y - 1, color_index);
+		}
+		if (y < canvas_ui.canvas_height - 1) {
+			data.WriteMap(x, y + 1, color_index);
+			data.WriteMap(x - 1, y + 1, color_index);
+		}
+	}
+	if (x < canvas_ui.canvas_width - 1) {
+		data.WriteMap(x + 1, y, color_index);
+		if (0 < y) {
+			data.WriteMap(x + 1, y - 1, color_index);
+		}
+		if (y < canvas_ui.canvas_height - 1) {
+			data.WriteMap(x + 1, y + 1, color_index);
+		}
+	}
+}
+let DrawPen: typeof DrawPen1px = DrawPen1px;
+
 const canvas_tools = new CanvasTools.CanvasTools(
 	(x, y) => {
 		return !data.IsMasked(x, y);
@@ -564,7 +608,7 @@ const canvas_tools = new CanvasTools.CanvasTools(
 		if (x < 0 || y < 0 || canvas_ui.canvas_width <= x || canvas_ui.canvas_height <= y) {
 			return;
 		}
-		data.WriteMap(x, y, data.selected_color_index);
+		DrawPen(x, y);
 	},
 	(x, y) => {
 		return data.GetWrittenColorIndex(x, y);
@@ -908,6 +952,27 @@ function Initialize() {
 		}
 	);
 	toolsblock.appendChild(toolbox.node);
+
+	const tooloptions = GetHtmlElement<HTMLDivElement>("tooloptions");
+	const pen_width_selector = Dom.CreateSelector([1, 2, 3], (index, item) => { return `${item}px`; }, 0);
+	pen_width_selector.addEventListener("change", (event) => {
+		const pen_width = parseInt((<HTMLOptionElement>event.target).value);
+		switch (pen_width) {
+			case 1:
+				DrawPen = DrawPen1px;
+				break;
+			case 2:
+				DrawPen = DrawPen2px;
+				break;
+			case 3:
+				DrawPen = DrawPen3px;
+				break;
+		}
+	});
+	const pen_width_holder = document.createElement("div");
+	pen_width_holder.appendChild(Dom.CreateText("ペンの太さ"));
+	pen_width_holder.appendChild(pen_width_selector);
+	tooloptions.appendChild(pen_width_holder);
 
 	window.requestAnimationFrame(UpdateView);
 }
