@@ -286,7 +286,7 @@ class Data {
 		for (const layer of this.pixel_layers_.values()) {
 			const histogram_tmp = layer.CalculateHistogram(this.edit_width_, this.edit_height_);
 			for (let i = 0; i < 256; i++) {
-				histogram[i] += histogram_tmp[i]
+				histogram[i] += histogram_tmp[i];
 			}
 		}
 		for (let i = 0; i < 256; i++) {
