@@ -132,6 +132,7 @@
                 <div class="hbox">
                     <button id="undo_button">Undo</button>
                     <button id="redo_button">Redo</button>
+                    <button id="clear_button">Clear</button>
                 </div>
             </div>
             <div class="vbox">
@@ -3077,6 +3078,7 @@ class GlobalDom {
         this.edit_data_name = GetHtmlElement('edit_data_name');
         this.undo_button = GetHtmlElement('undo_button');
         this.redo_button = GetHtmlElement('redo_button');
+        this.clear_button = GetHtmlElement('clear_button');
         this.rectangle_fill_button = GetHtmlElement('rectangle_fill_button');
         this.h_turn_button = GetHtmlElement('h_turn_button');
         this.v_turn_button = GetHtmlElement('v_turn_button');
@@ -3183,6 +3185,13 @@ function Initialize() {
     });
     dom.redo_button.addEventListener('click', (event) => {
         data.Redo();
+        ApplyView();
+    });
+    dom.clear_button.addEventListener('click', (event) => {
+        data.PushUndoLog();
+        data.RemoveAllLayers();
+        data.InsertNewLayer(0);
+        layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
         ApplyView();
     });
     dom.rectangle_fill_button.addEventListener('click', (event) => {

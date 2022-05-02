@@ -687,6 +687,7 @@ class GlobalDom {
 	edit_data_name: HTMLInputElement;
 	undo_button: HTMLButtonElement;
 	redo_button: HTMLButtonElement;
+	clear_button: HTMLButtonElement;
 	rectangle_fill_button: HTMLButtonElement;
 	h_turn_button: HTMLButtonElement;
 	v_turn_button: HTMLButtonElement;
@@ -705,6 +706,7 @@ class GlobalDom {
 		this.edit_data_name = GetHtmlElement<HTMLInputElement>('edit_data_name');
 		this.undo_button = GetHtmlElement<HTMLButtonElement>('undo_button');
 		this.redo_button = GetHtmlElement<HTMLButtonElement>('redo_button');
+		this.clear_button = GetHtmlElement<HTMLButtonElement>('clear_button');
 		this.rectangle_fill_button = GetHtmlElement<HTMLButtonElement>('rectangle_fill_button');
 		this.h_turn_button = GetHtmlElement<HTMLButtonElement>('h_turn_button');
 		this.v_turn_button = GetHtmlElement<HTMLButtonElement>('v_turn_button');
@@ -832,6 +834,13 @@ function Initialize() {
 	});
 	dom.redo_button.addEventListener('click', (event) => {
 		data.Redo();
+		ApplyView();
+	});
+	dom.clear_button.addEventListener('click', (event) => {
+		data.PushUndoLog();
+		data.RemoveAllLayers();
+		data.InsertNewLayer(0);
+		layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());
 		ApplyView();
 	});
 	dom.rectangle_fill_button.addEventListener('click', (event) => {
