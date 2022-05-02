@@ -1428,6 +1428,17 @@ class LayerPaneUi {
                 this.DeleteCurrentLayer();
             }
         });
+        {
+            const button_size = `2em`;
+            this.new_layer_button_.style.width = button_size;
+            this.new_layer_button_.style.height = button_size;
+            this.up_layer_button_.style.width = button_size;
+            this.up_layer_button_.style.height = button_size;
+            this.down_layer_button_.style.width = button_size;
+            this.down_layer_button_.style.height = button_size;
+            this.delete_layer_button_.style.width = button_size;
+            this.delete_layer_button_.style.height = button_size;
+        }
         this.register_callback_ = register_callback;
         this.removed_callback_ = destructed_callback;
         this.swap_callback_ = swap_callback;
