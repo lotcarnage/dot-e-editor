@@ -122,7 +122,7 @@ class PixelLayer {
 		this.name = name;
 		this.tag_color = tag_color;
 		this.is_locked = false;
-		this.is_locked = true;
+		this.is_visible = true;
 	}
 	CalculateHistogram(width: number, height: number): number[] {
 		const histogram = new Array<number>(256).fill(0);
@@ -230,6 +230,9 @@ class Data {
 	}
 	public AppendLayer(pixel_layer: PixelLayer): void {
 		this.pixel_layers_.set(pixel_layer, pixel_layer);
+		if (this.current_pixel_layer_ === null) {
+			this.current_pixel_layer_ = pixel_layer;
+		}
 	}
 	public RemoveLayer(pixel_layer: PixelLayer): void {
 		this.pixel_layers_.delete(pixel_layer);
@@ -905,6 +908,9 @@ function Initialize() {
 				thumbnail_context.strokeStyle = '#ff0000';
 				thumbnail_context.stroke();
 			}
+		},
+		(event_kind) => {
+			data.PushUndoLog();
 		});
 	layers.appendChild(layer_pane_ui.node);
 	layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());

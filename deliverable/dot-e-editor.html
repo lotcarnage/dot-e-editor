@@ -1404,7 +1404,7 @@ class LayerUi {
     }
 }
 class LayerPaneUi {
-    constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback) {
+    constructor(register_callback, destructed_callback, swap_callback, updated_state_callback, draw_thumbnail_callback, pre_event_callback) {
         this.layers_ = new Array(0);
         this.frame_ = document.createElement("div");
         this.command_holder_ = document.createElement("div");
@@ -1416,6 +1416,7 @@ class LayerPaneUi {
         this.layer_holder_.style.flexDirection = "column-reverse";
         this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
         this.new_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("＋", (buttonElement) => {
+            this.pre_event_callback_("register");
             const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
             const [layer_name, color, user_value] = this.register_callback_(registration_order);
             this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
@@ -1428,6 +1429,7 @@ class LayerPaneUi {
         });
         this.delete_layer_button_ = _dom_dom__WEBPACK_IMPORTED_MODULE_0__.Dom.CreateButton("×", (buttonElement) => {
             if (1 < this.layers_.length) {
+                this.pre_event_callback_("remove");
                 this.DeleteCurrentLayer();
             }
         });
@@ -1447,6 +1449,7 @@ class LayerPaneUi {
         this.swap_callback_ = swap_callback;
         this.updated_state_callback_ = updated_state_callback;
         this.draw_thumbnail_callback_ = draw_thumbnail_callback;
+        this.pre_event_callback_ = pre_event_callback;
         this.command_holder_.appendChild(this.new_layer_button_);
         this.command_holder_.appendChild(this.up_layer_button_);
         this.command_holder_.appendChild(this.down_layer_button_);
@@ -1465,6 +1468,28 @@ class LayerPaneUi {
         }
         this.current_layer_ = focus_in_layer;
         return;
+    }
+    IsLayerSwapable(lh_order, rh_order) {
+        let lh_layer = null;
+        let rh_layer = null;
+        for (let layer of this.layers_) {
+            if (layer.order === lh_order) {
+                lh_layer = layer;
+            }
+            if (layer.order === rh_order) {
+                rh_layer = layer;
+            }
+            if ((lh_layer !== null) && (rh_layer !== null)) {
+                break;
+            }
+        }
+        if (lh_layer === null) {
+            return false;
+        }
+        if (rh_layer === null) {
+            return false;
+        }
+        return true;
     }
     SwapLayer(lh_order, rh_order) {
         let lh_layer = null;
@@ -1574,14 +1599,25 @@ class LayerPaneUi {
             parameter[0] = Math.max(0, parameter[0] - 1);
             this.CreateNewLayer(...parameter);
         }
+        for (const layer of this.layers_.values()) {
+            layer.FocusOut();
+        }
+        this.current_layer_ = this.layers_[0];
+        this.current_layer_.FocusIn();
     }
     UpLayer(target_order) {
+        if (this.IsLayerSwapable(target_order, target_order + 1)) {
+            this.pre_event_callback_("swap");
+        }
         if (this.SwapLayer(target_order, target_order + 1)) {
             this.swap_callback_(target_order, target_order + 1);
         }
         return;
     }
     DownLayer(target_order) {
+        if (this.IsLayerSwapable(target_order, target_order - 1)) {
+            this.pre_event_callback_("swap");
+        }
         if (this.SwapLayer(target_order, target_order - 1)) {
             this.swap_callback_(target_order, target_order - 1);
         }
@@ -2522,7 +2558,7 @@ class PixelLayer {
         this.name = name;
         this.tag_color = tag_color;
         this.is_locked = false;
-        this.is_locked = true;
+        this.is_visible = true;
     }
     CalculateHistogram(width, height) {
         const histogram = new Array(256).fill(0);
@@ -2614,6 +2650,9 @@ class Data {
     }
     AppendLayer(pixel_layer) {
         this.pixel_layers_.set(pixel_layer, pixel_layer);
+        if (this.current_pixel_layer_ === null) {
+            this.current_pixel_layer_ = pixel_layer;
+        }
     }
     RemoveLayer(pixel_layer) {
         this.pixel_layers_.delete(pixel_layer);
@@ -3216,6 +3255,8 @@ function Initialize() {
             thumbnail_context.strokeStyle = '#ff0000';
             thumbnail_context.stroke();
         }
+    }, (event_kind) => {
+        data.PushUndoLog();
     });
     layers.appendChild(layer_pane_ui.node);
     layer_pane_ui.CreateBrandNewLayers(data.CreateLayerCreationParameters());

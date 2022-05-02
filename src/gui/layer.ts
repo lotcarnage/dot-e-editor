@@ -10,6 +10,7 @@ export type UpdatedStateCallback<UserType> = (
 	thumbnail_context: CanvasRenderingContext2D) => void;
 export type DrawThumbnailCallback<UserType> = (
 	target: UserType, order: number, is_locked: boolean, is_visible: boolean, thumbnail_context: CanvasRenderingContext2D) => void;
+export type PreEventCallback = (event_kind: "register" | "remove" | "swap") => void;
 
 export class LayerUi<UserType> {
 	private parent_: HTMLElement;
@@ -133,13 +134,15 @@ export class LayerPaneUi<UserType> {
 	private removed_callback_: RemovedCallback<UserType>;
 	private updated_state_callback_: UpdatedStateCallback<UserType>;
 	private draw_thumbnail_callback_: DrawThumbnailCallback<UserType>;
+	private pre_event_callback_: PreEventCallback;
 	private current_layer_: LayerUi<UserType> | null;
 	constructor(
 		register_callback: RegisterUserValueCallback<UserType>,
 		destructed_callback: RemovedCallback<UserType>,
 		swap_callback: SwapCallback,
 		updated_state_callback: UpdatedStateCallback<UserType>,
-		draw_thumbnail_callback: DrawThumbnailCallback<UserType>) {
+		draw_thumbnail_callback: DrawThumbnailCallback<UserType>,
+		pre_event_callback: PreEventCallback) {
 		this.layers_ = new Array<LayerUi<UserType>>(0);
 		this.frame_ = document.createElement("div");
 		this.command_holder_ = document.createElement("div");
@@ -153,6 +156,7 @@ export class LayerPaneUi<UserType> {
 		this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
 
 		this.new_layer_button_ = Dom.CreateButton("＋", (buttonElement) => {
+			this.pre_event_callback_("register");
 			const registration_order = this.CalculateRegistrationOrder(this.current_layer_.order);
 			const [layer_name, color, user_value] = this.register_callback_(registration_order);
 			this.CreateNewLayer(this.current_layer_.order, layer_name, color, user_value);
@@ -165,6 +169,7 @@ export class LayerPaneUi<UserType> {
 		});
 		this.delete_layer_button_ = Dom.CreateButton("×", (buttonElement) => {
 			if (1 < this.layers_.length) {
+				this.pre_event_callback_("remove");
 				this.DeleteCurrentLayer();
 			}
 		});
@@ -185,6 +190,7 @@ export class LayerPaneUi<UserType> {
 		this.swap_callback_ = swap_callback;
 		this.updated_state_callback_ = updated_state_callback;
 		this.draw_thumbnail_callback_ = draw_thumbnail_callback;
+		this.pre_event_callback_ = pre_event_callback;
 
 		this.command_holder_.appendChild(this.new_layer_button_);
 		this.command_holder_.appendChild(this.up_layer_button_);
@@ -204,6 +210,28 @@ export class LayerPaneUi<UserType> {
 		}
 		this.current_layer_ = focus_in_layer;
 		return;
+	}
+	private IsLayerSwapable(lh_order: number, rh_order: number): boolean {
+		let lh_layer: LayerUi<UserType> | null = null;
+		let rh_layer: LayerUi<UserType> | null = null;
+		for (let layer of this.layers_) {
+			if (layer.order === lh_order) {
+				lh_layer = layer;
+			}
+			if (layer.order === rh_order) {
+				rh_layer = layer;
+			}
+			if ((lh_layer !== null) && (rh_layer !== null)) {
+				break;
+			}
+		}
+		if (lh_layer === null) {
+			return false;
+		}
+		if (rh_layer === null) {
+			return false;
+		}
+		return true;
 	}
 	private SwapLayer(lh_order: number, rh_order: number): boolean {
 		let lh_layer: LayerUi<UserType> | null = null;
@@ -316,15 +344,26 @@ export class LayerPaneUi<UserType> {
 			parameter[0] = Math.max(0, parameter[0] - 1);
 			this.CreateNewLayer(...parameter);
 		}
+		for (const layer of this.layers_.values()) {
+			layer.FocusOut();
+		}
+		this.current_layer_ = this.layers_[0];
+		this.current_layer_.FocusIn();
 	}
 
 	public UpLayer(target_order: number): void {
+		if (this.IsLayerSwapable(target_order, target_order + 1)) {
+			this.pre_event_callback_("swap");
+		}
 		if (this.SwapLayer(target_order, target_order + 1)) {
 			this.swap_callback_(target_order, target_order + 1);
 		}
 		return;
 	}
 	public DownLayer(target_order: number): void {
+		if (this.IsLayerSwapable(target_order, target_order - 1)) {
+			this.pre_event_callback_("swap");
+		}
 		if (this.SwapLayer(target_order, target_order - 1)) {
 			this.swap_callback_(target_order, target_order - 1);
 		}
