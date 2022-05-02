@@ -282,7 +282,13 @@ class Data {
 		return color_table;
 	}
 	public DeleteAllUnusedColors(): void {
-		const histogram = this.current_pixel_layer_.CalculateHistogram(this.edit_width_, this.edit_height_);
+		const histogram = Misc.GenerateArray(256, (index) => { return 0; })
+		for (const layer of this.pixel_layers_.values()) {
+			const histogram_tmp = layer.CalculateHistogram(this.edit_width_, this.edit_height_);
+			for (let i = 0; i < 256; i++) {
+				histogram[i] += histogram_tmp[i]
+			}
+		}
 		for (let i = 0; i < 256; i++) {
 			if (histogram[i] === 0) {
 				data.color_palette_.SetPresetColor(i, "black");
