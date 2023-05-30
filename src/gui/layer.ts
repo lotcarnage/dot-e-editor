@@ -151,6 +151,7 @@ export class LayerPaneUi<UserType> {
 
 		this.command_holder_.style.display = "flex";
 		this.command_holder_.style.backgroundColor = "rgb(95, 95, 95)";
+		this.command_holder_.style.margin = "2px 0px 0px 0px";
 		this.layer_holder_.style.display = "flex";
 		this.layer_holder_.style.flexDirection = "column-reverse";
 		this.layer_holder_.style.backgroundColor = "rgb(127, 127, 127)";
@@ -175,14 +176,20 @@ export class LayerPaneUi<UserType> {
 		});
 		{
 			const button_size = `2em`;
-			this.new_layer_button_.style.width = button_size;
-			this.new_layer_button_.style.height = button_size;
-			this.up_layer_button_.style.width = button_size;
-			this.up_layer_button_.style.height = button_size;
-			this.down_layer_button_.style.width = button_size;
-			this.down_layer_button_.style.height = button_size;
-			this.delete_layer_button_.style.width = button_size;
-			this.delete_layer_button_.style.height = button_size;
+			const SetTabButtonStyle = function (button_element: HTMLButtonElement) {
+				button_element.style.width = button_size;
+				button_element.style.height = button_size;
+				button_element.style.borderRadius = "4px 4px 0px 0px";
+				button_element.style.borderWidth = "0px 0px 0px 0px";
+				button_element.style.margin = "1px 1px 0px 1px";
+				button_element.style.padding = "0";
+				button_element.style.textAlign = "center";
+				button_element.style.verticalAlign = "middle";
+			};
+			SetTabButtonStyle(this.new_layer_button_);
+			SetTabButtonStyle(this.up_layer_button_);
+			SetTabButtonStyle(this.down_layer_button_);
+			SetTabButtonStyle(this.delete_layer_button_);
 		}
 
 		this.register_callback_ = register_callback;
